@@ -1,0 +1,29 @@
+# Папки настроек пользователя 
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Папки отладки и профилирования
+*.aps
+*.pch
+*.ncb
+*.opt
+*.ipdb
+*.idb
+*.ilk
+
+# Специфичные папки Visual Studio
+Debug/
+Release/
+x64/
+x86/
+
+# Временные файлы компилятора
+*.exp
+*.tlog
+*.lastbuildstate
+*.manifest
+*.res
+*.pdb
