@@ -1,0 +1,16 @@
+width=10
+height=6
+money=250
+tiles=
+0 0 0 0 0 0 0 0 0 0
+0 1 2 2 0 0 0 0 0 0
+0 0 4 2 0 0 0 3 0 0
+0 0 4 2 4 4 4 2 0 0
+0 0 4 2 2 2 2 2 4 0
+0 0 0 0 0 0 0 0 0 0
+waves=
+basic:8
+fast:3
+basic:10
+strong:4
+fast:5

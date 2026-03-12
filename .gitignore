@@ -19,7 +19,6 @@ Debug/
 Release/
 x64/
 x86/
-vcpkg_installed/
 
 # Временные файлы компилятора
 *.exp
@@ -28,3 +27,6 @@ vcpkg_installed/
 *.manifest
 *.res
 *.pdb
+
+*.exe
+*.dll
