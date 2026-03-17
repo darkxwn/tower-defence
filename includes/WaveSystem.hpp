@@ -40,4 +40,5 @@ public:
     WaveState getState() const;
     float getWaitTimer() const;
     int getCurrentWave() const;
+    Wave getWave(int waveIndex) const;
 };

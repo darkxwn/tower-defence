@@ -1,8 +1,6 @@
 #include "Base.hpp"
 
-Base::Base(sf::Vector2i pos) : basePos(pos) {
-
-}
+Base::Base(sf::Vector2i pos) : basePos(pos) {}
 
 void Base::takeDamage(int damage) {
     baseLives -= damage;

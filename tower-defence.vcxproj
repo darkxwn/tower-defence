@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -109,7 +109,7 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <TreatAngleIncludeAsExternal>true</TreatAngleIncludeAsExternal>
-      <AdditionalIncludeDirectories>C:\Users\Acer\source\repos\tower-defence\src;C:\Users\Acer\source\repos\tower-defence\includes;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)\src;$(SolutionDir)\includes;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -125,7 +125,7 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>C:\Users\Acer\source\repos\tower-defence\src;C:\Users\Acer\source\repos\tower-defence\includes;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)\src;$(SolutionDir)\includes;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -134,25 +134,37 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="includes\Colors.hpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="src\Base.cpp" />
     <ClCompile Include="src\Enemy.cpp" />
     <ClCompile Include="src\Game.cpp" />
+    <ClCompile Include="src\GameData.cpp" />
+    <ClCompile Include="src\HUD.cpp" />
     <ClCompile Include="src\Map.cpp" />
     <ClCompile Include="src\ResourceManager.cpp" />
+    <ClCompile Include="src\Tower.cpp" />
     <ClCompile Include="src\WaveSystem.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="includes\Base.hpp" />
     <ClInclude Include="includes\Enemy.hpp" />
     <ClInclude Include="includes\Game.hpp" />
+    <ClInclude Include="includes\GameData.hpp" />
+    <ClInclude Include="includes\HUD.hpp" />
     <ClInclude Include="includes\Map.hpp" />
     <ClInclude Include="includes\ResourceManager.hpp" />
     <ClInclude Include="includes\Tile.hpp" />
+    <ClInclude Include="includes\Tower.hpp" />
     <ClInclude Include="includes\WaveSystem.hpp" />
   </ItemGroup>
   <ItemGroup>
+    <None Include=".gitignore" />
+    <None Include="data\config\enemies.cfg" />
+    <None Include="data\config\towers.cfg" />
     <None Include="data\levels\level01.map" />
+    <None Include="LICENSE" />
+    <None Include="README.md" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -16,6 +16,9 @@
     <Filter Include="Уровни">
       <UniqueIdentifier>{e6c502a4-0699-453e-84d0-e70735297e01}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Конфиги">
+      <UniqueIdentifier>{bfac9ab5-2bd9-40a9-be4a-003f2c248e67}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -38,6 +41,18 @@
     </ClCompile>
     <ClCompile Include="src\WaveSystem.cpp">
       <Filter>Исходные файлы</Filter>
+    </ClCompile>
+    <ClCompile Include="src\GameData.cpp">
+      <Filter>Исходные файлы</Filter>
+    </ClCompile>
+    <ClCompile Include="src\HUD.cpp">
+      <Filter>Исходные файлы</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Tower.cpp">
+      <Filter>Исходные файлы</Filter>
+    </ClCompile>
+    <ClCompile Include="includes\Colors.hpp">
+      <Filter>Файлы заголовков</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -62,10 +77,24 @@
     <ClInclude Include="includes\WaveSystem.hpp">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
+    <ClInclude Include="includes\GameData.hpp">
+      <Filter>Файлы заголовков</Filter>
+    </ClInclude>
+    <ClInclude Include="includes\HUD.hpp">
+      <Filter>Файлы заголовков</Filter>
+    </ClInclude>
+    <ClInclude Include="includes\Tower.hpp">
+      <Filter>Файлы заголовков</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="data\levels\level01.map">
       <Filter>Уровни</Filter>
     </None>
+    <None Include=".gitignore" />
+    <None Include="data\config\enemies.cfg" />
+    <None Include="data\config\towers.cfg" />
+    <None Include="LICENSE" />
+    <None Include="README.md" />
   </ItemGroup>
 </Project>

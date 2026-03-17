@@ -1,5 +1,6 @@
-// WaveSystem.cpp
 #include "WaveSystem.hpp"
+#include "GameData.hpp"
+#include "Enemy.hpp"
 #include <fstream>
 #include <sstream>
 
@@ -71,11 +72,9 @@ void WaveSystem::update(float deltaTime, std::vector<Enemy>& enemies, const std:
         if (spawnTimer < getSpawnInterval(wave.type)) return;
         spawnTimer = 0.f;
 
-        int speed = 64;
-        if (wave.type == EnemyType::Fast)   speed = 128;
-        if (wave.type == EnemyType::Strong) speed = 32;
+        auto stats = GameData::getEnemy(wave.type);
+        enemies.emplace_back(wave.type, stats.health, stats.speed, path);
 
-        enemies.emplace_back(wave.type, 100, speed, path);
         spawned++;
 
         // все заспавнены — переходим в Fighting
@@ -99,3 +98,9 @@ bool WaveSystem::isFinished() const {
 WaveState WaveSystem::getState() const { return state; }
 float WaveSystem::getWaitTimer() const { return waitTimer; }
 int WaveSystem::getCurrentWave() const { return currentWave; }
+
+Wave WaveSystem::getWave(int waveIndex) const { 
+    if (waveIndex < 0 || waveIndex >= waves.size())
+        throw std::runtime_error("[Ошибка]: Неверный индекс волны ");
+    return waves[waveIndex];
+}
