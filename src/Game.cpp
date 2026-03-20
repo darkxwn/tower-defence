@@ -4,7 +4,6 @@
 #include "ResourceManager.hpp"
 #include "WaveSystem.hpp"
 #include <SFML/Graphics.hpp>
-#include <Windows.h>
 #include <algorithm>
 #include <iostream>
 

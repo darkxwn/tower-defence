@@ -19,7 +19,8 @@ Debug/
 Release/
 x64/
 x86/
-vcpkg_installed
+build/
+out/
 
 # Временные файлы компилятора
 *.exp
