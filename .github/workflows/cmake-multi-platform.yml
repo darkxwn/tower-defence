@@ -84,12 +84,11 @@ jobs:
     - name: Upload Build Artifacts
       uses: actions/upload-artifact@v4
       with:
-        # Имя архива будет зависеть от ОС и компилятора
         name: tower-defence-${{ matrix.os }}-${{ matrix.c_compiler }}
         path: |
-          ${{ steps.strings.outputs.build-output-dir }}/tower-defence
-          ${{ steps.strings.outputs.build-output-dir }}/tower-defence.exe
-          ${{ steps.strings.outputs.build-output-dir }}/Release/tower-defence.exe
-          ${{ steps.strings.outputs.build-output-dir }}/assets/
-          ${{ steps.strings.outputs.build-output-dir }}/data/
-        if-no-files-found: warn
+          ${{ steps.strings.outputs.build-output-dir }}/**/tower-defence.exe
+          ${{ steps.strings.outputs.build-output-dir }}/**/tower-defence
+          ${{ steps.strings.outputs.build-output-dir }}/**/assets/
+          ${{ steps.strings.outputs.build-output-dir }}/**/data/
+        # Это важно: указываем корень, чтобы в архиве не было лишних вложенных папок build/out/...
+        include-hidden-files: false
