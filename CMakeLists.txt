@@ -8,22 +8,33 @@ project(tower-defence LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# 1. Поиск SFML через vcpkg (вместо FetchContent)
-# Это гораздо надежнее на Windows
-find_package(SFML 3.0.2 COMPONENTS Graphics Window System Audio REQUIRED)
+# 2. ЗАГРУЗКА SFML 3 (Автоматически скачается везде: и на Windows, и в GitHub Actions)
+include(FetchContent)
+FetchContent_Declare(sfml
+    GIT_REPOSITORY https://github.com/SFML/SFML.git
+    GIT_TAG 3.0.2  # Используем стабильный релиз 3.0.0
+)
 
-# 2. Сбор файлов проекта
+# Настройки сборки SFML, чтобы не тратить время на лишнее
+set(SFML_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(SFML_BUILD_TEST_SUITE OFF CACHE BOOL "" FORCE)
+set(SFML_INSTALL_PKGCONFIG_FILES OFF CACHE BOOL "" FORCE)
+set(SFML_BUILD_DOC OFF CACHE BOOL "" FORCE)
+
+FetchContent_MakeAvailable(sfml)
+
+# 3. СБОР ФАЙЛОВ ПРОЕКТА
 file(GLOB_RECURSE SOURCES "src/*.cpp")
 list(APPEND SOURCES "main.cpp")
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 
-# 3. Пути к вашим заголовкам
+# 4. ПУТИ К ЗАГОЛОВКАМ
 target_include_directories(${PROJECT_NAME} PRIVATE 
     "${CMAKE_CURRENT_SOURCE_DIR}/includes"
 )
 
-# 4. Линковка (в vcpkg имена обычно такие)
+# 5. ЛИНКОВКА (В SFML 3 цели называются SFML::...)
 target_link_libraries(${PROJECT_NAME} PRIVATE 
     SFML::Graphics
     SFML::Window
@@ -31,7 +42,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     SFML::Audio
 )
 
-# 5. Копирование ресурсов
+# 6. КОПИРОВАНИЕ РЕСУРСОВ
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
     "${CMAKE_CURRENT_SOURCE_DIR}/assets" "$<TARGET_FILE_DIR:${PROJECT_NAME}>/assets"
