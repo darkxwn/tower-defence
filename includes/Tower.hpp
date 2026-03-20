@@ -26,8 +26,10 @@ public:
 	Tower(TowerType type, sf::Vector2i gridPos);
 
 	void update(float deltaTime, std::vector<Enemy>& enemies, sf::Vector2f mapOffset);
-	void render(sf::RenderWindow& window, sf::Vector2f mapOffset);
+	void render(sf::RenderWindow& window, sf::Vector2f mapOffset, bool showRadius = false);
 
 	sf::Vector2i getGridPos() const;
+
+	
 };
 

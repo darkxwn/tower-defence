@@ -1,6 +1,7 @@
 #include "Tower.hpp"
 #include "Enemy.hpp"
 #include "ResourceManager.hpp"
+#include "Colors.hpp"
 
 Tower::Tower(TowerType type, sf::Vector2i gridPos)
     : type(type), gridPos(gridPos) {
@@ -15,7 +16,7 @@ Tower::Tower(TowerType type, sf::Vector2i gridPos)
     stats = GameData::getTower(name);
 }
 
-void Tower::render(sf::RenderWindow& window, sf::Vector2f mapOffset) {
+void Tower::render(sf::RenderWindow& window, sf::Vector2f mapOffset, bool showRadius) {
     // пиксельная позиция тайла башни
     sf::Vector2f pixelPos = sf::Vector2f(gridPos * 64) + mapOffset;
 
@@ -27,13 +28,17 @@ void Tower::render(sf::RenderWindow& window, sf::Vector2f mapOffset) {
     case TowerType::Double: typeName = "tower-double"; break;
     case TowerType::Sniper: typeName = "tower-sniper"; break;
     }
-    sf::CircleShape radiusCircle(stats.range);
-    radiusCircle.setFillColor(sf::Color(255, 255, 255, 20));
-    radiusCircle.setOutlineColor(sf::Color(255, 255, 255, 80));
-    radiusCircle.setOutlineThickness(1.f);
-    radiusCircle.setOrigin({ stats.range, stats.range });
-    radiusCircle.setPosition(pixelPos + sf::Vector2f(32.f, 32.f));
-    window.draw(radiusCircle);
+
+    if (showRadius) {
+        sf::CircleShape radiusCircle(stats.range);
+        radiusCircle.setFillColor(Colors::radiusFill);
+        radiusCircle.setOutlineColor(Colors::radiusOutline);
+        radiusCircle.setOutlineThickness(1.f);
+        radiusCircle.setOrigin({ stats.range, stats.range });
+        radiusCircle.setPosition(pixelPos + sf::Vector2f(32.f, 32.f));
+        window.draw(radiusCircle);
+    }
+
     // рисуем основание — не вращается
     sf::Sprite base(ResourceManager::get(typeName + "-base"));
     base.setPosition(pixelPos);
@@ -48,7 +53,6 @@ void Tower::render(sf::RenderWindow& window, sf::Vector2f mapOffset) {
 }
 
 void Tower::update(float deltaTime, std::vector<Enemy>& enemies, sf::Vector2f mapOffset) {
-
     // пиксельный центр башни
     sf::Vector2f towerCenter = sf::Vector2f(gridPos * 64) + mapOffset + sf::Vector2f(32.f, 32.f);
 

@@ -1,11 +1,12 @@
+#include "Colors.hpp"
 #include "Game.hpp"
+#include "GameData.hpp"
 #include "ResourceManager.hpp"
+#include "WaveSystem.hpp"
+#include <SFML/Graphics.hpp>
+#include <Windows.h>
 #include <algorithm>
 #include <iostream>
-#include <SFML/Graphics.hpp>
-#include "GameData.hpp"
-#include "WaveSystem.hpp"
-#include <Windows.h>
 
 Game::Game() : window(sf::VideoMode({ 1920, 1080 }), "Tower Defence", sf::Style::Default/*, sf::State::Fullscreen*/), base(map.getBasePos()), hud("assets/fonts/web_ibm_mda.ttf") {
     window.setFramerateLimit(60);
@@ -94,6 +95,9 @@ void Game::handleEvents() {
                 if (tile && tile->type == TileType::Platform) {
                     int slot = hud.getSelectedSlot();
                     if (slot != -1) {
+                        std::vector<std::string> names = { "basic", "cannon", "double", "sniper" };
+                        int cost = GameData::getTower(names[slot]).cost;
+                        
                         // проверяем нет ли уже башни
                         bool occupied = false;
                         for (auto& t : towers)
@@ -106,6 +110,7 @@ void Game::handleEvents() {
                             if (money >= cost) {
                                 money -= cost;
                                 towers.emplace_back(types[slot], tile->gridPos);
+                                hud.resetSelectedSlot();
                             }
                         }
                     } else {
@@ -123,8 +128,13 @@ void Game::render() {
     window.clear(sf::Color(27, 27, 27));
     map.render(window);
     hud.render(window, money, base.getLives(), waveSystem.getCurrentWave(), waveSystem.getState());
-    for (auto& tower : towers)
-        tower.render(window, map.getMapOffset());
+
+    Tile* selected = map.getSelectedTile();
+    for (auto& tower : towers) {
+        bool showRadius = selected && selected->gridPos == tower.getGridPos();
+        tower.render(window, map.getMapOffset(), showRadius);
+    }
+
     for (auto& enemy : enemies)
         enemy.render(window, map.getMapOffset());
 

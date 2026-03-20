@@ -20,8 +20,10 @@ public:
 	HUD(const std::string& fontPath);
 	void render(sf::RenderWindow& window, int money, int lives, int wave, WaveState state);
 	void handleClick(sf::Vector2f mousePos);
+	void resetSelectedSlot();
 
 	bool isPauseClicked() const;
 	bool isSkipClicked() const;
 	int getSelectedSlot() const;
+
 };

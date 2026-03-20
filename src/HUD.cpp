@@ -3,6 +3,7 @@
 #include "Base.hpp"
 #include <SFML/Graphics.hpp>
 #include "Colors.hpp"
+#include <Game.hpp>
 
 HUD::HUD(const std::string& fontPath) {
     if (!font.openFromFile(fontPath))
@@ -95,7 +96,9 @@ void HUD::render(sf::RenderWindow& window, int money, int lives, int wave, WaveS
 
     // слоты башен — позиции считаем динамически
     std::vector<std::string> towerNames = { "basic", "cannon", "double", "sniper" };
-    std::vector<int> towerCosts = { 50, 100, 75, 120 };
+    std::vector<int> towerCosts;
+    for (auto& name : towerNames)
+        towerCosts.push_back(GameData::getTower(name).cost);;
 
     for (int i = 0; i < (int)towerSlots.size(); i++) {
         // позиция слота — рядом с ячейкой денег
@@ -106,7 +109,7 @@ void HUD::render(sf::RenderWindow& window, int money, int lives, int wave, WaveS
             sf::RectangleShape highlight({ 90.f, 100.f });
             highlight.setPosition(towerSlots[i].getPosition());
             highlight.setFillColor(sf::Color::Transparent);
-            highlight.setOutlineColor(sf::Color(255, 200, 37, 255));
+            highlight.setOutlineColor(Colors::moneyText);
             highlight.setOutlineThickness(2.f);
             window.draw(highlight);
         }
@@ -120,7 +123,7 @@ void HUD::render(sf::RenderWindow& window, int money, int lives, int wave, WaveS
 
         // цена под спрайтом
         sf::Text costText(font, std::to_string(towerCosts[i]) + "$", 18);
-        costText.setFillColor(sf::Color(255, 200, 37, 255));
+        costText.setFillColor(Colors::moneyText);
         costText.setPosition(slotPos + sf::Vector2f((90.f - costText.getLocalBounds().size.x)/2, 70.f));
         window.draw(costText);
     }
@@ -161,3 +164,5 @@ int HUD::getSelectedSlot() const { return selectedTowerSlot; }
 
 bool HUD::isPauseClicked() const { return pauseClicked; }
 bool HUD::isSkipClicked() const { return skipClicked; }
+
+void HUD::resetSelectedSlot() { selectedTowerSlot = -1; }

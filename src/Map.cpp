@@ -50,6 +50,7 @@ void Map::load(const std::string& path) {
     buildPath();
 }
 
+// Метод отрисовки карты и выбора тайлов
 void Map::render(sf::RenderWindow& window) {
     for (int y = 0; y < tiles.size(); y++) {
         for (int x = 0; x < tiles[y].size(); x++) {
@@ -90,6 +91,7 @@ void Map::render(sf::RenderWindow& window) {
     }
 }
 
+// Метод центрирования карты по размеру окна
 void Map::centerOnScreen(sf::Vector2u windowSize, float topPanelHeight, float bottomPanelHeight) {
     float mapPixelW = width * 64.f;
     float mapPixelH = height * 64.f;
@@ -150,7 +152,7 @@ void Map::buildPath() {
     std::reverse(path.begin(), path.end());
 }
 
-// Получение позиции тайла в зависимости от клика мышью
+// Получение позиции тайла, по которому был клик мыши
 Tile* Map::getTileAtScreen(sf::Vector2f screenPos) const {
     // переводим экранные координаты в координаты сетки
     sf::Vector2i gridPos = sf::Vector2i((screenPos - mapOffset) / 64.f);
@@ -172,13 +174,22 @@ sf::Vector2i Map::getBasePos() const {
     return basePos;
 }
 
+// Метод получения стратового количества денег
 int Map::getStartMoney() const { return startMoney; }
+
+// Метод получения текущего отступа карты
 sf::Vector2f Map::getMapOffset() const { return mapOffset; }
 
+// Метод установки текущего выбранного тайла
 void Map::setSelectedTile(sf::Vector2f screenPos) {
     Tile* tile = getTileAtScreen(screenPos);
     if (tile && tile->type == TileType::Platform)
         selectedTile = tile;
     else
         selectedTile = nullptr;
+}
+
+// Метод получения текущего выбранного тайла
+Tile* Map::getSelectedTile() const {
+    return selectedTile;
 }
