@@ -39,12 +39,12 @@
 #### Arch Linux
 1. Установка зависимостей:
 ```bash
-$ sudo pacman -S --needed base-devel cmake git freetype2 libx11 libxrandr libxcursor libxi mesa glu openal libvorbis flac wayland libxkbcommon
+sudo pacman -S --needed base-devel cmake git freetype2 libx11 libxrandr libxcursor libxi mesa glu openal libvorbis flac wayland libxkbcommon
 ```
 2. Создание папки для сборки:
 ```bash
-$ mkdir build
-$ cd build
+mkdir build
+cd build
 ```
 3. Подготовка проекта
 ```bash
@@ -53,6 +53,6 @@ cmake .. -DCMAKE_BUILD_TYPE=Release
 4. Компиляция
 ```bash
 # make -j$(nproc) для быстрой сборки
-$ make
+make
 ```
 Готово! Запустите `./tower-defence`.
