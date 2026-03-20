@@ -4,9 +4,9 @@ name: CMake on multiple platforms
 
 on:
   push:
-    branches: [ "crossplatform-main" ]
+    branches: [ "main" ]
   pull_request:
-    branches: [ "crossplatform-main" ]
+    branches: [ "main" ]
 
 jobs:
   build:
