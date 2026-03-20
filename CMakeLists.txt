@@ -8,6 +8,9 @@ project(tower-defence LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+set(SFML_STATIC_LIBRARIES ON CACHE BOOL "" FORCE)
+
 # 2. ЗАГРУЗКА SFML 3 (Автоматически скачается везде: и на Windows, и в GitHub Actions)
 include(FetchContent)
 FetchContent_Declare(sfml
@@ -24,6 +27,10 @@ set(SFML_INSTALL_PKGCONFIG_FILES OFF CACHE BOOL "" FORCE)
 set(SFML_BUILD_DOC OFF CACHE BOOL "" FORCE)
 
 FetchContent_MakeAvailable(sfml)
+
+if(UNIX AND NOT APPLE)
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc -static-libstdc++")
+endif()
 
 # 3. СБОР ФАЙЛОВ ПРОЕКТА
 file(GLOB_RECURSE SOURCES "src/*.cpp")
