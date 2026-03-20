@@ -5,7 +5,6 @@
 #include <SFML/Graphics.hpp>
 #include "GameData.hpp"
 #include "WaveSystem.hpp"
-#include <Windows.h>
 
 Game::Game() : window(sf::VideoMode({ 1920, 1080 }), "Tower Defence", sf::Style::Default/*, sf::State::Fullscreen*/), base(map.getBasePos()), hud("assets/fonts/web_ibm_mda.ttf") {
     window.setFramerateLimit(60);
