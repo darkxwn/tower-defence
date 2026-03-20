@@ -2,7 +2,6 @@
 #include <SFML/Graphics.hpp>
 #include "Enemy.hpp"
 #include "GameData.hpp"
-#include <cmath>
 
 enum class TowerType {
 	Basic,

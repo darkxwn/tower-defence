@@ -1,5 +1,4 @@
 #include "GameData.hpp"
-#include <algorithm>
 #include <fstream>
 #include <sstream>
 #include <stdexcept>

@@ -12,7 +12,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 include(FetchContent)
 FetchContent_Declare(sfml
     GIT_REPOSITORY https://github.com/SFML/SFML.git
-    GIT_TAG 3.0.2  # Используем стабильный релиз 3.0.0
+    GIT_TAG 3.0.0
+    GIT_SHALLOW TRUE    # Скачает только один последний коммит (намного быстрее!)
+    GIT_PROGRESS TRUE   # Попытается вывести прогресс в лог
 )
 
 # Настройки сборки SFML, чтобы не тратить время на лишнее

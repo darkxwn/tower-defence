@@ -2,7 +2,6 @@
 #include "ResourceManager.hpp"
 #include <cstdlib>
 #include <iostream>
-#include <cmath>
 #include "Colors.hpp"
 
 Enemy::Enemy(EnemyType type, int health, int speed, const std::vector<sf::Vector2i>& path)
