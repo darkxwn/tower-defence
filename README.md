@@ -20,12 +20,39 @@
 ## 🛠 Технологии
 * **Язык:** C++ 
 * **Графическая библиотека:** SFML 3
-* **Пакетный менеджер:** vcpkg (интегрирован в режиме манифеста)
 
 ---
 
 ## ⚙️ Требования для запуска
 Для работы с проектом и его сборки вам понадобится:
-- Операционная система: **Windows 10 / 11**
+- Операционная система: **Windows 10 / 11**, Linux
 - Среда разработки: **Visual Studio 2022** и выше (С установленным компонентом *«Разработка классических приложений на C++»*)
 - Git (для клонирования репозитория)
+
+---
+
+## ⚙️ Сборка проекта
+
+### Windows 
+В Visual Studio достаточно собрать конфигурацию CMakeLists.txt, дождаться подготовки и выбрать в Target'е `tower-defence.exe`, после чего, проект соберётся в `.exe` файл.
+### Linux
+#### Arch Linux
+1. Установка зависимостей:
+```bash
+$ sudo pacman -S --needed base-devel cmake git freetype2 libx11 libxrandr libxcursor libxi mesa glu openal libvorbis flac wayland libxkbcommon
+```
+2. Создание папки для сборки:
+```bash
+$ mkdir build
+$ cd build
+```
+3. Подготовка проекта
+```bash
+cmake .. -DCMAKE_BUILD_TYPE=Release
+```
+4. Компиляция
+```bash
+# make -j$(nproc) для быстрой сборки
+$ make
+```
+Готово! Запустите `./tower-defence`.
