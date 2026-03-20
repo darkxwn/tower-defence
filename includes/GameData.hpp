@@ -1,6 +1,7 @@
 #pragma once
 #include "Enemy.hpp"
 #include <map>
+#include <vector>
 
 // Структура статов врага
 struct EnemyStats {
@@ -23,8 +24,11 @@ class GameData {
 private:
 	static std::map<EnemyType, EnemyStats>  enemies;
 	static std::map<std::string, TowerStats> towers;
+	static std::vector<std::string> towerOrder;
+
 public:
 	static void load();
 	static EnemyStats getEnemy(EnemyType type);
 	static TowerStats getTower(const std::string& name);
+	static std::vector<std::string> getTowerNames();
 };

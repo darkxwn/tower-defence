@@ -5,6 +5,7 @@
 
 std::map<EnemyType, EnemyStats> GameData::enemies;
 std::map<std::string, TowerStats> GameData::towers;
+std::vector<std::string> GameData::towerOrder;
 
 void GameData::load() {
     // загрузка врагов 
@@ -78,6 +79,7 @@ void GameData::load() {
         }
 
         towers[name] = stats;
+        towerOrder.push_back(name);
     }
 }
 
@@ -96,3 +98,5 @@ TowerStats GameData::getTower(const std::string& name) {
         throw std::runtime_error("[Ошибка]: Статы башни не найдены: " + name);
     return it->second;
 }
+
+std::vector<std::string> GameData::getTowerNames() { return towerOrder; }

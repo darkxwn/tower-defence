@@ -30,10 +30,10 @@ public:
 	
 	void setSelectedTile(sf::Vector2f screenPos);
 	Tile* getTileAtScreen(sf::Vector2f screenPos) const;
+	Tile* getSelectedTile() const;
 
 	const std::vector<sf::Vector2i>& getPath() const;
 	sf::Vector2i getBasePos() const;
 	int getStartMoney() const;
 	sf::Vector2f getMapOffset() const;
-	
 };
