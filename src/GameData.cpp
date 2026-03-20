@@ -5,6 +5,7 @@
 
 std::map<EnemyType, EnemyStats> GameData::enemies;
 std::map<std::string, TowerStats> GameData::towers;
+std::vector<std::string> GameData::towerOrder;
 
 void GameData::load() {
     // загрузка врагов 
