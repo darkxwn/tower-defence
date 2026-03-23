@@ -11,6 +11,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 set(SFML_STATIC_LIBRARIES ON CACHE BOOL "" FORCE)
 
+set(MACOS_ICON "${CMAKE_CURRENT_SOURCE_DIR}/game_macos.icns")
+
 include(FetchContent)
 FetchContent_Declare(sfml
     GIT_REPOSITORY https://github.com/SFML/SFML.git
@@ -33,16 +35,18 @@ endif()
 file(GLOB_RECURSE SOURCES "src/*.cpp")
 list(APPEND SOURCES "main.cpp")
 
-add_executable(${PROJECT_NAME} WIN32 MACOSX_BUNDLE ${SOURCES})
+add_executable(${PROJECT_NAME} WIN32 MACOSX_BUNDLE ${SOURCES} ${MACOS_ICON})
 
 if(APPLE)
+    set_source_files_properties(${MACOS_ICON} PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
+    
     set_target_properties(${PROJECT_NAME} PROPERTIES
         MACOSX_BUNDLE TRUE
         MACOSX_BUNDLE_BUNDLE_NAME "Tower Defence"
         MACOSX_BUNDLE_GUI_IDENTIFIER "com.darkxwn.tower-defence"
         MACOSX_BUNDLE_BUNDLE_VERSION "0.0.1"
         MACOSX_BUNDLE_SHORT_VERSION_STRING "0.1"
-        MACOSX_BUNDLE_ICON "${CMAKE_CURRENT_SOURCE_DIR}/game_macos.icns"
+        MACOSX_BUNDLE_ICON "game_macos.icns"
         MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/macos/Info.plist.in"
     )
 endif()
@@ -71,6 +75,8 @@ if(APPLE)
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_directory
         "${CMAKE_CURRENT_SOURCE_DIR}/assets" "$<TARGET_BUNDLE_CONTENT_DIR:${PROJECT_NAME}>/Resources/assets"
+        COMMAND ${CMAKE_COMMAND} -E copy_file
+        "${CMAKE_CURRENT_SOURCE_DIR}/" "$<TARGET_BUNDLE_CONTENT_DIR:${PROJECT_NAME}>/Resources/game_macos.icns"
         COMMAND ${CMAKE_COMMAND} -E copy_directory
         "${CMAKE_CURRENT_SOURCE_DIR}/data" "$<TARGET_BUNDLE_CONTENT_DIR:${PROJECT_NAME}>/Resources/data"
     )
