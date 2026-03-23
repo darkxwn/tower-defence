@@ -13,7 +13,6 @@
 ## 👥 Команда разработчиков
 * **[@darkxwn](https://github.com/darkxwn)** — PLACEHOLDER_ROLE
 * **[@BillVLad](https://github.com/BillVLad)** — PLACEHOLDER_ROLE
-* **[Имя/Ник третьего участника]** — PLACEHOLDER_ROLE
 
 ---
 
