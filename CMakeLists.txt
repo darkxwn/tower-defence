@@ -11,13 +11,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 set(SFML_STATIC_LIBRARIES ON CACHE BOOL "" FORCE)
 
-# 2. ЗАГРУЗКА SFML 3 (Автоматически скачается везде: и на Windows, и в GitHub Actions)
 include(FetchContent)
 FetchContent_Declare(sfml
     GIT_REPOSITORY https://github.com/SFML/SFML.git
     GIT_TAG 3.0.0
-    GIT_SHALLOW TRUE    # Скачает только один последний коммит (намного быстрее!)
-    GIT_PROGRESS TRUE   # Попытается вывести прогресс в лог
+    GIT_SHALLOW TRUE 
 )
 
 # Настройки сборки SFML, чтобы не тратить время на лишнее
@@ -32,7 +30,10 @@ if(UNIX AND NOT APPLE)
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc -static-libstdc++")
 endif()
 
-# 3. СБОР ФАЙЛОВ ПРОЕКТА
+if(APPLE)
+    target_link_libraries(${PROJECT_NAME} PRIVATE "-framework CoreFoundation")
+endif()
+
 file(GLOB_RECURSE SOURCES "src/*.cpp")
 list(APPEND SOURCES "main.cpp")
 
@@ -50,17 +51,16 @@ if(APPLE)
     )
 endif()
 
-# 4. ПУТИ К ЗАГОЛОВКАМ
 target_include_directories(${PROJECT_NAME} PRIVATE 
     "${CMAKE_CURRENT_SOURCE_DIR}/includes"
 )
 
-# 5. ЛИНКОВКА (В SFML 3 цели называются SFML::...)
 target_link_libraries(${PROJECT_NAME} PRIVATE 
     SFML::Graphics
     SFML::Window
     SFML::System
     SFML::Audio
+    SFML::Main
 )
 
 if(APPLE)
@@ -72,7 +72,7 @@ if(APPLE)
         "${CMAKE_CURRENT_SOURCE_DIR}/data" "$<TARGET_BUNDLE_CONTENT_DIR:${PROJECT_NAME}>/Resources/data"
     )
 else()
-    # Твой старый код для Windows/Linux
+    # Код для остальных систем (Windows/Linux) 
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_directory
         "${CMAKE_CURRENT_SOURCE_DIR}/assets" "$<TARGET_FILE_DIR:${PROJECT_NAME}>/assets"
