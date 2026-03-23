@@ -32,6 +32,12 @@ if(UNIX AND NOT APPLE)
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc -static-libstdc++")
 endif()
 
+# 3. СБОР ФАЙЛОВ ПРОЕКТА
+file(GLOB_RECURSE SOURCES "src/*.cpp")
+list(APPEND SOURCES "main.cpp")
+
+add_executable(${PROJECT_NAME} WIN32 MACOSX_BUNDLE ${SOURCES})
+
 if(APPLE)
     set_target_properties(${PROJECT_NAME} PROPERTIES
         MACOSX_BUNDLE TRUE
@@ -42,12 +48,6 @@ if(APPLE)
         MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/android/Info.plist.in" # Опционально
     )
 endif()
-
-# 3. СБОР ФАЙЛОВ ПРОЕКТА
-file(GLOB_RECURSE SOURCES "src/*.cpp")
-list(APPEND SOURCES "main.cpp")
-
-add_executable(${PROJECT_NAME} WIN32 MACOSX_BUNDLE ${SOURCES})
 
 # 4. ПУТИ К ЗАГОЛОВКАМ
 target_include_directories(${PROJECT_NAME} PRIVATE 
