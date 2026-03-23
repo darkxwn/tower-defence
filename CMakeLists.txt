@@ -30,10 +30,6 @@ if(UNIX AND NOT APPLE)
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc -static-libstdc++")
 endif()
 
-if(APPLE)
-    target_link_libraries(${PROJECT_NAME} PRIVATE "-framework CoreFoundation")
-endif()
-
 file(GLOB_RECURSE SOURCES "src/*.cpp")
 list(APPEND SOURCES "main.cpp")
 
@@ -62,6 +58,10 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     SFML::Audio
     SFML::Main
 )
+
+if(APPLE)
+    target_link_libraries(${PROJECT_NAME} PRIVATE "-framework CoreFoundation")
+endif()
 
 if(APPLE)
     # На macOS ресурсы кладем внутрь .app пакета
