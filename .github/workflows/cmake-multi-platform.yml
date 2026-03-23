@@ -86,4 +86,5 @@ jobs:
           ${{ steps.strings.outputs.build-output-dir }}/**/tower-defence
           ${{ steps.strings.outputs.build-output-dir }}/**/assets/
           ${{ steps.strings.outputs.build-output-dir }}/**/data/
+          ${{ steps.strings.outputs.build-output-dir }}/**/*.app
         include-hidden-files: false
