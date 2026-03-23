@@ -43,9 +43,10 @@ if(APPLE)
         MACOSX_BUNDLE TRUE
         MACOSX_BUNDLE_BUNDLE_NAME "Tower Defence"
         MACOSX_BUNDLE_GUI_IDENTIFIER "com.darkxwn.tower-defence"
-        MACOSX_BUNDLE_BUNDLE_VERSION "1.0.0"
-        MACOSX_BUNDLE_SHORT_VERSION_STRING "1.0"
-        MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/android/Info.plist.in" # Опционально
+        MACOSX_BUNDLE_BUNDLE_VERSION "0.0.1"
+        MACOSX_BUNDLE_SHORT_VERSION_STRING "0.1"
+        MACOSX_BUNDLE_ICON "${CMAKE_CURRENT_SOURCE_DIR}/game_macos.icns"
+        MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/macos/Info.plist.in"
     )
 endif()
 
