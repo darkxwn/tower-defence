@@ -14,7 +14,7 @@ set(SFML_STATIC_LIBRARIES ON CACHE BOOL "" FORCE)
 include(FetchContent)
 FetchContent_Declare(sfml
     GIT_REPOSITORY https://github.com/SFML/SFML.git
-    GIT_TAG 3.0.0
+    GIT_TAG 3.0.2
     GIT_SHALLOW TRUE 
 )
 
@@ -47,6 +47,10 @@ if(APPLE)
     )
 endif()
 
+if(WIN32)
+    set_target_properties(${PROJECT_NAME} PROPERTIES LINK_FLAGS "/ENTRY:mainCRTStartup")
+endif()
+
 target_include_directories(${PROJECT_NAME} PRIVATE 
     "${CMAKE_CURRENT_SOURCE_DIR}/includes"
 )
@@ -56,7 +60,6 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     SFML::Window
     SFML::System
     SFML::Audio
-    SFML::Main
 )
 
 if(APPLE)
