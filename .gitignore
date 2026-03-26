@@ -4,6 +4,9 @@
 *.user
 *.userosscache
 *.sln.docstates
+.idea/
+android/.gradle
+android/local.properties
 
 # Папки отладки и профилирования
 *.aps
