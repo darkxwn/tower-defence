@@ -5,7 +5,7 @@ set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
 
 project(tower-defence LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
@@ -15,7 +15,7 @@ set(SFML_STATIC_LIBRARIES ON CACHE BOOL "" FORCE)
 include(FetchContent)
 FetchContent_Declare(sfml
     GIT_REPOSITORY https://github.com/SFML/SFML.git
-    GIT_TAG 3.0.0
+    GIT_TAG 3.0.2
     GIT_SHALLOW TRUE    # Скачает только один последний коммит (намного быстрее!)
     GIT_PROGRESS TRUE   # Попытается вывести прогресс в лог
 )
@@ -48,7 +48,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     SFML::Graphics
     SFML::Window
     SFML::System
-    SFML::Audio
+    # SFML::Audio
 )
 
 # 6. КОПИРОВАНИЕ РЕСУРСОВ

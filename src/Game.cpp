@@ -7,43 +7,23 @@
 #include <algorithm>
 #include <iostream>
 
-Game::Game() : window(sf::VideoMode({ 1920, 1080 }), "Tower Defence", sf::Style::Default), base(map.getBasePos()) {
-    window.setFramerateLimit(60);
-    window.setMinimumSize(sf::Vector2u({ 1280, 720 }));
-
-    ResourceManager::loadFont("main", "assets/fonts/web_ibm_mda.ttf");
-
-    ResourceManager::load("icon-pause", "assets/icons/pause.png");
-    ResourceManager::load("icon-skip", "assets/icons/play.png");
-    ResourceManager::load("icon-coins", "assets/icons/coins.png");
-    ResourceManager::load("icon-heart", "assets/icons/heart.png");
-
-    GameData::load();
-
-    ResourceManager::load("road", "assets/sprites/tile-road.png");
-    ResourceManager::load("platform", "assets/sprites/tile-platform.png");
-    ResourceManager::load("portal", "assets/sprites/tile-portal.png");
-    ResourceManager::load("base", "assets/sprites/tile-base.png");
-    ResourceManager::load("active", "assets/sprites/tile-active-layer.png");
-
-    ResourceManager::load("enemy-basic", "assets/sprites/enemy-basic.png");
-    ResourceManager::load("enemy-fast", "assets/sprites/enemy-fast.png");
-    ResourceManager::load("enemy-strong", "assets/sprites/enemy-strong.png");
-
-    // загружаем спрайты башен автоматически по именам из GameData
-    for (const auto& name : GameData::getTowerNames()) {
-        ResourceManager::load("tower-" + name + "-base", "assets/sprites/tower-" + name + "-base.png");
-        ResourceManager::load("tower-" + name + "-turret", "assets/sprites/tower-" + name + "-turret.png");
-        ResourceManager::load("tower-" + name + "-preview", "assets/sprites/tower-" + name + "-preview.png");
-    }
-
-    waveSystem.loadWaves("data/levels/level01.map");
+Game::Game(sf::RenderWindow& window, const std::string& levelPath)
+    : window(window), base(sf::Vector2i{ 0, 0 })
+{
+    // Загружаем карту указанного уровня
+    map.load(levelPath);
     map.centerOnScreen(window.getSize(), 75.f, 120.f);
     money = map.getStartMoney();
+
+    // Пересоздаём Base с правильной позицией после загрузки карты
+    base = Base(map.getBasePos());
+
+    // Загружаем волны из того же .map файла
+    waveSystem.loadWaves(levelPath);
 }
 
 void Game::run() {
-    while (window.isOpen()) {
+    while (window.isOpen() && !returnToMenu) {
         float deltaTime = clock.restart().asSeconds();
         handleEvents();
         if (gameState == GameState::Playing)
@@ -51,6 +31,8 @@ void Game::run() {
         render();
     }
 }
+
+bool Game::shouldReturnToMenu() const { return returnToMenu; }
 
 void Game::handleEvents() {
     while (std::optional event = window.pollEvent()) {
@@ -65,12 +47,8 @@ void Game::handleEvents() {
                 if (gameState == GameState::Paused)
                     gameState = GameState::Playing;
                 else
-                    window.close();
+                    gameState = GameState::Paused;
             }
-
-
-            if (key->code == sf::Keyboard::Key::Escape)
-                window.close();
 
             if (key->code == sf::Keyboard::Key::P) {
                 if (gameState == GameState::Playing)
@@ -78,8 +56,6 @@ void Game::handleEvents() {
                 else if (gameState == GameState::Paused)
                     gameState = GameState::Playing;
             }
-
-
         }
 
         if (const auto* resized = event->getIf<sf::Event::Resized>()) {
@@ -93,7 +69,7 @@ void Game::handleEvents() {
             sf::Vector2f mousePos = sf::Vector2f(click->position);
             hud.handleClick(mousePos);
 
-            // кнопка паузы в HUD
+            // Кнопка паузы в HUD
             if (hud.isPauseClicked()) {
                 if (gameState == GameState::Playing)
                     gameState = GameState::Paused;
@@ -101,21 +77,21 @@ void Game::handleEvents() {
                     gameState = GameState::Playing;
             }
 
+            // Кнопки оверлея паузы
             if (gameState == GameState::Paused && click->button == sf::Mouse::Button::Left) {
                 if (pauseContinueBtn.getGlobalBounds().contains(mousePos)) {
                     gameState = GameState::Playing;
                 }
                 if (pauseRestartBtn.getGlobalBounds().contains(mousePos)) {
-                    // перезапуск — пока просто закрываем, потом сделаем нормально
-                    window.close();
+                    // Перезапуск — возврат в меню (пока без авто-рестарта)
+                    returnToMenu = true;
                 }
                 if (pauseMenuBtn.getGlobalBounds().contains(mousePos)) {
-                    // главное меню — пока просто закрываем
-                    window.close();
+                    returnToMenu = true;
                 }
             }
 
-            // кнопка скипа волны в HUD
+            // Кнопка скипа волны
             if (hud.isSkipClicked())
                 waveSystem.startWave();
 
@@ -124,7 +100,6 @@ void Game::handleEvents() {
                 if (tile && tile->type == TileType::Platform) {
                     int slot = hud.getSelectedSlot();
                     if (slot != -1) {
-                        // получаем имя башни по индексу слота
                         auto towerNames = GameData::getTowerNames();
                         if (slot < (int)towerNames.size()) {
                             std::string name = towerNames[slot];
@@ -135,7 +110,6 @@ void Game::handleEvents() {
                                 if (t.getGridPos() == tile->gridPos) { occupied = true; break; }
 
                             if (!occupied && money >= cost) {
-                                // конвертируем имя в TowerType
                                 TowerType type = TowerType::Basic;
                                 if (name == "cannon") type = TowerType::Cannon;
                                 else if (name == "double") type = TowerType::Double;
@@ -171,48 +145,50 @@ void Game::render() {
     for (auto& enemy : enemies)
         enemy.render(window, map.getMapOffset());
 
-    // оверлей паузы
+    // Оверлей паузы
     if (gameState == GameState::Paused) {
         auto& font = ResourceManager::getFont("main");
         auto winSize = window.getSize();
         float cx = winSize.x / 2.f;
         float cy = winSize.y / 2.f;
 
-        // затемнение
+        // Затемнение экрана
         sf::RectangleShape overlay;
         overlay.setSize(sf::Vector2f(winSize));
         overlay.setFillColor(sf::Color(0, 0, 0, 150));
         window.draw(overlay);
 
-        // текст ПАУЗА
+        // Текст "ПАУЗА"
         std::string pauseStr = "ПАУЗА";
-        sf::Text pauseText(font, sf::String::fromUtf8(pauseStr.begin(), pauseStr.end()), 64);
+        sf::Text pauseText(font, sf::String::fromUtf8(pauseStr.begin(), pauseStr.end()), 128);
         pauseText.setFillColor(sf::Color::White);
         pauseText.setPosition({ cx - pauseText.getLocalBounds().size.x / 2.f, cy - 180.f });
         window.draw(pauseText);
 
-        // размер и отступ кнопок
+        // Размеры и расположение кнопок
         float btnW = 220.f, btnH = 60.f, btnGap = 30.f;
         float totalW = btnW * 3 + btnGap * 2;
         float btnY = cy - btnH / 2.f;
 
-        // позиции кнопок
+        // Кнопка "Главное меню"
         pauseMenuBtn.setSize({ btnW, btnH });
         pauseMenuBtn.setFillColor(Colors::slotBg);
         pauseMenuBtn.setPosition({ cx - totalW / 2.f, btnY });
         window.draw(pauseMenuBtn);
 
+        // Кнопка "Заново"
         pauseRestartBtn.setSize({ btnW, btnH });
         pauseRestartBtn.setFillColor(Colors::slotBg);
         pauseRestartBtn.setPosition({ cx - btnW / 2.f, btnY });
         window.draw(pauseRestartBtn);
 
+        // Кнопка "Продолжить"
         pauseContinueBtn.setSize({ btnW, btnH });
         pauseContinueBtn.setFillColor(Colors::slotBg);
         pauseContinueBtn.setPosition({ cx + totalW / 2.f - btnW, btnY });
         window.draw(pauseContinueBtn);
 
-        // тексты кнопок
+        // Вспомогательная лямбда для текста на кнопке
         auto drawBtnText = [&](const std::string& str, sf::RectangleShape& btn) {
             sf::Text t(font, sf::String::fromUtf8(str.begin(), str.end()), 24);
             t.setFillColor(sf::Color::White);
@@ -221,11 +197,11 @@ void Game::render() {
             t.setPosition({ pos.x + (size.x - t.getLocalBounds().size.x) / 2.f,
                             pos.y + (size.y - t.getLocalBounds().size.y) / 2.f - 5.f });
             window.draw(t);
-            };
+        };
 
         drawBtnText("Главное меню", pauseMenuBtn);
-        drawBtnText("Заново", pauseRestartBtn);
-        drawBtnText("Продолжить", pauseContinueBtn);
+        drawBtnText("Заново",       pauseRestartBtn);
+        drawBtnText("Продолжить",   pauseContinueBtn);
     }
 
     window.display();
@@ -233,23 +209,35 @@ void Game::render() {
 
 void Game::update(float deltaTime) {
     waveSystem.update(deltaTime, enemies, map.getPath());
+
     for (auto& enemy : enemies)
         enemy.update(deltaTime);
 
     for (auto& tower : towers)
         tower.update(deltaTime, enemies, map.getMapOffset());
 
+    // Враги, дошедшие до базы, наносят урон
     for (auto& enemy : enemies)
         if (enemy.hasReachedBase())
             base.takeDamage(1);
 
+    // Награда за убитых врагов
     for (auto& enemy : enemies)
         if (enemy.isKilled())
             money += GameData::getEnemy(enemy.getType()).reward;
 
+    // Удаляем мёртвых врагов
     enemies.erase(
         std::remove_if(enemies.begin(), enemies.end(),
             [](const Enemy& e) { return !e.isAlive(); }),
         enemies.end()
     );
+
+    // Проверка поражения
+    if (base.isDestroyed())
+        gameState = GameState::GameOver;
+
+    // Проверка победы
+    if (waveSystem.isFinished() && enemies.empty())
+        gameState = GameState::Victory;
 }
