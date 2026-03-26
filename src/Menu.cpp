@@ -33,7 +33,7 @@ void Menu::scanLevels() {
     for (int i = 0; i < (int)mapFiles.size(); i++) {
         LevelInfo info;
         info.filePath = mapFiles[i].string();
-        info.index    = i + 1;
+        info.index    = i;
         info.name     = readLevelName(info.filePath);
         levels.push_back(info);
     }
@@ -207,7 +207,7 @@ void Menu::renderLevelSelect() {
         window.draw(card);
 
         // "Уровень N"
-        std::string numStr = "УРОВЕНЬ " + std::to_string(levels[i].index);
+        std::string numStr = "УРОВЕНЬ " + std::to_string(levels[i].index + 1);
         sf::Text numText(font, sf::String::fromUtf8(numStr.begin(), numStr.end()), 20);
         numText.setFillColor(sf::Color(160, 160, 160, 255));
         numText.setPosition({ cardX + (cardW - numText.getLocalBounds().size.x) / 2.f,
