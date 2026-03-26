@@ -63,7 +63,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     SFML::Graphics
     SFML::Window
     SFML::System
-    SFML::Audio
+    # SFML::Audio
 )
 
 if(APPLE)
