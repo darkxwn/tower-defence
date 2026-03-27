@@ -4,9 +4,25 @@
 #include "GameData.hpp"
 #include "ResourceManager.hpp"
 
+#ifdef __APPLE__
+#include <CoreFoundation/CoreFoundation.h>
+#include <unistd.h>
+#endif
+
+
 // Загружает все общие ресурсы (шрифты, текстуры, статы)
 // Вызывается один раз при старте приложения
 static void loadResources() {
+#ifdef __APPLE__
+    // Этот код находит папку Resources внутри твоего .app
+    CFBundleRef mainBundle = CFBundleGetMainBundle();
+    CFURLRef resourcesURL = CFBundleCopyResourcesDirectoryURL(mainBundle);
+    char path[1024];
+    if (CFURLGetFileSystemRepresentation(resourcesURL, TRUE, (UInt8*)path, 1024)) {
+        chdir(path); // Переходим в папку Resources
+    }
+    CFRelease(resourcesURL);
+#endif
     // Шрифт
     ResourceManager::loadFont("main", "assets/fonts/web_ibm_mda.ttf");
 
