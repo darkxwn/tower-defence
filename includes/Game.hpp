@@ -6,47 +6,53 @@
 #include "Tower.hpp"
 #include "WaveSystem.hpp"
 #include <SFML/Graphics.hpp>
+#include <string>
 #include <vector>
 
-// Перечисление игровых состояний
+// Игровые состояния (только внутриигровые; меню — отдельный класс Menu)
 enum class GameState {
-	MainMenu,
-	LevelSelect,
-	Settings,
-	Upgrades,
-	Playing,
-	Paused,
-	GameOver,
-	Victory
+    Playing,
+    Paused,
+    GameOver,
+    Victory
 };
 
-// Класс игры
+// Класс игровой сессии
+// Принимает путь к .map файлу и запускает уровень
 class Game {
 private:
-	sf::RenderWindow window;
-	sf::Clock clock;
-	sf::Vector2u windowSize = window.getSize();
+    sf::RenderWindow& window;
+    sf::Clock clock;
 
-	sf::RectangleShape pauseMenuBtn;
-	sf::RectangleShape pauseRestartBtn;
-	sf::RectangleShape pauseContinueBtn;
+    GameState gameState = GameState::Playing;
 
-	GameState gameState = GameState::Playing;
+    HUD hud;
+    Map map;
+    int money = 0;
+    Base base;
+    std::vector<Enemy> enemies;
+    std::vector<Tower> towers;
+    WaveSystem waveSystem;
 
-	HUD hud;
-	Map map;
-	int money = 0;
-	Base base;
-	std::vector<Enemy> enemies;
-	std::vector<Tower> towers;
-	WaveSystem waveSystem;
-	
-	void update(float deltaTime);
-	void render();
-	void handleEvents();
+    // Кнопки оверлея паузы
+    sf::RectangleShape pauseMenuBtn;
+    sf::RectangleShape pauseRestartBtn;
+    sf::RectangleShape pauseContinueBtn;
 
-public: 
-	Game();
-	void run();
-	
+    void update(float deltaTime);
+    void render();
+    void handleEvents();
+
+public:
+    // Принимает ссылку на окно и путь к файлу уровня
+    Game(sf::RenderWindow& window, const std::string& levelPath);
+
+    // Запускает игровой цикл; возвращает управление когда игра завершена
+    void run();
+
+    // Результат сессии — нужно ли вернуться в меню
+    bool shouldReturnToMenu() const;
+
+private:
+    bool returnToMenu = false;
 };

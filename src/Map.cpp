@@ -96,7 +96,6 @@ void Map::centerOnScreen(sf::Vector2u windowSize, float topPanelHeight, float bo
 
 // Поиск пути движения врагов (BFS от портала до базы)
 void Map::buildPath() {
-    path.clear(); // Чистим перед запуском метода. Чинит баг с запуском нового уровня
     std::queue<sf::Vector2i> queue;
     std::vector<std::vector<sf::Vector2i>> cameFrom(
         height, std::vector<sf::Vector2i>(width, { -1, -1 })

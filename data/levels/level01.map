@@ -1,6 +1,7 @@
 width=10
 height=6
 money=250
+name=Начало
 tiles=
 0 0 0 0 0 0 0 0 0 0
 0 1 2 2 0 0 0 0 0 0
@@ -9,8 +10,8 @@ tiles=
 0 0 4 2 2 2 2 2 4 0
 0 0 0 0 0 0 0 0 0 0
 waves=
+basic:4
+basic:4
 basic:8
-fast:3
-basic:10
-strong:4
-fast:5
+basic:8
+basic:12

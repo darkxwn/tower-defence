@@ -207,7 +207,7 @@ void Menu::renderLevelSelect() {
         window.draw(card);
 
         // "Уровень N"
-        std::string numStr = "УРОВЕНЬ " + std::to_string(levels[i].index + 1); // для правильного отображения номера
+        std::string numStr = "УРОВЕНЬ " + std::to_string(levels[i].index + 1);
         sf::Text numText(font, sf::String::fromUtf8(numStr.begin(), numStr.end()), 20);
         numText.setFillColor(sf::Color(160, 160, 160, 255));
         numText.setPosition({ cardX + (cardW - numText.getLocalBounds().size.x) / 2.f,
