@@ -2,57 +2,74 @@
 #include <SFML/Graphics.hpp>
 #include <string>
 #include <vector>
-#include <functional>
 
-// Состояния меню
-enum class MenuState {
-    Main,        // Главное меню
-    LevelSelect, // Выбор уровня
-    Upgrades,    // Улучшения (заглушка)
-    Settings     // Настройки (заглушка)
-};
+enum class MenuState { Main, LevelSelect, Upgrades, Settings };
 
-// Информация об уровне, считанная из .map файла
+// Результат завершённой игровой сессии
+enum class SessionResult { None, Win, Lose };
+
+// Информация об уровне из .map файла
 struct LevelInfo {
-    std::string filePath;  // Путь к .map файлу
-    std::string name;      // Название уровня из файла
-    int index;             // Порядковый номер уровня
+    std::string filePath;
+    std::string name;
+    int index; // 0-based порядковый номер
 };
 
-// Вспомогательная структура кнопки меню
-struct MenuButton {
-    sf::RectangleShape shape;
-    std::string label;
-    std::function<void()> onClick;
-};
-
-// Класс главного меню игры
-// Управляет переходами между подменю и запуском уровней
+// Класс главного меню.
+// Ключевой принцип надёжности кликов: вся геометрия кнопок/карточек
+// вычисляется один раз через compute*Layout() и передаётся ОДНОВРЕМЕННО
+// в render и handleClick — позиции всегда совпадают.
 class Menu {
+public:
+    struct MainLayout {
+        static constexpr int BTN_COUNT = 4;
+        sf::FloatRect btns[BTN_COUNT]; // 0=Играть 1=Улучшения 2=Настройки 3=Выход
+    };
+
+    struct CardLayout {
+        sf::FloatRect bounds;
+        int levelIndex; // индекс в levels[]
+    };
+
+    struct LevelSelectLayout {
+        std::vector<CardLayout> cards;
+        sf::FloatRect playBtn;
+        sf::FloatRect backBtn;
+        int rowSize;     // карточек в строке
+        int rowCount;    // строк
+    };
+
 private:
     sf::RenderWindow& window;
     MenuState state = MenuState::Main;
 
-    std::vector<LevelInfo> levels; // Загруженные уровни
-    std::string selectedLevel;     // Путь к выбранному уровню (пустой = не выбрано)
-    bool levelChosen = false;      // Флаг: игрок нажал "Играть"
+    std::vector<LevelInfo> levels;
+    std::string selectedLevel; // путь к выбранному .map, пустой = нет выбора
+    bool levelChosen = false;
 
-    // --- Отрисовка подменю ---
-    void renderMain();
-    void renderLevelSelect();
-    void renderStub(const std::string& title); // Заглушка для Settings/Upgrades
+    SessionResult lastResult   = SessionResult::None;
+    std::string   lastLevelPath; // путь к последнему сыгранному уровню
 
-    // --- Обработка кликов ---
-    void handleMainClick(sf::Vector2f pos);
-    void handleLevelSelectClick(sf::Vector2f pos);
+    // Геометрия — вычисляется один раз за кадр
+    MainLayout        computeMainLayout()        const;
+    LevelSelectLayout computeLevelSelectLayout() const;
 
-    // --- Вспомогательные методы ---
-    void scanLevels();                               // Сканирование папки data/levels/
-    std::string readLevelName(const std::string& path) const; // Читает поле name= из .map
+    // Отрисовка
+    void renderMain(const MainLayout& L);
+    void renderLevelSelect(const LevelSelectLayout& L);
+    void renderResultOverlay(); // баннер победы/поражения поверх LevelSelect
+    void renderStub(const std::string& title);
 
-    // Рисует кнопку меню; enabled=false делает её визуально неактивной
-    sf::FloatRect drawButton(const std::string& label, sf::Vector2f pos, sf::Vector2f size,
-                             bool hovered = false, bool enabled = true);
+    // Обработка кликов
+    void handleMainClick       (sf::Vector2f pos, const MainLayout& L);
+    void handleLevelSelectClick(sf::Vector2f pos, const LevelSelectLayout& L);
+
+    // Утилиты
+    void        scanLevels();
+    std::string readLevelName(const std::string& path) const;
+    void        drawBtn(const std::string& label, sf::FloatRect r,
+                        bool hovered, bool enabled = true,
+                        sf::Color customFill = sf::Color::Transparent) const;
 
 public:
     explicit Menu(sf::RenderWindow& window);
@@ -60,12 +77,10 @@ public:
     void handleEvents();
     void render();
 
-    // Вернёт true, если игрок выбрал уровень и нажал "Играть"
-    bool isLevelChosen() const;
-
-    // Путь к выбранному .map файлу
+    bool        isLevelChosen()  const;
     std::string getChosenLevel() const;
+    void        resetChoice();   // вызывать ПОСЛЕ getChosenLevel()
 
-    // Сбросить выбор (вызывается после запуска игры)
-    void resetChoice();
+    // Вызывается из main после завершения игровой сессии
+    void notifyResult(SessionResult result, const std::string& levelPath);
 };

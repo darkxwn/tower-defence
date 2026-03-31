@@ -9,22 +9,31 @@
 #include <string>
 #include <vector>
 
-// Игровые состояния (только внутриигровые; меню — отдельный класс Menu)
+// Внутренние состояния игровой сессии
 enum class GameState {
     Playing,
     Paused,
-    GameOver,
-    Victory
+    GameOver,  // поражение — база уничтожена
+    Victory    // победа — все волны пройдены
 };
 
-// Класс игровой сессии
-// Принимает путь к .map файлу и запускает уровень
+// Причина завершения сессии (возвращается в main)
+enum class GameEndReason {
+    None,          // сессия ещё идёт
+    ReturnToMenu,  // игрок нажал "Главное меню"
+    Restart,       // игрок нажал "Заново"
+    Win,           // победа
+    Lose           // поражение
+};
+
+// Игровая сессия одного уровня
 class Game {
 private:
     sf::RenderWindow& window;
     sf::Clock clock;
 
-    GameState gameState = GameState::Playing;
+    GameState state = GameState::Playing;
+    GameEndReason endReason = GameEndReason::None;
 
     HUD hud;
     Map map;
@@ -34,25 +43,30 @@ private:
     std::vector<Tower> towers;
     WaveSystem waveSystem;
 
-    // Кнопки оверлея паузы
-    sf::RectangleShape pauseMenuBtn;
-    sf::RectangleShape pauseRestartBtn;
-    sf::RectangleShape pauseContinueBtn;
+    // Кнопки оверлея паузы (позиции вычисляются в render)
+    sf::FloatRect pauseMenuRect;
+    sf::FloatRect pauseRestartRect;
+    sf::FloatRect pauseContinueRect;
+
+    // Кнопки экранов победы/поражения
+    sf::FloatRect endMenuRect;
+    sf::FloatRect endRestartRect;
 
     void update(float deltaTime);
     void render();
     void handleEvents();
 
+    void renderPauseOverlay();
+    void renderEndScreen();   // общий экран для Victory и GameOver
+
+    // Вычисляет позиции трёх кнопок паузы по центру экрана
+    void computePauseBtnLayout();
+
 public:
-    // Принимает ссылку на окно и путь к файлу уровня
     Game(sf::RenderWindow& window, const std::string& levelPath);
 
-    // Запускает игровой цикл; возвращает управление когда игра завершена
+    // Запускает цикл уровня; возвращает управление когда сессия завершена
     void run();
 
-    // Результат сессии — нужно ли вернуться в меню
-    bool shouldReturnToMenu() const;
-
-private:
-    bool returnToMenu = false;
+    GameEndReason getEndReason() const;
 };
