@@ -65,55 +65,68 @@ void Game::handleEvents() {
         if (event->is<sf::Event::Closed>())
             window.close();
 
+        // --- КЛАВИАТУРА ---
         if (const auto* key = event->getIf<sf::Event::KeyPressed>()) {
             if (key->code == sf::Keyboard::Key::Space)
                 waveSystem.startWave();
 
-            if (key->code == sf::Keyboard::Key::Escape) {
-                if (state == GameState::Playing)       state = GameState::Paused;
-                else if (state == GameState::Paused)   state = GameState::Playing;
-            }
-
-            if (key->code == sf::Keyboard::Key::P) {
+            if (key->code == sf::Keyboard::Key::Escape || key->code == sf::Keyboard::Key::P) {
                 if (state == GameState::Playing)       state = GameState::Paused;
                 else if (state == GameState::Paused)   state = GameState::Playing;
             }
         }
 
+        // --- ИЗМЕНЕНИЕ РАЗМЕРА ---
         if (const auto* resized = event->getIf<sf::Event::Resized>()) {
-            sf::Vector2u newSize = {resized->size.x, resized->size.y};
+            sf::Vector2u newSize = { resized->size.x, resized->size.y };
             map.centerOnScreen(newSize, 75.f, 120.f);
-            window.setView(sf::View(sf::FloatRect({0.f, 0.f}, sf::Vector2f(newSize))));
+            window.setView(sf::View(sf::FloatRect({ 0.f, 0.f }, sf::Vector2f(newSize))));
         }
 
-        if (const auto* click = event->getIf<sf::Event::MouseButtonPressed>()) {
-            if (click->button != sf::Mouse::Button::Left) continue;
-            sf::Vector2f mousePos = sf::Vector2f(click->position);
+        // --- УНИВЕРСАЛЬНЫЙ ВВОД (МЫШЬ + ТАЧ) ---
+        sf::Vector2f inputPos(-1.f, -1.f);
 
-            // ── Экран результата (Victory / GameOver) ──
+        // Клик мышкой
+        if (const auto* click = event->getIf<sf::Event::MouseButtonPressed>()) {
+            if (click->button == sf::Mouse::Button::Left)
+                inputPos = window.mapPixelToCoords(click->position);
+        }
+
+        // Нажатие пальцем (Android)
+        if (const auto* touch = event->getIf<sf::Event::TouchBegan>()) {
+            inputPos = window.mapPixelToCoords(touch->position);
+        }
+
+        // Если произошло нажатие (inputPos не пустой)
+        if (inputPos.x != -1.f) {
+
+            // 1. Экран результата (Victory / GameOver)
             if (state == GameState::Victory || state == GameState::GameOver) {
-                if (endMenuRect.contains(mousePos)) {
+                if (endMenuRect.contains(inputPos)) {
                     endReason = GameEndReason::ReturnToMenu;
-                } else if (endRestartRect.contains(mousePos)) {
+                }
+                else if (endRestartRect.contains(inputPos)) {
                     endReason = GameEndReason::Restart;
                 }
                 continue;
             }
 
-            // ── Оверлей паузы ──
+            // 2. Оверлей паузы
             if (state == GameState::Paused) {
-                if (pauseContinueRect.contains(mousePos)) {
+                if (pauseContinueRect.contains(inputPos)) {
                     state = GameState::Playing;
-                } else if (pauseRestartRect.contains(mousePos)) {
-                    endReason = GameEndReason::Restart;      // <-- только Restart, не меню
-                } else if (pauseMenuRect.contains(mousePos)) {
+                }
+                else if (pauseRestartRect.contains(inputPos)) {
+                    endReason = GameEndReason::Restart;
+                }
+                else if (pauseMenuRect.contains(inputPos)) {
                     endReason = GameEndReason::ReturnToMenu;
                 }
                 continue;
             }
 
-            // ── Игровой HUD ──
-            hud.handleClick(mousePos);
+            // 3. Игровой HUD
+            hud.handleClick(inputPos);
 
             if (hud.isPauseClicked()) {
                 state = (state == GameState::Playing) ? GameState::Paused : GameState::Playing;
@@ -121,9 +134,9 @@ void Game::handleEvents() {
             if (hud.isSkipClicked())
                 waveSystem.startWave();
 
-            // ── Расстановка башен ──
+            // 4. Расстановка башен (только если игра не на паузе)
             if (state == GameState::Playing) {
-                Tile* tile = map.getTileAtScreen(mousePos);
+                Tile* tile = map.getTileAtScreen(inputPos);
                 if (tile && tile->type == TileType::Platform) {
                     int slot = hud.getSelectedSlot();
                     if (slot != -1) {
@@ -137,21 +150,23 @@ void Game::handleEvents() {
                                 if (t.getGridPos() == tile->gridPos) { occupied = true; break; }
 
                             if (!occupied && money >= cost) {
-                                TowerType type = TowerType::Basic;
-                                if      (name == "cannon") type = TowerType::Cannon;
-                                else if (name == "double") type = TowerType::Double;
-                                else if (name == "sniper") type = TowerType::Sniper;
+                                TowerType tType = TowerType::Basic;
+                                if (name == "cannon") tType = TowerType::Cannon;
+                                else if (name == "double") tType = TowerType::Double;
+                                else if (name == "sniper") tType = TowerType::Sniper;
 
                                 money -= cost;
-                                towers.emplace_back(type, tile->gridPos);
+                                towers.emplace_back(tType, tile->gridPos);
                                 hud.resetSelectedSlot();
                             }
                         }
-                    } else {
-                        map.setSelectedTile(mousePos);
                     }
-                } else {
-                    map.setSelectedTile(mousePos);
+                    else {
+                        map.setSelectedTile(inputPos);
+                    }
+                }
+                else {
+                    map.setSelectedTile(inputPos);
                 }
             }
         }

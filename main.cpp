@@ -76,29 +76,66 @@ static void loadResources() {
 }
 
 int main(int argc, char* argv[]) {
-    // На Android окно ДОЛЖНО быть создано первым!
-    sf::RenderWindow window(sf::VideoMode({ 1920, 1080 }), "Tower Defence");
-    window.setFramerateLimit(60);
+    sf::RenderWindow window(
+        sf::VideoMode({ 1920, 1080 }),
+        "Tower Defence",
+        sf::Style::Default
+    );
+    sf::View view(sf::FloatRect({ 0.f, 0.f }, { 1920.f, 1080.f }));
+    window.setView(view);
 
-    // Только после создания окна можно грузить ресурсы на Android
+    window.setFramerateLimit(60);
+    window.setMinimumSize(sf::Vector2u({ 1280, 720 }));
+
     loadResources();
 
     Menu menu(window);
 
+    // Главный цикл приложения: Меню ↔ Игра
     while (window.isOpen()) {
+
+        // ── Показываем меню до тех пор, пока игрок не выберет уровень ──
         while (window.isOpen() && !menu.isLevelChosen()) {
             menu.handleEvents();
             menu.render();
         }
-
         if (!window.isOpen()) break;
 
+        // ── Запускаем игровую сессию ──
         std::string levelPath = menu.getChosenLevel();
-        menu.resetChoice();
+        menu.resetChoice(); // сбрасываем флаг, но остаёмся в LevelSelect
 
-        // На Android levelPath тоже должен быть без "data/" если ты грузишь через ifstream
-        Game game(window, levelPath);
-        game.run();
+        bool keepPlaying = true;
+        while (keepPlaying && window.isOpen()) {
+            Game game(window, levelPath);
+            game.run();
+
+            GameEndReason reason = game.getEndReason();
+
+            switch (reason) {
+            case GameEndReason::Restart:
+                // Пересоздаём Game с тем же уровнем — цикл повторится
+                break;
+
+            case GameEndReason::Win:
+                menu.notifyResult(SessionResult::Win, levelPath);
+                keepPlaying = false;
+                break;
+
+            case GameEndReason::Lose:
+                menu.notifyResult(SessionResult::Lose, levelPath);
+                keepPlaying = false;
+                break;
+
+            case GameEndReason::ReturnToMenu:
+            default:
+                // Возврат в меню без оверлея результата
+                keepPlaying = false;
+                break;
+            }
+        }
+        // После выхода из keepPlaying — возвращаемся в меню
+        // (menu уже настроен notifyResult или просто ждёт в LevelSelect)
     }
 
     return 0;

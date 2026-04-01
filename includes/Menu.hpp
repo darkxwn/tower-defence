@@ -2,7 +2,6 @@
 #include <SFML/Graphics.hpp>
 #include <string>
 #include <vector>
-#include <functional>
 
 enum class MenuState { Main, LevelSelect, Upgrades, Settings };
 
@@ -40,9 +39,6 @@ public:
         int rowCount;    // строк
     };
 
-// Класс главного меню игры
-// Управляет переходами между подменю и запуском уровней
-class Menu {
 private:
     sf::RenderWindow& window;
     MenuState state = MenuState::Main;
@@ -51,7 +47,7 @@ private:
     std::string selectedLevel; // путь к выбранному .map, пустой = нет выбора
     bool levelChosen = false;
 
-    SessionResult lastResult   = SessionResult::None;
+    SessionResult lastResult = SessionResult::None;
     std::string   lastLevelPath; // путь к последнему сыгранному уровню
 
     // Геометрия — вычисляется один раз за кадр
@@ -65,15 +61,15 @@ private:
     void renderStub(const std::string& title);
 
     // Обработка кликов
-    void handleMainClick       (sf::Vector2f pos, const MainLayout& L);
+    void handleMainClick(sf::Vector2f pos, const MainLayout& L);
     void handleLevelSelectClick(sf::Vector2f pos, const LevelSelectLayout& L);
 
     // Утилиты
     void        scanLevels();
     std::string readLevelName(const std::string& path) const;
     void        drawBtn(const std::string& label, sf::FloatRect r,
-                        bool hovered, bool enabled = true,
-                        sf::Color customFill = sf::Color::Transparent) const;
+        bool hovered, bool enabled = true,
+        sf::Color customFill = sf::Color::Transparent) const;
 
 public:
     explicit Menu(sf::RenderWindow& window);

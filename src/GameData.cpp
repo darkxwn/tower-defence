@@ -3,97 +3,112 @@
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
-
 std::map<EnemyType, EnemyStats> GameData::enemies;
 std::map<std::string, TowerStats> GameData::towers;
 std::vector<std::string> GameData::towerOrder;
 
-void GameData::load() {
-    // загрузка врагов 
-#ifdef ANDROID
-    std::ifstream enemyFile("config/enemies.cfg");
-#endif // ANDROID
-#ifndef ANDROID
-    std::ifstream enemyFile("data/config/enemies.cfg");
-#endif // !ANDROID
-
-
-    std::string line;
-
-    while (std::getline(enemyFile, line)) {
-        if (line.empty()) continue;
-
-        std::istringstream ss(line);
-        std::string typeName;
-        ss >> typeName;  // читаем имя типа — "basic", "fast" и т.д.
-
-        EnemyStats stats = {};
-        std::string token;
-
-        // парсим пары ключ=значение
-        while (ss >> token) {
-            size_t eq = token.find('=');
-            if (eq == std::string::npos) continue;
-            std::string key = token.substr(0, eq);
-            int value = std::stoi(token.substr(eq + 1));
-
-            if (key == "health")  stats.health = value;
-            if (key == "speed")   stats.speed = value;
-            if (key == "damage")  stats.damage = value;
-            if (key == "reward")  stats.reward = value;
-        }
-
-        // конвертируем строку в EnemyType
-        EnemyType type;
-        if (typeName == "basic")       type = EnemyType::Basic;
-        else if (typeName == "fast")   type = EnemyType::Fast;
-        else if (typeName == "strong") type = EnemyType::Strong;
-        else continue;
-
-        enemies[type] = stats;
+// Вспомогательная функция для чтения файла из ресурсов SFML в строку
+static std::string readFileToString(const std::string& path) {
+    sf::FileInputStream stream;
+    if (!stream.open(path)) {
+        return "";
     }
 
+    std::string content;
+    auto size = stream.getSize();
+    if (size) {
+        content.resize(*size);
+        stream.read(content.data(), *size);
+    }
+    return content;
+}
 
-    // загрузка башен
+void GameData::load() {
+    enemies.clear();
+    towers.clear();
+    towerOrder.clear();
+
+    // 1. ОПРЕДЕЛЯЕМ ПУТИ
 #ifdef ANDROID
-    std::ifstream towerFile("config/towers.cfg");
-#endif // ANDROID
-#ifndef ANDROID
-    std::ifstream towerFile("data/config/towers.cfg");
-#endif // !ANDROID
+    std::string enemyPath = "config/enemies.cfg";
+    std::string towerPath = "config/towers.cfg";
+#else
+    std::string enemyPath = "data/config/enemies.cfg";
+    std::string towerPath = "data/config/towers.cfg";
+#endif
 
+    // 2. ЗАГРУЗКА ВРАГОВ
+    std::string enemyData = readFileToString(enemyPath);
+    if (!enemyData.empty()) {
+        std::istringstream ssFile(enemyData);
+        std::string line;
+        while (std::getline(ssFile, line)) {
+            if (!line.empty() && line.back() == '\r') line.pop_back(); // Чистим Windows-переносы
+            if (line.empty()) continue;
 
-    while (std::getline(towerFile, line)) {
-        if (line.empty()) continue;
+            std::istringstream ss(line);
+            std::string typeName;
+            ss >> typeName;
 
-        if (!line.empty() && line.back() == '\r')
-            line.pop_back();
+            EnemyStats stats = {};
+            std::string token;
+            while (ss >> token) {
+                size_t eq = token.find('=');
+                if (eq == std::string::npos) continue;
+                std::string key = token.substr(0, eq);
+                int value = std::stoi(token.substr(eq + 1));
 
-        std::istringstream ss(line);
-        std::string name;
-        ss >> name;  // имя башни — "basic", "cannon" и т.д.
+                if (key == "health")  stats.health = value;
+                else if (key == "speed")   stats.speed = value;
+                else if (key == "damage")  stats.damage = value;
+                else if (key == "reward")  stats.reward = value;
+            }
 
-        TowerStats stats = {};
-        std::string token;
+            EnemyType type;
+            if (typeName == "basic")       type = EnemyType::Basic;
+            else if (typeName == "fast")   type = EnemyType::Fast;
+            else if (typeName == "strong") type = EnemyType::Strong;
+            else continue;
 
-        while (ss >> token) {
-            size_t eq = token.find('=');
-            if (eq == std::string::npos) continue;
-            std::string key = token.substr(0, eq);
-
-            if (key == "damage")   stats.damage = std::stoi(token.substr(eq + 1));
-            if (key == "firerate") { // заменяем запятую на точку на случай локали
-                std::string val = token.substr(eq + 1);
-                std::replace(val.begin(), val.end(), '.', ',');
-                stats.firerate = std::stof(val);
-            }           
-            if (key == "range")    stats.range = std::stof(token.substr(eq + 1));
-            if (key == "cost")     stats.cost = std::stoi(token.substr(eq + 1));
-            if (key == "splash")   stats.splash = std::stoi(token.substr(eq + 1));
+            enemies[type] = stats;
         }
+    }
 
-        towers[name] = stats;
-        towerOrder.push_back(name);
+    // 3. ЗАГРУЗКА БАШЕН
+    std::string towerData = readFileToString(towerPath);
+    if (!towerData.empty()) {
+        std::istringstream ssFile(towerData);
+        std::string line;
+        while (std::getline(ssFile, line)) {
+            if (!line.empty() && line.back() == '\r') line.pop_back();
+            if (line.empty()) continue;
+
+            std::istringstream ss(line);
+            std::string name;
+            ss >> name;
+
+            TowerStats stats = {};
+            std::string token;
+            while (ss >> token) {
+                size_t eq = token.find('=');
+                if (eq == std::string::npos) continue;
+                std::string key = token.substr(0, eq);
+                std::string valStr = token.substr(eq + 1);
+
+                if (key == "damage")   stats.damage = std::stoi(valStr);
+                else if (key == "firerate") {
+                    // Заменяем запятую на точку для stof, если конфиг был с запятой
+                    std::replace(valStr.begin(), valStr.end(), ',', '.');
+                    stats.firerate = std::stof(valStr);
+                }
+                else if (key == "range")    stats.range = std::stof(valStr);
+                else if (key == "cost")     stats.cost = std::stoi(valStr);
+                else if (key == "splash")   stats.splash = std::stoi(valStr);
+            }
+
+            towers[name] = stats;
+            towerOrder.push_back(name);
+        }
     }
 }
 

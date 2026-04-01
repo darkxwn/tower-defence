@@ -1,5 +1,6 @@
 #include "Menu.hpp"
 #include "ResourceManager.hpp"
+#include "GeneratedLevels.hpp"
 #include "Colors.hpp"
 #include <filesystem>
 #include <fstream>
@@ -21,30 +22,18 @@ Menu::Menu(sf::RenderWindow& window) : window(window) {
 void Menu::scanLevels() {
     levels.clear();
 #ifdef ANDROID
-    const std::string levelsDir = "levels";
-#endif // ANDROID
-#ifndef ANDROID
-    const std::string levelsDir = "data/levels/";
-#endif // !ANDROID
-    if (!fs::exists(levelsDir)) {
-        std::cerr << "[Меню]: Папка уровней не найдена: " << levelsDir << "\n";
-        return;
+    std::string dir = "levels/";
+#else
+    std::string dir = "data/levels/";
+#endif
+    std::vector<std::string> mapNames = getLevelList();
+
+    for (int i = 0; i < (int)mapNames.size(); ++i) {
+        std::string fullPath = dir + mapNames[i];
+        levels.push_back({ fullPath, readLevelName(fullPath), i });
     }
-    const std::string dir = "data/levels/";
-    if (!fs::exists(dir)) return;
-
-    std::vector<fs::path> files;
-    for (const auto& e : fs::directory_iterator(dir))
-        if (e.path().extension() == ".map")
-            files.push_back(e.path());
-    std::sort(files.begin(), files.end());
-
-    for (int i = 0; i < (int)files.size(); i++)
-        levels.push_back({ files[i].string(), readLevelName(files[i].string()), i });
-}
 }
 
-// Читает поле name= из .map файла; если не найдено — возвращает "Уровень N"
 std::string Menu::readLevelName(const std::string& path) const {
     std::ifstream f(path);
     std::string line;
@@ -100,7 +89,6 @@ Menu::LevelSelectLayout Menu::computeLevelSelectLayout() const {
         float y = gridStartY + row * (cardH + cardGap);
         L.cards.push_back({ sf::FloatRect({x, y}, {cardW, cardH}), i });
     }
-}
 
     // Кнопки под сеткой
     float btnW = 220.f;
@@ -143,7 +131,6 @@ void Menu::renderMain(const MainLayout& L) {
 
     for (int i = 0; i < MainLayout::BTN_COUNT; i++)
         drawBtn(labels[i], L.btns[i], L.btns[i].contains(mouse));
-}
 }
 
 void Menu::handleMainClick(sf::Vector2f pos, const MainLayout& L) {
@@ -231,7 +218,6 @@ void Menu::handleLevelSelectClick(sf::Vector2f pos, const LevelSelectLayout& L) 
         selectedLevel = (selectedLevel == fp) ? "" : fp;
         lastResult = SessionResult::None; // снимаем баннер при смене выбора
         return;
-    }
     }
 
     // Кнопка "Играть"
@@ -339,9 +325,11 @@ void Menu::handleEvents() {
                     // Escape закрывает оверлей результата
                     lastResult = SessionResult::None;
                     selectedLevel = "";
-                } else if (state != MenuState::Main) {
+                }
+                else if (state != MenuState::Main) {
                     state = MenuState::Main;
-                } else {
+                }
+                else {
                     window.close();
                 }
             }
@@ -375,6 +363,22 @@ void Menu::handleEvents() {
                 break;
             default:
                 break;
+            }
+        }
+
+        if (const auto* touch = event->getIf<sf::Event::TouchBegan>()) {
+            sf::Vector2f pos = sf::Vector2f(touch->position);
+            if (pos.x != -1.f) {
+                switch (state) {
+                case MenuState::Main:
+                    handleMainClick(pos, mainL);
+                    break;
+                case MenuState::LevelSelect:
+                    handleLevelSelectClick(pos, levelL);
+                    break;
+                default:
+                    break;
+                }
             }
         }
     }

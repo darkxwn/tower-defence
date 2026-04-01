@@ -35,6 +35,21 @@ endif()
 file(GLOB_RECURSE SOURCES "src/*.cpp")
 list(APPEND SOURCES "main.cpp")
 
+# 1. Ищем все файлы .map в папке уровней
+file(GLOB MAP_FILES RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}/data/levels" "data/levels/*.map")
+
+# 2. Превращаем список файлов в строку через запятую для C++ (напр. "level01.map", "level02.map")
+list(JOIN MAP_FILES "\", \"" MAP_STR)
+set(MAP_STR "\"${MAP_STR}\"")
+
+# 3. Генерируем мини-хедер прямо в папку сборки
+file(WRITE "${CMAKE_BINARY_DIR}/GeneratedLevels.hpp" 
+     "#pragma once\n#include <vector>\n#include <string>\n"
+     "inline std::vector<std::string> getLevelList() { return { ${MAP_STR} }; }")
+
+# 4. Даем проекту доступ к этому файлу
+include_directories("${CMAKE_BINARY_DIR}")
+
 if(ANDROID)
     # Android требует SHARED библиотеку (.so), а не EXECUTABLE
     add_library(${PROJECT_NAME} SHARED ${SOURCES} ${EXE_ICON})
