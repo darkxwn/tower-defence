@@ -3,37 +3,37 @@
 #include <string>
 #include "Tile.hpp"
 
-// Класс карта
+// Карта уровня
+// Конструктор пустой — загрузка через load(path)
 class Map {
 private:
-    int width = 0;                        // Ширина карты в тайлах
-    int height = 0;                       // Высота карты в тайлах
-    int startMoney = 0;                   // Стартовое количество денег
+    int width = 0;
+    int height = 0;
+    int startMoney = 0;
 
-    std::vector<std::vector<Tile>> tiles; // Карта
-    Tile* selectedTile = nullptr;         // Указатель на текущий выбранный тайл
+    std::vector<std::vector<Tile>> tiles;
+    Tile* selectedTile = nullptr;
 
-    std::vector<sf::Vector2i> path;       // Массив клеток пути движения врагов
-    sf::Vector2i portalPos;               // Координаты Portal
-    sf::Vector2i basePos;                 // Координаты Base
-
-    sf::Vector2f mapOffset;               // Смещение карты на экране
+    std::vector<sf::Vector2i> path;
+    sf::Vector2i portalPos;
+    sf::Vector2i basePos;
+    sf::Vector2f mapOffset;
 
     void buildPath();
 
 public:
-    Map() = default;                      // Пустой конструктор — карта загружается через load()
-    void load(const std::string& filePath);
+    Map() = default;
+    void load(const std::string& filePath); // загружает уровень из .map файла
+
     void render(sf::RenderWindow& window);
+    void centerOnScreen(sf::Vector2u windowSize, float topPanelH, float bottomPanelH);
 
-    void centerOnScreen(sf::Vector2u windowSize, float topPanelHeight, float bottomPanelHeight);
-
-    void setSelectedTile(sf::Vector2f screenPos);
+    void  setSelectedTile(sf::Vector2f screenPos);
     Tile* getTileAtScreen(sf::Vector2f screenPos) const;
     Tile* getSelectedTile() const;
 
-    const std::vector<sf::Vector2i>& getPath() const;
-    sf::Vector2i getBasePos() const;
-    int getStartMoney() const;
-    sf::Vector2f getMapOffset() const;
+    const std::vector<sf::Vector2i>& getPath()       const;
+    sf::Vector2i  getBasePos()    const;
+    int           getStartMoney() const;
+    sf::Vector2f  getMapOffset()  const;
 };
