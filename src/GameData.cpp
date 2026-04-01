@@ -10,7 +10,14 @@ std::vector<std::string> GameData::towerOrder;
 
 void GameData::load() {
     // загрузка врагов 
+#ifdef ANDROID
+    std::ifstream enemyFile("config/enemies.cfg");
+#endif // ANDROID
+#ifndef ANDROID
     std::ifstream enemyFile("data/config/enemies.cfg");
+#endif // !ANDROID
+
+
     std::string line;
 
     while (std::getline(enemyFile, line)) {
@@ -48,7 +55,13 @@ void GameData::load() {
 
 
     // загрузка башен
+#ifdef ANDROID
+    std::ifstream towerFile("config/towers.cfg");
+#endif // ANDROID
+#ifndef ANDROID
     std::ifstream towerFile("data/config/towers.cfg");
+#endif // !ANDROID
+
 
     while (std::getline(towerFile, line)) {
         if (line.empty()) continue;

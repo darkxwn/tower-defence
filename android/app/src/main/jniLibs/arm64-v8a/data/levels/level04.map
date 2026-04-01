@@ -1,0 +1,25 @@
+width=11
+height=8
+money=300
+name=Крепость
+tiles=
+0 0 0 0 0 0 0 0 0 0 0
+0 1 2 2 2 2 2 2 0 0 0
+0 4 2 4 4 4 4 2 4 2 3
+0 4 2 4 0 0 4 2 4 4 0
+0 4 2 4 0 0 4 2 0 4 0
+0 4 2 2 2 2 2 2 0 4 0
+0 4 4 4 4 4 4 4 4 4 0
+0 0 0 0 0 0 0 0 0 0 0
+waves=
+basic:8
+basic:10
+fast:8
+strong:6
+fast:7
+strong:5
+basic:10
+fast:8
+strong:6
+fast:7
+strong:5

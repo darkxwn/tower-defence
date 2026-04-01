@@ -35,7 +35,13 @@ endif()
 file(GLOB_RECURSE SOURCES "src/*.cpp")
 list(APPEND SOURCES "main.cpp")
 
-add_executable(${PROJECT_NAME} WIN32 MACOSX_BUNDLE ${SOURCES} ${MACOS_ICON})
+if(ANDROID)
+    # Android требует SHARED библиотеку (.so), а не EXECUTABLE
+    add_library(${PROJECT_NAME} SHARED ${SOURCES} ${EXE_ICON})
+else()
+    add_executable(${PROJECT_NAME} WIN32 MACOSX_BUNDLE ${SOURCES} ${EXE_ICON} ${MACOS_ICON})
+endif()
+
 
 if(APPLE)
     set_source_files_properties(${MACOS_ICON} PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
@@ -51,6 +57,23 @@ if(APPLE)
     )
 endif()
 
+if(ANDROID)
+    message(STATUS "Configuring for Android...")
+    
+    # SFML 3 на Android требует статическую сборку некоторых компонентов 
+    # или специфическую линковку sfml-main
+    add_definitions(-DANDROID)
+    
+    # Если ты используешь FetchContent, SFML сам поймет, что он на Android,
+    # но нам нужно линковать системные библиотеки
+    list(APPEND ANDROID_LIBS android log GLESv2 EGL)
+
+    # Указываем CMake класть готовую библиотеку в папку jniLibs для Android
+    set_target_properties(${PROJECT_NAME} PROPERTIES
+        LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/android/app/src/main/jniLibs/${ANDROID_ABI}"
+    )
+endif()
+
 if(WIN32)
     set_target_properties(${PROJECT_NAME} PROPERTIES LINK_FLAGS "/ENTRY:mainCRTStartup")
 endif()
@@ -59,15 +82,36 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/includes"
 )
 
-target_link_libraries(${PROJECT_NAME} PRIVATE 
-    SFML::Graphics
-    SFML::Window
-    SFML::System
-    # SFML::Audio
-)
+if(ANDROID)
+    target_link_libraries(${PROJECT_NAME} PRIVATE
+            SFML::Graphics
+            SFML::Window
+            SFML::System
+            # МАГИЯ ЗДЕСЬ: заставляем включить sfml-main целиком
+            "-Wl,--whole-archive" SFML::Main "-Wl,--no-whole-archive"
+        
+            # Системные либы андроида
+            android
+            log
+            GLESv2
+            EGL
+        )
+else()
+    target_link_libraries(${PROJECT_NAME} PRIVATE 
+        SFML::Graphics
+        SFML::Window
+        SFML::System
+        SFML::Main
+        # SFML::Audio
+    )
+endif()
 
 if(APPLE)
     target_link_libraries(${PROJECT_NAME} PRIVATE "-framework CoreFoundation")
+endif()
+
+if(ANDROID)
+    target_link_libraries(${PROJECT_NAME} PRIVATE ${ANDROID_LIBS})
 endif()
 
 if(APPLE)

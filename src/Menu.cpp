@@ -15,8 +15,12 @@ Menu::Menu(sf::RenderWindow& window) : window(window) {
 // Сканирует папку data/levels/ и собирает информацию об уровнях
 void Menu::scanLevels() {
     levels.clear();
+#ifdef ANDROID
+    const std::string levelsDir = "levels";
+#endif // ANDROID
+#ifndef ANDROID
     const std::string levelsDir = "data/levels/";
-
+#endif // !ANDROID
     if (!fs::exists(levelsDir)) {
         std::cerr << "[Меню]: Папка уровней не найдена: " << levelsDir << "\n";
         return;
@@ -68,20 +72,35 @@ void Menu::handleEvents() {
         }
 
         if (const auto* resized = event->getIf<sf::Event::Resized>()) {
-            sf::FloatRect view({ 0.f, 0.f }, sf::Vector2f(sf::Vector2u{ resized->size.x, resized->size.y }));
-            window.setView(sf::View(view));
+            sf::Vector2u newSize = { resized->size.x, resized->size.y };
+            sf::FloatRect viewRect({ 0.f, 0.f }, sf::Vector2f(newSize));
+            window.setView(sf::View(viewRect));
         }
 
+        // 2. Обработка клика МЫШКОЙ (для ПК)
         if (const auto* click = event->getIf<sf::Event::MouseButtonPressed>()) {
-            if (click->button != sf::Mouse::Button::Left) continue;
-            sf::Vector2f pos = sf::Vector2f(click->position);
-
-            switch (state) {
-                case MenuState::Main:        handleMainClick(pos);        break;
-                case MenuState::LevelSelect: handleLevelSelectClick(pos); break;
-                default: break; // Settings/Upgrades — только Escape
+            if (click->button == sf::Mouse::Button::Left) {
+                // ПРЕОБРАЗУЕМ ПИКСЕЛИ В КООРДИНАТЫ МИРА
+                sf::Vector2f pos = window.mapPixelToCoords(click->position);
+                processClick(pos);
             }
         }
+
+        // 3. Обработка нажатия ПАЛЬЦЕМ (для Android)
+        if (const auto* touch = event->getIf<sf::Event::TouchBegan>()) {
+            // ПРЕОБРАЗУЕМ ПИКСЕЛИ В КООРДИНАТЫ МИРА
+            sf::Vector2f pos = window.mapPixelToCoords(touch->position);
+            processClick(pos);
+        }
+    }
+}
+
+// Вспомогательная функция, чтобы не дублировать switch
+void Menu::processClick(sf::Vector2f pos) {
+    switch (state) {
+    case MenuState::Main:        handleMainClick(pos);        break;
+    case MenuState::LevelSelect: handleLevelSelectClick(pos); break;
+    default: break;
     }
 }
 

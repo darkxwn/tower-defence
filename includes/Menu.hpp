@@ -45,6 +45,7 @@ private:
     // --- Обработка кликов ---
     void handleMainClick(sf::Vector2f pos);
     void handleLevelSelectClick(sf::Vector2f pos);
+    void processClick(sf::Vector2f pos);
 
     // --- Вспомогательные методы ---
     void scanLevels();                               // Сканирование папки data/levels/
