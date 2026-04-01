@@ -11,6 +11,9 @@
 Game::Game(sf::RenderWindow& window, const std::string& levelPath)
     : window(window), base(sf::Vector2i{0, 0})
 {
+    sf::View view(sf::FloatRect({ 0, 0 }, { 1280, 720 }));
+    window.setView(view);
+
     map.load(levelPath);
     map.centerOnScreen(window.getSize(), 75.f, 120.f);
     money = map.getStartMoney();

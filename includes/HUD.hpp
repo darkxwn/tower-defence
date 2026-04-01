@@ -4,6 +4,7 @@
 
 class HUD {
 private:
+    float uiScale = 1.5f; // Коэффициент увеличения
     std::vector<sf::RectangleShape> towerSlots;
 
     sf::RectangleShape pauseBtn;

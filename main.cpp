@@ -81,8 +81,6 @@ int main(int argc, char* argv[]) {
         "Tower Defence",
         sf::Style::Default
     );
-    sf::View view(sf::FloatRect({ 0.f, 0.f }, { 1920.f, 1080.f }));
-    window.setView(view);
 
     window.setFramerateLimit(60);
     window.setMinimumSize(sf::Vector2u({ 1280, 720 }));
