@@ -32,6 +32,13 @@ private:
     sf::RenderWindow& window;
     sf::Clock clock;
 
+    sf::View worldView;
+    sf::Vector2i lastInputPos; // Позиция в пикселях в прошлом кадре
+    bool isPanning = false;    // Флаг того, что мы сейчас двигаем карту
+    bool isPinching = false;
+
+    float currentZoom = 1.0f;
+
     GameState state = GameState::Playing;
     GameEndReason endReason = GameEndReason::None;
 
@@ -56,6 +63,9 @@ private:
     void render();
     void handleEvents();
 
+    // Вспомогательный метод для обработки кликов/тапов
+    void processInput(sf::Vector2i pixelPos);
+
     void renderPauseOverlay();
     void renderEndScreen();   // общий экран для Victory и GameOver
 
@@ -64,9 +74,13 @@ private:
 
 public:
     Game(sf::RenderWindow& window, const std::string& levelPath);
+    static sf::View uiView;
 
     // Запускает цикл уровня; возвращает управление когда сессия завершена
     void run();
+
+    // Вспомогательный метод для обновления размера камер при ресайзе
+    static void updateViewSizes(sf::Vector2u windowSize);
 
     GameEndReason getEndReason() const;
 };

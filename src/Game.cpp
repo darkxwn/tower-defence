@@ -9,16 +9,28 @@
 //  Конструктор
 // ─────────────────────────────────────────────────────────────────────────────
 Game::Game(sf::RenderWindow& window, const std::string& levelPath)
-    : window(window), base(sf::Vector2i{0, 0})
+    : window(window), base(sf::Vector2i{ 0, 0 })
 {
-    sf::View view(sf::FloatRect({ 0, 0 }, { 1280, 720 }));
-    window.setView(view);
+    // Инициализируем камеры
+    updateViewSizes(window.getSize());
 
     map.load(levelPath);
     map.centerOnScreen(window.getSize(), 75.f, 120.f);
     money = map.getStartMoney();
-    base  = Base(map.getBasePos());
+    base = Base(map.getBasePos());
     waveSystem.loadWaves(levelPath);
+}
+
+void Game::updateViewSizes(sf::Vector2u windowSize) {
+    float sw = (float)windowSize.x;
+    float sh = (float)windowSize.y;
+
+    // 1. UI View: Фиксируем логическое разрешение (например, 1920x1080)
+    // Это гарантирует, что HUD всегда будет выглядеть одинаково
+    uiView = sf::View(sf::FloatRect({ 0.f, 0.f }, { 1920.f, 1080.f }));
+
+    // 2. World View: Совпадает с физическими пикселями для работы map.centerOnScreen
+    worldView = sf::View(sf::FloatRect({ 0.f, 0.f }, { sw, sh }));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -45,7 +57,7 @@ GameEndReason Game::getEndReason() const { return endReason; }
 //  Вычисление позиций кнопок паузы
 // ─────────────────────────────────────────────────────────────────────────────
 void Game::computePauseBtnLayout() {
-    auto ws     = window.getSize();
+    sf::Vector2f ws = uiView.getSize();
     float cx    = ws.x / 2.f;
     float cy    = ws.y / 2.f;
     float btnW  = 220.f;
@@ -68,113 +80,138 @@ void Game::handleEvents() {
         if (event->is<sf::Event::Closed>())
             window.close();
 
-        // --- КЛАВИАТУРА ---
-        if (const auto* key = event->getIf<sf::Event::KeyPressed>()) {
-            if (key->code == sf::Keyboard::Key::Space)
-                waveSystem.startWave();
-
-            if (key->code == sf::Keyboard::Key::Escape || key->code == sf::Keyboard::Key::P) {
-                if (state == GameState::Playing)       state = GameState::Paused;
-                else if (state == GameState::Paused)   state = GameState::Playing;
-            }
-        }
-
-        // --- ИЗМЕНЕНИЕ РАЗМЕРА ---
+        // РЕЗАЙЗ
         if (const auto* resized = event->getIf<sf::Event::Resized>()) {
             sf::Vector2u newSize = { resized->size.x, resized->size.y };
+            updateViewSizes(newSize);
             map.centerOnScreen(newSize, 75.f, 120.f);
-            window.setView(sf::View(sf::FloatRect({ 0.f, 0.f }, sf::Vector2f(newSize))));
         }
 
-        // --- УНИВЕРСАЛЬНЫЙ ВВОД (МЫШЬ + ТАЧ) ---
-        sf::Vector2f inputPos(-1.f, -1.f);
-
-        // Клик мышкой
+        // ВВОД (МЫШЬ + ТАЧ)
         if (const auto* click = event->getIf<sf::Event::MouseButtonPressed>()) {
             if (click->button == sf::Mouse::Button::Left)
-                inputPos = window.mapPixelToCoords(click->position);
+                processInput(click->position);
         }
-
-        // Нажатие пальцем (Android)
         if (const auto* touch = event->getIf<sf::Event::TouchBegan>()) {
-            inputPos = window.mapPixelToCoords(touch->position);
+            processInput(touch->position);
         }
 
-        // Если произошло нажатие (inputPos не пустой)
-        if (inputPos.x != -1.f) {
-
-            // 1. Экран результата (Victory / GameOver)
-            if (state == GameState::Victory || state == GameState::GameOver) {
-                if (endMenuRect.contains(inputPos)) {
-                    endReason = GameEndReason::ReturnToMenu;
-                }
-                else if (endRestartRect.contains(inputPos)) {
-                    endReason = GameEndReason::Restart;
-                }
-                continue;
+        // ПЕРЕМЕЩЕНИЕ (МЫШЬ + ТАЧ)
+        if (const auto* click = event->getIf<sf::Event::MouseButtonPressed>()) {
+            if (click->button == sf::Mouse::Button::Middle || click->button == sf::Mouse::Button::Right) {
+                isPanning = true;
+                lastInputPos = click->position;
             }
+        }
 
-            // 2. Оверлей паузы
-            if (state == GameState::Paused) {
-                if (pauseContinueRect.contains(inputPos)) {
-                    state = GameState::Playing;
-                }
-                else if (pauseRestartRect.contains(inputPos)) {
-                    endReason = GameEndReason::Restart;
-                }
-                else if (pauseMenuRect.contains(inputPos)) {
-                    endReason = GameEndReason::ReturnToMenu;
-                }
-                continue;
+        if (const auto* mouseMove = event->getIf<sf::Event::MouseMoved>()) {
+            if (isPanning) {
+                sf::Vector2f delta = sf::Vector2f(lastInputPos - mouseMove->position);
+                worldView.move(delta * currentZoom);
+                lastInputPos = mouseMove->position;
             }
+        }
 
-            // 3. Игровой HUD
-            hud.handleClick(inputPos);
+        if (const auto* touch = event->getIf<sf::Event::TouchBegan>()) {
+            if (touch->finger == 0) {
+                isPanning = true;
+                lastInputPos = touch->position;
+            }
+        }
 
-            if (hud.isPauseClicked()) {
+        if (const auto* touchMove = event->getIf<sf::Event::TouchMoved>()) {
+            if (isPanning && !isPinching && touchMove->finger == 0) {
+                sf::Vector2f delta = sf::Vector2f(lastInputPos - touchMove->position);
+                worldView.move(delta * currentZoom);
+                lastInputPos = touchMove->position;
+            }
+        }
+
+        // Кнопки отпустили
+        if (event->is<sf::Event::MouseButtonReleased>() || event->is<sf::Event::TouchEnded>()) {
+            isPanning = false;
+        }
+
+        // ЗУМ (Колесико мыши)
+        if (const auto* scroll = event->getIf<sf::Event::MouseWheelScrolled>()) {
+            float zoomFactor = (scroll->delta > 0) ? 0.9f : 1.1f;
+            worldView.zoom(zoomFactor);
+        }
+
+        // КЛАВИАТУРА
+        if (const auto* key = event->getIf<sf::Event::KeyPressed>()) {
+            if (key->code == sf::Keyboard::Key::Space) waveSystem.startWave();
+            if (key->code == sf::Keyboard::Key::Escape) {
                 state = (state == GameState::Playing) ? GameState::Paused : GameState::Playing;
-            }
-            if (hud.isSkipClicked())
-                waveSystem.startWave();
-
-            // 4. Расстановка башен (только если игра не на паузе)
-            if (state == GameState::Playing) {
-                Tile* tile = map.getTileAtScreen(inputPos);
-                if (tile && tile->type == TileType::Platform) {
-                    int slot = hud.getSelectedSlot();
-                    if (slot != -1) {
-                        auto names = GameData::getTowerNames();
-                        if (slot < (int)names.size()) {
-                            std::string name = names[slot];
-                            int cost = GameData::getTower(name).cost;
-
-                            bool occupied = false;
-                            for (auto& t : towers)
-                                if (t.getGridPos() == tile->gridPos) { occupied = true; break; }
-
-                            if (!occupied && money >= cost) {
-                                TowerType tType = TowerType::Basic;
-                                if (name == "cannon") tType = TowerType::Cannon;
-                                else if (name == "double") tType = TowerType::Double;
-                                else if (name == "sniper") tType = TowerType::Sniper;
-
-                                money -= cost;
-                                towers.emplace_back(tType, tile->gridPos);
-                                hud.resetSelectedSlot();
-                            }
-                        }
-                    }
-                    else {
-                        map.setSelectedTile(inputPos);
-                    }
-                }
-                else {
-                    map.setSelectedTile(inputPos);
-                }
             }
         }
     }
 }
+
+void Game::processInput(sf::Vector2i pixelPos) {
+    // Если мы перемещаем карту - игнорируем постройки и интерфейс
+    if (isPanning) return;
+
+    // 1. Сначала проверяем интерфейс (используем uiView)
+    sf::Vector2f uiCoords = window.mapPixelToCoords(pixelPos, uiView);
+
+    if (state == GameState::Paused) {
+        if (pauseContinueRect.contains(uiCoords)) state = GameState::Playing;
+        else if (pauseRestartRect.contains(uiCoords)) endReason = GameEndReason::Restart;
+        else if (pauseMenuRect.contains(uiCoords)) endReason = GameEndReason::ReturnToMenu;
+        return;
+    }
+
+    if (state == GameState::Victory || state == GameState::GameOver) {
+        if (endMenuRect.contains(uiCoords)) endReason = GameEndReason::ReturnToMenu;
+        else if (endRestartRect.contains(uiCoords)) endReason = GameEndReason::Restart;
+        return;
+    }
+
+    // Клик по игровому HUD (пауза, слоты)
+    hud.handleClick(uiCoords);
+    if (hud.isPauseClicked()) state = GameState::Paused;
+    if (hud.isSkipClicked())  waveSystem.startWave();
+
+    // 2. Если не попали в UI кнопки, проверяем мир (используем worldView)
+    if (state == GameState::Playing) {
+        sf::Vector2f worldCoords = window.mapPixelToCoords(pixelPos, worldView);
+
+        Tile* tile = map.getTileAtScreen(worldCoords);
+        if (tile && tile->type == TileType::Platform) {
+            int slot = hud.getSelectedSlot();
+            if (slot != -1) {
+                auto names = GameData::getTowerNames();
+                if (slot < (int)names.size()) {
+                    std::string name = names[slot];
+                    int cost = GameData::getTower(name).cost;
+
+                    bool occupied = false;
+                    for (auto& t : towers)
+                        if (t.getGridPos() == tile->gridPos) { occupied = true; break; }
+
+                    if (!occupied && money >= cost) {
+                        TowerType type = TowerType::Basic;
+                        if (name == "cannon") type = TowerType::Cannon;
+                        else if (name == "double") type = TowerType::Double;
+                        else if (name == "sniper") type = TowerType::Sniper;
+
+                        money -= cost;
+                        towers.emplace_back(type, tile->gridPos);
+                        hud.resetSelectedSlot();
+                    }
+                }
+            }
+            else {
+                map.setSelectedTile(worldCoords);
+            }
+        }
+        else {
+            map.setSelectedTile(worldCoords);
+        }
+    }
+}
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Обновление
@@ -214,10 +251,9 @@ void Game::update(float dt) {
 void Game::render() {
     window.clear(Colors::gameBg);
 
+    // --- СЛОЙ 1: МИР (Карта, Враги, Башни) ---
+    window.setView(worldView);
     map.render(window);
-
-    hud.render(window, money, base.getLives(),
-               waveSystem.getCurrentWave(), waveSystem.getState());
 
     Tile* selected = map.getSelectedTile();
     for (auto& t : towers) {
@@ -227,25 +263,28 @@ void Game::render() {
     for (auto& e : enemies)
         e.render(window, map.getMapOffset());
 
+    // --- СЛОЙ 2: ИНТЕРФЕЙС (HUD, Оверлеи) ---
+    window.setView(uiView);
+    hud.render(window, money, base.getLives(), waveSystem.getCurrentWave(), waveSystem.getState());
+
     if (state == GameState::Paused)              renderPauseOverlay();
-    if (state == GameState::Victory ||
-        state == GameState::GameOver)             renderEndScreen();
+    if (state == GameState::Victory || state == GameState::GameOver) renderEndScreen();
 
     window.display();
 }
 
+
 //  Оверлей паузы
 void Game::renderPauseOverlay() {
     auto& font = ResourceManager::getFont("main");
-    auto ws    = window.getSize();
-    float cx   = ws.x / 2.f;
-    float cy   = ws.y / 2.f;
+    // Используем размер uiView (всегда 1920x1080), а не окна!
+    sf::Vector2f uiSize = uiView.getSize();
+    float cx = uiSize.x / 2.f;
+    float cy = uiSize.y / 2.f;
 
-    // Затемнение
-    sf::RectangleShape dimRect;
-    dimRect.setSize(sf::Vector2f(ws));
-    dimRect.setFillColor(sf::Color(0, 0, 0, 150));
-    window.draw(dimRect);
+    sf::RectangleShape dim({ uiSize.x, uiSize.y });
+    dim.setFillColor(sf::Color(0, 0, 0, 150));
+    window.draw(dim);
 
     // Текст "ПАУЗА"
     std::string ps = "ПАУЗА";
