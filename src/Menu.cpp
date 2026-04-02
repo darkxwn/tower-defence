@@ -1,5 +1,4 @@
 #include "Menu.hpp"
-#include "Game.hpp"
 #include "ResourceManager.hpp"
 #include "GeneratedLevels.hpp"
 #include "Colors.hpp"
@@ -339,7 +338,7 @@ void Menu::handleEvents() {
         if (const auto* resized = event->getIf<sf::Event::Resized>()) {
             sf::FloatRect view({ 0.f, 0.f },
                 sf::Vector2f(sf::Vector2u{ resized->size.x, resized->size.y }));
-            Game::updateViewSizes(view.size)
+            window.setView(sf::View(view));
             mainL = computeMainLayout();
             levelL = computeLevelSelectLayout();
         }
