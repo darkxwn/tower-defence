@@ -33,6 +33,7 @@ private:
     sf::Clock clock;
 
     sf::View worldView;
+    sf::View uiView;
     sf::Vector2i lastInputPos; // Позиция в пикселях в прошлом кадре
     bool isPanning = false;    // Флаг того, что мы сейчас двигаем карту
     bool isPinching = false;
@@ -63,6 +64,8 @@ private:
     void render();
     void handleEvents();
 
+    // Вспомогательный метод для обновления размера камер при ресайзе
+    void updateViewSizes(sf::Vector2u windowSize);
     // Вспомогательный метод для обработки кликов/тапов
     void processInput(sf::Vector2i pixelPos);
 
@@ -74,13 +77,9 @@ private:
 
 public:
     Game(sf::RenderWindow& window, const std::string& levelPath);
-    static sf::View uiView;
 
     // Запускает цикл уровня; возвращает управление когда сессия завершена
     void run();
-
-    // Вспомогательный метод для обновления размера камер при ресайзе
-    static void updateViewSizes(sf::Vector2u windowSize);
 
     GameEndReason getEndReason() const;
 };
