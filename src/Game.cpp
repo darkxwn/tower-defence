@@ -486,8 +486,6 @@ void Game::clampView() {
     float mapRight = mapLeft + map.getWidth() * 64.f;
     float mapBottom = mapTop + map.getHeight() * 64.f;
 
-    // Допустимый "вылет" за края (например, 20% от размера экрана), 
-    // чтобы игрок видел, что карта закончилась
     float marginX = size.x * 0.1f;
     float marginY = size.y * 0.1f;
 
