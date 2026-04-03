@@ -97,28 +97,22 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/includes"
 )
 
+target_link_libraries(${PROJECT_NAME} PRIVATE 
+    SFML::Graphics
+    SFML::Window
+    SFML::System
+)
+
 if(ANDROID)
     target_link_libraries(${PROJECT_NAME} PRIVATE
-            SFML::Graphics
-            SFML::Window
-            SFML::System
-            # МАГИЯ ЗДЕСЬ: заставляем включить sfml-main целиком
-            "-Wl,--whole-archive" SFML::Main "-Wl,--no-whole-archive"
-        
-            # Системные либы андроида
-            android
-            log
-            GLESv2
-            EGL
-        )
-else()
-    target_link_libraries(${PROJECT_NAME} PRIVATE 
-        SFML::Graphics
-        SFML::Window
-        SFML::System
-        SFML::Main
-        # SFML::Audio
+        "-Wl,--whole-archive" SFML::Main "-Wl,--no-whole-archive"
+        android
+        log
+        GLESv2
+        EGL
     )
+else(WINDOWS)
+    target_link_libraries(${PROJECT_NAME} PRIVATE SFML::Main)
 endif()
 
 if(APPLE)
