@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+	<supports-screens
+        android:smallScreens="true"
+        android:normalScreens="true"
+        android:largeScreens="true"
+        android:xlargeScreens="true"
+        android:anyDensity="true" />
+    <application
+        android:label="Tower Defence"
+        android:hasCode="true"
+		android:value="tower-defence">
+
+        <!-- Название твоей библиотеки из CMakeLists.txt -->
+        <activity android:name="android.app.NativeActivity"
+            android:configChanges="orientation|keyboardHidden|screenSize"
+			android:screenOrientation="landscape"
+			android:theme="@style/GameTheme" 
+            android:exported="true">
+            <meta-data android:name="android.app.lib_name" 
+                       android:value="tower-defence" />
+			<meta-data android:name="android.max_aspect"
+                       android:value="2.4" />
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

@@ -1,5 +1,6 @@
 #include "Menu.hpp"
 #include "ResourceManager.hpp"
+#include "GeneratedLevels.hpp"
 #include "Colors.hpp"
 #include <filesystem>
 #include <fstream>
@@ -12,7 +13,34 @@ namespace fs = std::filesystem;
 //  Конструктор
 // ─────────────────────────────────────────────────────────────────────────────
 Menu::Menu(sf::RenderWindow& window) : window(window) {
+    updateViewSizes(window.getSize());
     scanLevels();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Обновление камер (инициализация, ресайз окна)
+// ─────────────────────────────────────────────────────────────────────────────
+void Menu::updateViewSizes(sf::Vector2u windowSize) {
+    float sw = static_cast<float>(windowSize.x);
+    float sh = static_cast<float>(windowSize.y);
+    float aspect = sw / sh;
+
+#ifdef __ANDROID__
+    uiScale = 1.6f;
+#else
+    uiScale = 1.0f;
+#endif
+
+    float uiH = sh / uiScale;
+    float uiW = uiH * aspect;
+
+    uiView = sf::View(sf::FloatRect({ 0.f, 0.f }, { uiW, uiH }));
+
+    worldView = sf::View(sf::FloatRect({ 0.f, 0.f }, { sw, sh }));
+    worldView.zoom(currentZoom);
+    worldView.setCenter({ sw / 2.f, sh / 2.f });
+
+    worldView.setSize({ sw / uiScale, sh / uiScale });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -20,17 +48,17 @@ Menu::Menu(sf::RenderWindow& window) : window(window) {
 // ─────────────────────────────────────────────────────────────────────────────
 void Menu::scanLevels() {
     levels.clear();
-    const std::string dir = "data/levels/";
-    if (!fs::exists(dir)) return;
+#ifdef ANDROID
+    std::string dir = "levels/";
+#else
+    std::string dir = "data/levels/";
+#endif
+    std::vector<std::string> mapNames = getLevelList();
 
-    std::vector<fs::path> files;
-    for (const auto& e : fs::directory_iterator(dir))
-        if (e.path().extension() == ".map")
-            files.push_back(e.path());
-    std::sort(files.begin(), files.end());
-
-    for (int i = 0; i < (int)files.size(); i++)
-        levels.push_back({ files[i].string(), readLevelName(files[i].string()), i });
+    for (int i = 0; i < (int)mapNames.size(); ++i) {
+        std::string fullPath = dir + mapNames[i];
+        levels.push_back({ fullPath, readLevelName(fullPath), i });
+    }
 }
 
 std::string Menu::readLevelName(const std::string& path) const {
@@ -48,7 +76,7 @@ std::string Menu::readLevelName(const std::string& path) const {
 // ─────────────────────────────────────────────────────────────────────────────
 Menu::MainLayout Menu::computeMainLayout() const {
     MainLayout L;
-    auto ws = window.getSize();
+    sf::Vector2f ws = uiView.getSize();
     float cx = ws.x / 2.f;
     float cy = ws.y / 2.f;
     sf::Vector2f sz(280.f, 58.f);
@@ -63,7 +91,7 @@ Menu::MainLayout Menu::computeMainLayout() const {
 
 Menu::LevelSelectLayout Menu::computeLevelSelectLayout() const {
     LevelSelectLayout L;
-    auto ws = window.getSize();
+    auto ws = uiView.getSize();
     float cx = ws.x / 2.f;
 
     const float cardW = 200.f;
@@ -105,7 +133,7 @@ Menu::LevelSelectLayout Menu::computeLevelSelectLayout() const {
 //  Главное меню
 void Menu::renderMain(const MainLayout& L) {
     auto& font = ResourceManager::getFont("main");
-    auto ws = window.getSize();
+    auto ws = uiView.getSize();
     float cx = ws.x / 2.f;
     float cy = ws.y / 2.f;
 
@@ -148,9 +176,9 @@ void Menu::handleMainClick(sf::Vector2f pos, const MainLayout& L) {
 //  Выбор уровня
 void Menu::renderLevelSelect(const LevelSelectLayout& L) {
     auto& font = ResourceManager::getFont("main");
-    auto ws = window.getSize();
+    auto ws = uiView.getSize();
     float cx = ws.x / 2.f;
-    sf::Vector2f mouse = sf::Vector2f(sf::Mouse::getPosition(window));
+    sf::Vector2f mouse = window.mapPixelToCoords(sf::Mouse::getPosition(window), uiView);
 
     // Заголовок
     std::string title = "ВЫБОР УРОВНЯ";
@@ -237,10 +265,10 @@ void Menu::handleLevelSelectClick(sf::Vector2f pos, const LevelSelectLayout& L) 
 //  Оверлей результата (поверх LevelSelect)
 void Menu::renderResultOverlay() {
     auto& font = ResourceManager::getFont("main");
-    auto ws = window.getSize();
+    auto ws = uiView.getSize();
     float cx = ws.x / 2.f;
     float cy = ws.y / 2.f;
-    sf::Vector2f mouse = sf::Vector2f(sf::Mouse::getPosition(window));
+    sf::Vector2f mouse = window.mapPixelToCoords(sf::Mouse::getPosition(window), uiView);
 
     // Полупрозрачное затемнение
     sf::RectangleShape overlayRect;
@@ -321,45 +349,60 @@ void Menu::handleEvents() {
         if (const auto* key = event->getIf<sf::Event::KeyPressed>()) {
             if (key->code == sf::Keyboard::Key::Escape) {
                 if (lastResult != SessionResult::None) {
-                    // Escape закрывает оверлей результата
                     lastResult = SessionResult::None;
                     selectedLevel = "";
-                } else if (state != MenuState::Main) {
+                }
+                else if (state != MenuState::Main) {
                     state = MenuState::Main;
-                } else {
+                }
+                else {
                     window.close();
                 }
             }
         }
 
         if (const auto* resized = event->getIf<sf::Event::Resized>()) {
-            sf::FloatRect view({ 0.f, 0.f },
-                sf::Vector2f(sf::Vector2u{ resized->size.x, resized->size.y }));
-            window.setView(sf::View(view));
+            sf::Vector2u newSize = { resized->size.x, resized->size.y };
+            updateViewSizes(newSize);
+            window.setView(uiView); // Устанавливаем обновленный вид в окно немедленно
+            // Пересчитываем лейауты сразу после ресайза
             mainL = computeMainLayout();
             levelL = computeLevelSelectLayout();
         }
 
-        if (const auto* click = event->getIf<sf::Event::MouseButtonPressed>()) {
-            if (click->button != sf::Mouse::Button::Left) continue;
-            sf::Vector2f pos = sf::Vector2f(click->position);
+        // --- ЕДИНАЯ ЛОГИКА ВВОДА ---
+        sf::Vector2f pos(-1.f, -1.f);
+        bool pressed = false;
 
-            // Оверлей результата перехватывает клики первым
+        if (const auto* click = event->getIf<sf::Event::MouseButtonPressed>()) {
+            if (click->button == sf::Mouse::Button::Left) {
+                pos = window.mapPixelToCoords(click->position, uiView); // ЯВНО uiView
+                pressed = true;
+            }
+        }
+
+        if (const auto* touch = event->getIf<sf::Event::TouchBegan>()) {
+            pos = window.mapPixelToCoords(touch->position, uiView); // ЯВНО uiView
+            pressed = true;
+        }
+
+        if (pressed && pos.x != -1.f) {
+            // Оверлей результата
             if (state == MenuState::LevelSelect && lastResult != SessionResult::None) {
                 handleResultOverlayClick(pos, window.getSize(),
                     lastResult, lastLevelPath, selectedLevel, levelChosen);
-                continue;
             }
-
-            switch (state) {
-            case MenuState::Main:
-                handleMainClick(pos, mainL);
-                break;
-            case MenuState::LevelSelect:
-                handleLevelSelectClick(pos, levelL);
-                break;
-            default:
-                break;
+            else {
+                switch (state) {
+                case MenuState::Main:
+                    handleMainClick(pos, mainL);
+                    break;
+                case MenuState::LevelSelect:
+                    handleLevelSelectClick(pos, levelL);
+                    break;
+                default:
+                    break;
+                }
             }
         }
     }
@@ -368,7 +411,7 @@ void Menu::handleEvents() {
 //  Заглушка
 void Menu::renderStub(const std::string& title) {
     auto& font = ResourceManager::getFont("main");
-    auto ws = window.getSize();
+    auto ws = uiView.getSize();
     float cx = ws.x / 2.f;
     float cy = ws.y / 2.f;
 
@@ -418,6 +461,7 @@ void Menu::drawBtn(const std::string& label, sf::FloatRect r,
 //  Публичный интерфейс
 void Menu::render() {
     window.clear(Colors::gameBg);
+    window.setView(uiView);
 
     auto mainL = computeMainLayout();
     auto levelL = computeLevelSelectLayout();

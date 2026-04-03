@@ -13,30 +13,51 @@ float WaveSystem::getSpawnInterval(EnemyType type) const {
 }
 
 void WaveSystem::loadWaves(const std::string& path) {
-    std::ifstream file(path);
+    waves.clear();
+    currentWave = 0;
+    state = WaveState::Idle;
+
+    sf::FileInputStream stream;
+    if (!stream.open(path)) {
+        return;
+    }
+
+    // Читаем весь файл в строку (как в Map.cpp)
+    std::string content;
+    auto size = stream.getSize();
+    if (size) {
+        content.resize(*size);
+        stream.read(content.data(), *size);
+    }
+
+    std::istringstream file(content);
     std::string line;
+    bool parsingWaves = false;
 
-    // пропускаем до секции waves=
-    while (std::getline(file, line))
-        if (line == "waves=") break;
-
-    // каждая строка — одна волна, формат: basic:10
     while (std::getline(file, line)) {
+        if (!line.empty() && line.back() == '\r') line.pop_back();
         if (line.empty()) continue;
 
-        size_t colon = line.find(':');
-        if (colon == std::string::npos) continue;
+        // Ищем начало секции волн
+        if (line.find("waves=") != std::string::npos) {
+            parsingWaves = true;
+            continue;
+        }
 
-        std::string typeName = line.substr(0, colon);
-        int count = std::stoi(line.substr(colon + 1));
+        // Если нашли секцию — читаем данные волн
+        if (parsingWaves) {
+            size_t colon = line.find(':');
+            if (colon != std::string::npos) {
+                std::string typeStr = line.substr(0, colon);
+                int count = std::stoi(line.substr(colon + 1));
 
-        EnemyType type;
-        if (typeName == "basic")       type = EnemyType::Basic;
-        else if (typeName == "fast")   type = EnemyType::Fast;
-        else if (typeName == "strong") type = EnemyType::Strong;
-        else continue;
+                EnemyType type = EnemyType::Basic;
+                if (typeStr == "fast") type = EnemyType::Fast;
+                else if (typeStr == "strong") type = EnemyType::Strong;
 
-        waves.push_back({ type, count });
+                waves.push_back({ type, count });
+            }
+        }
     }
 }
 
