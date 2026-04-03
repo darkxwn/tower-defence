@@ -111,7 +111,7 @@ if(ANDROID)
         GLESv2
         EGL
     )
-else(WINDOWS)
+elseif(WIN32)
     target_link_libraries(${PROJECT_NAME} PRIVATE SFML::Main)
 endif()
 
