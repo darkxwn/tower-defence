@@ -72,23 +72,6 @@ if(APPLE)
     )
 endif()
 
-if(ANDROID)
-    message(STATUS "Configuring for Android...")
-    
-    # SFML 3 на Android требует статическую сборку некоторых компонентов 
-    # или специфическую линковку sfml-main
-    add_definitions(-DANDROID)
-    
-    # Если ты используешь FetchContent, SFML сам поймет, что он на Android,
-    # но нам нужно линковать системные библиотеки
-    list(APPEND ANDROID_LIBS android log GLESv2 EGL)
-
-    # Указываем CMake класть готовую библиотеку в папку jniLibs для Android
-    set_target_properties(${PROJECT_NAME} PROPERTIES
-        LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/android/app/src/main/jniLibs/${ANDROID_ABI}"
-    )
-endif()
-
 if(WIN32)
     set_target_properties(${PROJECT_NAME} PROPERTIES LINK_FLAGS "/ENTRY:mainCRTStartup")
 endif()
