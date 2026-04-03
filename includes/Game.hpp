@@ -34,11 +34,12 @@ private:
 
     sf::View worldView;
     sf::View uiView;
-    sf::Vector2i lastInputPos; // Позиция в пикселях в прошлом кадре
-    bool isPanning = false;    // Флаг того, что мы сейчас двигаем карту
-    bool isPinching = false;
-
+    sf::Vector2i lastInputPos;          // Позиция в пикселях в прошлом кадре
+    bool isPanning = false;             // Флаг того, что мы сейчас двигаем карту
+    bool isPinching = false;            // Флаг, что мы раздвигаем пальцы
+    float initialPinchDistance = 0.f;   // Растояния раздвига пальцев
     float currentZoom = 1.0f;
+    float uiScale = 1.0f;               // Масштабирование для UI
 
     GameState state = GameState::Playing;
     GameEndReason endReason = GameEndReason::None;

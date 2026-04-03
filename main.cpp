@@ -6,10 +6,36 @@
 #include <string>
 
 #ifdef __ANDROID__
-#include <android/log.h>
-#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, "tower-defence", __VA_ARGS__)
-#else
-#define LOGE(...) std::cerr << __VA_ARGS__ << std::endl
+#include <android/native_activity.h>
+#include <SFML/System/NativeActivity.hpp>
+
+// Функция для включения "Immersive Mode" (скрытия всех панелей)
+void setImmersiveMode(sf::RenderWindow& window) {
+    ANativeActivity* activity = sf::getNativeActivity();
+    JavaVM* vm = activity->vm;
+    JNIEnv* env = nullptr;
+    vm->AttachCurrentThread(&env, nullptr);
+
+    jobject activityObj = activity->clazz;
+    jclass activityClass = env->GetObjectClass(activityObj);
+
+    // Получаем окно
+    jmethodID getWindow = env->GetMethodID(activityClass, "getWindow", "()Landroid/view/Window;");
+    jobject windowObj = env->CallObjectMethod(activityObj, getWindow);
+    jclass windowClass = env->GetObjectClass(windowObj);
+
+    // Получаем декоратор
+    jmethodID getDecorView = env->GetMethodID(windowClass, "getDecorView", "()Landroid/view/View;");
+    jobject decorViewObj = env->CallObjectMethod(windowObj, getDecorView);
+    jclass viewClass = env->GetObjectClass(decorViewObj);
+
+    // Флаги: Fullscreen + HideNavigation + ImmersiveSticky
+    // Значение 5894 — это комбинация системных флагов Android для скрытия всего
+    jmethodID setSystemUiVisibility = env->GetMethodID(viewClass, "setSystemUiVisibility", "(I)V");
+    env->CallVoidMethod(decorViewObj, setSystemUiVisibility, 5894);
+
+    vm->DetachCurrentThread();
+}
 #endif
 
 #ifdef __APPLE__
@@ -81,6 +107,10 @@ int main(int argc, char* argv[]) {
         "Tower Defence",
         sf::Style::Default
     );
+
+#ifdef __ANDROID__
+    setImmersiveMode(window);
+#endif
 
     window.setFramerateLimit(60);
     window.setMinimumSize(sf::Vector2u({ 1280, 720 }));

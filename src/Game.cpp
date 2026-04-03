@@ -21,16 +21,30 @@ Game::Game(sf::RenderWindow& window, const std::string& levelPath)
     waveSystem.loadWaves(levelPath);
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+//  Обновление камер (инициализация, ресайз окна)
+// ─────────────────────────────────────────────────────────────────────────────
 void Game::updateViewSizes(sf::Vector2u windowSize) {
-    float sw = (float)windowSize.x;
-    float sh = (float)windowSize.y;
+    float sw = static_cast<float>(windowSize.x);
+    float sh = static_cast<float>(windowSize.y);
+    float aspect = sw / sh;
 
-    // 1. UI View: Фиксируем логическое разрешение (например, 1920x1080)
-    // Это гарантирует, что HUD всегда будет выглядеть одинаково
-    uiView = sf::View(sf::FloatRect({ 0.f, 0.f }, { 1920.f, 1080.f }));
+#ifdef __ANDROID__
+    uiScale = 1.6f;
+#else
+    uiScale = 1.0f; // На ПК оставляем 1 к 1
+#endif
+    
+    float uiH = sh / uiScale;
+    float uiW = uiH * aspect;
 
-    // 2. World View: Совпадает с физическими пикселями для работы map.centerOnScreen
+    uiView = sf::View(sf::FloatRect({ 0.f, 0.f }, { uiW, uiH }));
+
     worldView = sf::View(sf::FloatRect({ 0.f, 0.f }, { sw, sh }));
+    worldView.zoom(currentZoom);
+    worldView.setCenter({ sw / 2.f, sh / 2.f });
+
+    worldView.setSize({ sw / uiScale, sh / uiScale });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -79,6 +93,81 @@ void Game::handleEvents() {
     while (std::optional event = window.pollEvent()) {
         if (event->is<sf::Event::Closed>())
             window.close();
+
+        // --- 1. КАСАНИЕ (TouchBegan) ---
+        if (const auto* touch = event->getIf<sf::Event::TouchBegan>()) {
+            if (touch->finger == 0) {
+                isPanning = true;
+                lastInputPos = touch->position;
+            }
+            // Как только коснулся второй палец — включаем режим зума
+            if (touch->finger == 1) {
+                isPinching = true;
+                isPanning = false; // Блокируем перемещение при зуме
+
+                sf::Vector2f p0 = sf::Vector2f(sf::Touch::getPosition(0, window));
+                sf::Vector2f p1 = sf::Vector2f(sf::Touch::getPosition(1, window));
+                initialPinchDistance = std::sqrt(std::pow(p0.x - p1.x, 2) + std::pow(p0.y - p1.y, 2));
+            }
+        }
+
+        // --- 2. ДВИЖЕНИЕ (TouchMoved) ---
+        if (const auto* touch = event->getIf<sf::Event::TouchMoved>()) {
+            if (isPinching && sf::Touch::isDown(0) && sf::Touch::isDown(1)) {
+                sf::Vector2i p0_px = sf::Touch::getPosition(0, window);
+                sf::Vector2i p1_px = sf::Touch::getPosition(1, window);
+
+                // 1. Находим центр щипка в пикселях
+                sf::Vector2i center_px((p0_px.x + p1_px.x) / 2, (p0_px.y + p1_px.y) / 2);
+
+                // 2. Запоминаем, какая точка карты была в этом центре ДО зума
+                sf::Vector2f worldPosBefore = window.mapPixelToCoords(center_px, worldView);
+
+                float dx = (float)(p0_px.x - p1_px.x);
+                float dy = (float)(p0_px.y - p1_px.y);
+                float newDist = std::sqrt(dx * dx + dy * dy);
+
+                if (newDist > 10.f && std::abs(newDist - initialPinchDistance) > 1.0f) {
+                    float factor = initialPinchDistance / newDist;
+
+                    float nextZoom = currentZoom * factor;
+                    if (nextZoom > 0.4f && nextZoom < 1.3f) {
+                        // 3. Выполняем сам зум
+                        worldView.zoom(factor);
+                        currentZoom = nextZoom;
+
+                        // 4. Магия: находим, где та же точка в пикселях оказалась ПОСЛЕ зума
+                        // Для этого снова пересчитываем координаты той же экранной точки
+                        sf::Vector2f worldPosAfter = window.mapPixelToCoords(center_px, worldView);
+
+                        // 5. Сдвигаем камеру так, чтобы точка "worldPosBefore" совпала с "worldPosAfter"
+                        worldView.move(worldPosBefore - worldPosAfter);
+                    }
+                    initialPinchDistance = newDist;
+                }
+            }
+            else if (isPanning && !isPinching && touch->finger == 0) {
+                // Обычное перемещение
+                sf::Vector2f delta = sf::Vector2f(lastInputPos - touch->position);
+                worldView.move(delta * currentZoom);
+                lastInputPos = touch->position;
+            }
+        }
+
+        // --- 3. ОТПУСКАНИЕ (TouchEnded) ---
+        if (const auto* touch = event->getIf<sf::Event::TouchEnded>()) {
+            if (touch->finger == 0 || touch->finger == 1) {
+                isPinching = false;
+                isPanning = false;
+            }
+
+            // ЛОГИКА КЛИКА (Постройка башни)
+            // Выполняем ТОЛЬКО если это был короткий тап одним пальцем (не зум и не сдвиг)
+            if (touch->finger == 0 && !isPinching) {
+                // Если палец почти не двигался, считаем это кликом
+                processInput(touch->position);
+            }
+        }
 
         // РЕЗАЙЗ
         if (const auto* resized = event->getIf<sf::Event::Resized>()) {
@@ -134,8 +223,22 @@ void Game::handleEvents() {
 
         // ЗУМ (Колесико мыши)
         if (const auto* scroll = event->getIf<sf::Event::MouseWheelScrolled>()) {
-            float zoomFactor = (scroll->delta > 0) ? 0.9f : 1.1f;
-            worldView.zoom(zoomFactor);
+            if (scroll->wheel == sf::Mouse::Wheel::Vertical) {
+                float factor = (scroll->delta > 0) ? 0.9f : 1.1f;
+                float nextZoom = currentZoom * factor;
+                if (nextZoom >= 0.4f && nextZoom <= 1.6f) {
+                    // 3. ЗУМ В ТОЧКУ КУРСОРA (Математика как для Android)
+                    // Запоминаем, где была мышь в координатах мира ДО зума
+                    sf::Vector2f worldPosBefore = window.mapPixelToCoords(scroll->position, worldView);
+
+                    worldView.zoom(factor);
+                    currentZoom = nextZoom;
+                    sf::Vector2f worldPosAfter = window.mapPixelToCoords(scroll->position, worldView);
+
+                    // Сдвигаем камеру на разницу, чтобы курсор остался над той же точкой карты
+                    worldView.move(worldPosBefore - worldPosAfter);
+                }
+            }
         }
 
         // КЛАВИАТУРА
@@ -153,31 +256,30 @@ void Game::processInput(sf::Vector2i pixelPos) {
     if (isPanning) return;
 
     // 1. Сначала проверяем интерфейс (используем uiView)
-    sf::Vector2f uiCoords = window.mapPixelToCoords(pixelPos, uiView);
+    sf::Vector2f uiPos = window.mapPixelToCoords(pixelPos, uiView);
+    sf::Vector2f worldPos = window.mapPixelToCoords(pixelPos, worldView);
 
     if (state == GameState::Paused) {
-        if (pauseContinueRect.contains(uiCoords)) state = GameState::Playing;
-        else if (pauseRestartRect.contains(uiCoords)) endReason = GameEndReason::Restart;
-        else if (pauseMenuRect.contains(uiCoords)) endReason = GameEndReason::ReturnToMenu;
+        if (pauseContinueRect.contains(uiPos)) state = GameState::Playing;
+        else if (pauseRestartRect.contains(uiPos)) endReason = GameEndReason::Restart;
+        else if (pauseMenuRect.contains(uiPos)) endReason = GameEndReason::ReturnToMenu;
         return;
     }
 
     if (state == GameState::Victory || state == GameState::GameOver) {
-        if (endMenuRect.contains(uiCoords)) endReason = GameEndReason::ReturnToMenu;
-        else if (endRestartRect.contains(uiCoords)) endReason = GameEndReason::Restart;
+        if (endMenuRect.contains(uiPos)) endReason = GameEndReason::ReturnToMenu;
+        else if (endRestartRect.contains(uiPos)) endReason = GameEndReason::Restart;
         return;
     }
 
     // Клик по игровому HUD (пауза, слоты)
-    hud.handleClick(uiCoords);
+    hud.handleClick(uiPos);
     if (hud.isPauseClicked()) state = GameState::Paused;
     if (hud.isSkipClicked())  waveSystem.startWave();
 
     // 2. Если не попали в UI кнопки, проверяем мир (используем worldView)
     if (state == GameState::Playing) {
-        sf::Vector2f worldCoords = window.mapPixelToCoords(pixelPos, worldView);
-
-        Tile* tile = map.getTileAtScreen(worldCoords);
+        Tile* tile = map.getTileAtScreen(worldPos); // Передаем worldPos!
         if (tile && tile->type == TileType::Platform) {
             int slot = hud.getSelectedSlot();
             if (slot != -1) {
@@ -203,11 +305,11 @@ void Game::processInput(sf::Vector2i pixelPos) {
                 }
             }
             else {
-                map.setSelectedTile(worldCoords);
+                map.setSelectedTile(worldPos);
             }
         }
         else {
-            map.setSelectedTile(worldCoords);
+            map.setSelectedTile(worldPos);
         }
     }
 }
@@ -296,7 +398,7 @@ void Game::renderPauseOverlay() {
     // Пересчитываем позиции кнопок (зависят от размера окна)
     computePauseBtnLayout();
 
-    sf::Vector2f mouse = sf::Vector2f(sf::Mouse::getPosition(window));
+    sf::Vector2f mouse = window.mapPixelToCoords(sf::Mouse::getPosition(window), uiView);
 
     auto drawPauseBtn = [&](const std::string& label, sf::FloatRect r) {
         bool hov = r.contains(mouse);
@@ -322,10 +424,10 @@ void Game::renderPauseOverlay() {
 //  Экран победы / поражения
 void Game::renderEndScreen() {
     auto& font = ResourceManager::getFont("main");
-    auto ws    = window.getSize();
+    auto ws    = uiView.getSize();
     float cx   = ws.x / 2.f;
     float cy   = ws.y / 2.f;
-    sf::Vector2f mouse = sf::Vector2f(sf::Mouse::getPosition(window));
+    sf::Vector2f mouse = window.mapPixelToCoords(sf::Mouse::getPosition(window), uiView);
 
     // Затемнение
     sf::RectangleShape dimRect;

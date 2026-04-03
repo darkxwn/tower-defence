@@ -15,9 +15,8 @@
         <activity android:name="android.app.NativeActivity"
             android:configChanges="orientation|keyboardHidden|screenSize"
 			android:screenOrientation="landscape"
-			android:theme="@android:style/Theme.NoTitleBar.Fullscreen" 
+			android:theme="@style/GameTheme" 
             android:exported="true">
-			<layout-in-display-cutout-mode>always</layout-in-display-cutout-mode>
             <meta-data android:name="android.app.lib_name" 
                        android:value="tower-defence" />
 			<meta-data android:name="android.max_aspect"

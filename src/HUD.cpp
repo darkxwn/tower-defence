@@ -21,7 +21,11 @@ HUD::HUD() {
 
 void HUD::render(sf::RenderWindow& window, int money, int lives, int wave, WaveState state) {
     auto& font = ResourceManager::getFont("main");
-    auto winSize = window.getSize();
+    sf::Vector2f winSize = window.getView().getSize();
+
+    float viewW = winSize.x;
+    float viewH = winSize.y;
+
     float cx = winSize.x / 2.f;
 
     window.draw(pauseBtn);
@@ -61,28 +65,28 @@ void HUD::render(sf::RenderWindow& window, int money, int lives, int wave, WaveS
     float hexagonWidth = slots * 100.f;
     float hexagonHeight = 120.f;
     hexagon.setPointCount(6);
-    hexagon.setPoint(0, { cx - hexagonWidth / 2.f, (float)winSize.y });
-    hexagon.setPoint(1, { cx - hexagonWidth / 2.f - 25.f, (float)winSize.y - hexagonHeight / 2.f });
-    hexagon.setPoint(2, { cx - hexagonWidth / 2.f, (float)winSize.y - hexagonHeight });
-    hexagon.setPoint(3, { cx + hexagonWidth / 2.f, (float)winSize.y - hexagonHeight });
-    hexagon.setPoint(4, { cx + hexagonWidth / 2.f + 25.f, (float)winSize.y - hexagonHeight / 2.f });
-    hexagon.setPoint(5, { cx + hexagonWidth / 2.f, (float)winSize.y });
+    hexagon.setPoint(0, { cx - hexagonWidth / 2.f, (float)winSize.y  });
+    hexagon.setPoint(1, { cx - hexagonWidth / 2.f - 25.f, (float)winSize.y  - hexagonHeight / 2.f });
+    hexagon.setPoint(2, { cx - hexagonWidth / 2.f, (float)winSize.y  - hexagonHeight });
+    hexagon.setPoint(3, { cx + hexagonWidth / 2.f, (float)winSize.y  - hexagonHeight });
+    hexagon.setPoint(4, { cx + hexagonWidth / 2.f + 25.f, (float)winSize.y  - hexagonHeight / 2.f });
+    hexagon.setPoint(5, { cx + hexagonWidth / 2.f, (float)winSize.y  });
     hexagon.setFillColor(Colors::panelBg);
     window.draw(hexagon);
 
     sf::Sprite coinsIcon(ResourceManager::get("icon-coins"));
     coinsIcon.setScale({ 1.25f, 1.25f });
-    coinsIcon.setPosition({ startXPos + 15.f, (float)winSize.y - 105.f });
+    coinsIcon.setPosition({ startXPos + 15.f, (float)winSize.y - 105.f  });
     window.draw(coinsIcon);
 
     sf::Text moneyText(font, std::to_string(money) + "$", 26);
     moneyText.setFillColor(Colors::moneyText);
-    moneyText.setPosition({ startXPos + (90.f - moneyText.getLocalBounds().size.x) / 2, (float)winSize.y - 40.f });
+    moneyText.setPosition({ startXPos + (90.f - moneyText.getLocalBounds().size.x) / 2, (float)winSize.y - 40.f  });
     window.draw(moneyText);
 
     auto towerNames = GameData::getTowerNames();
     for (int i = 0; i < (int)towerSlots.size(); i++) {
-        towerSlots[i].setPosition({ (startXPos + 100.f) + i * 100.f, (float)winSize.y - 110.f });
+        towerSlots[i].setPosition({ (startXPos + 100.f) + i * 100.f, (float)winSize.y - 110.f  });
         window.draw(towerSlots[i]);
 
         if (i == selectedTowerSlot) {
@@ -111,12 +115,12 @@ void HUD::render(sf::RenderWindow& window, int money, int lives, int wave, WaveS
 
     sf::Sprite heartIcon(ResourceManager::get("icon-heart"));
     heartIcon.setScale({ 1.25f, 1.25f });
-    heartIcon.setPosition({ startXPos + ((int)towerSlots.size() + 1) * 100.f + 15.f, (float)winSize.y - 105.f });
+    heartIcon.setPosition({ startXPos + ((int)towerSlots.size() + 1) * 100.f + 15.f, (float)winSize.y - 105.f  });
     window.draw(heartIcon);
 
     sf::Text livesText(font, std::to_string(lives), 26);
     livesText.setFillColor(Colors::livesText);
-    livesText.setPosition({ startXPos + ((int)towerSlots.size() + 1) * 100.f + (90.f - livesText.getLocalBounds().size.x) / 2, (float)winSize.y - 40.f });
+    livesText.setPosition({ startXPos + ((int)towerSlots.size() + 1) * 100.f + (90.f - livesText.getLocalBounds().size.x) / 2, (float)winSize.y - 40.f  });
     window.draw(livesText);
 }
 

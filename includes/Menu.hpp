@@ -47,6 +47,13 @@ private:
     std::string selectedLevel; // путь к выбранному .map, пустой = нет выбора
     bool levelChosen = false;
 
+    sf::View worldView; // Камера для игровых объектов
+    sf::View uiView;    // Камера для кнопок и текста
+    float currentZoom = 1.0f;
+    float uiScale = 1.0f;
+
+    // Метод для синхронизации размеров при старте и ресайзе
+
     SessionResult lastResult = SessionResult::None;
     std::string   lastLevelPath; // путь к последнему сыгранному уровню
 
@@ -59,6 +66,7 @@ private:
     void renderLevelSelect(const LevelSelectLayout& L);
     void renderResultOverlay(); // баннер победы/поражения поверх LevelSelect
     void renderStub(const std::string& title);
+    void updateViewSizes(sf::Vector2u windowSize);
 
     // Обработка кликов
     void handleMainClick(sf::Vector2f pos, const MainLayout& L);
