@@ -83,4 +83,7 @@ public:
     void run();
 
     GameEndReason getEndReason() const;
+
+    // Метод ограничения камеры
+    void clampView();
 };

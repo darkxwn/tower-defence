@@ -169,3 +169,6 @@ sf::Vector2i  Map::getBasePos()    const { return basePos; }
 int           Map::getStartMoney() const { return startMoney; }
 sf::Vector2f  Map::getMapOffset()  const { return mapOffset; }
 Tile* Map::getSelectedTile() const { return selectedTile; }
+
+int Map::getWidth() const { return width; }
+int Map::getHeight() const { return height; }

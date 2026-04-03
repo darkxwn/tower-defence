@@ -36,4 +36,7 @@ public:
     sf::Vector2i  getBasePos()    const;
     int           getStartMoney() const;
     sf::Vector2f  getMapOffset()  const;
+
+    int getWidth() const;
+    int getHeight() const;
 };

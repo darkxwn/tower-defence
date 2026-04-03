@@ -86,15 +86,13 @@ void Game::computePauseBtnLayout() {
     pauseContinueRect = sf::FloatRect({cx + totalW / 2.f - btnW,       btnY}, {btnW, btnH});
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 //  Обработка событий
-// ─────────────────────────────────────────────────────────────────────────────
 void Game::handleEvents() {
     while (std::optional event = window.pollEvent()) {
         if (event->is<sf::Event::Closed>())
             window.close();
 
-        // --- 1. КАСАНИЕ (TouchBegan) ---
+        // 1. КАСАНИЕ (TouchBegan)
         if (const auto* touch = event->getIf<sf::Event::TouchBegan>()) {
             if (touch->finger == 0) {
                 isPanning = true;
@@ -111,7 +109,7 @@ void Game::handleEvents() {
             }
         }
 
-        // --- 2. ДВИЖЕНИЕ (TouchMoved) ---
+        // 2. ДВИЖЕНИЕ (TouchMoved)
         if (const auto* touch = event->getIf<sf::Event::TouchMoved>()) {
             if (isPinching && sf::Touch::isDown(0) && sf::Touch::isDown(1)) {
                 sf::Vector2i p0_px = sf::Touch::getPosition(0, window);
@@ -136,33 +134,35 @@ void Game::handleEvents() {
                         worldView.zoom(factor);
                         currentZoom = nextZoom;
 
-                        // 4. Магия: находим, где та же точка в пикселях оказалась ПОСЛЕ зума
+                        // 4. Находим, где та же точка в пикселях оказалась ПОСЛЕ зума
                         // Для этого снова пересчитываем координаты той же экранной точки
                         sf::Vector2f worldPosAfter = window.mapPixelToCoords(center_px, worldView);
 
                         // 5. Сдвигаем камеру так, чтобы точка "worldPosBefore" совпала с "worldPosAfter"
                         worldView.move(worldPosBefore - worldPosAfter);
+
+                        clampView();
                     }
                     initialPinchDistance = newDist;
                 }
-            }
-            else if (isPanning && !isPinching && touch->finger == 0) {
+            } else if (isPanning && !isPinching && touch->finger == 0) {
                 // Обычное перемещение
                 sf::Vector2f delta = sf::Vector2f(lastInputPos - touch->position);
                 worldView.move(delta * currentZoom);
                 lastInputPos = touch->position;
+
+                clampView();
             }
         }
 
-        // --- 3. ОТПУСКАНИЕ (TouchEnded) ---
+        // 3. ОТПУСКАНИЕ (TouchEnded)
         if (const auto* touch = event->getIf<sf::Event::TouchEnded>()) {
             if (touch->finger == 0 || touch->finger == 1) {
                 isPinching = false;
                 isPanning = false;
             }
 
-            // ЛОГИКА КЛИКА (Постройка башни)
-            // Выполняем ТОЛЬКО если это был короткий тап одним пальцем (не зум и не сдвиг)
+            // ЛОГИКА КЛИКА (Постройка башни) | если не зум и не сдвиг
             if (touch->finger == 0 && !isPinching) {
                 // Если палец почти не двигался, считаем это кликом
                 processInput(touch->position);
@@ -198,6 +198,8 @@ void Game::handleEvents() {
                 sf::Vector2f delta = sf::Vector2f(lastInputPos - mouseMove->position);
                 worldView.move(delta * currentZoom);
                 lastInputPos = mouseMove->position;
+
+                clampView();
             }
         }
 
@@ -213,6 +215,8 @@ void Game::handleEvents() {
                 sf::Vector2f delta = sf::Vector2f(lastInputPos - touchMove->position);
                 worldView.move(delta * currentZoom);
                 lastInputPos = touchMove->position;
+
+                clampView();
             }
         }
 
@@ -237,6 +241,8 @@ void Game::handleEvents() {
 
                     // Сдвигаем камеру на разницу, чтобы курсор остался над той же точкой карты
                     worldView.move(worldPosBefore - worldPosAfter);
+
+                    clampView();
                 }
             }
         }
@@ -303,21 +309,16 @@ void Game::processInput(sf::Vector2i pixelPos) {
                         hud.resetSelectedSlot();
                     }
                 }
-            }
-            else {
+            } else {
                 map.setSelectedTile(worldPos);
             }
-        }
-        else {
+        } else {
             map.setSelectedTile(worldPos);
         }
     }
 }
 
-
-// ─────────────────────────────────────────────────────────────────────────────
 //  Обновление
-// ─────────────────────────────────────────────────────────────────────────────
 void Game::update(float dt) {
     waveSystem.update(dt, enemies, map.getPath());
 
@@ -347,13 +348,11 @@ void Game::update(float dt) {
         state = GameState::Victory;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  Отрисовка
-// ─────────────────────────────────────────────────────────────────────────────
+// Метод отрисовки
 void Game::render() {
     window.clear(Colors::gameBg);
 
-    // --- СЛОЙ 1: МИР (Карта, Враги, Башни) ---
+    // СЛОЙ 1: МИР (Карта, Враги, Башни)
     window.setView(worldView);
     map.render(window);
 
@@ -365,7 +364,7 @@ void Game::render() {
     for (auto& e : enemies)
         e.render(window, map.getMapOffset());
 
-    // --- СЛОЙ 2: ИНТЕРФЕЙС (HUD, Оверлеи) ---
+    // СЛОЙ 2: ИНТЕРФЕЙС (HUD, Оверлеи)
     window.setView(uiView);
     hud.render(window, money, base.getLives(), waveSystem.getCurrentWave(), waveSystem.getState());
 
@@ -375,8 +374,7 @@ void Game::render() {
     window.display();
 }
 
-
-//  Оверлей паузы
+// Отрисовка оверлея паузы
 void Game::renderPauseOverlay() {
     auto& font = ResourceManager::getFont("main");
     // Используем размер uiView (всегда 1920x1080), а не окна!
@@ -421,7 +419,7 @@ void Game::renderPauseOverlay() {
     drawPauseBtn("Продолжить",   pauseContinueRect);
 }
 
-//  Экран победы / поражения
+// Метод отрисовки экрана победы / поражения
 void Game::renderEndScreen() {
     auto& font = ResourceManager::getFont("main");
     auto ws    = uiView.getSize();
@@ -475,4 +473,31 @@ void Game::renderEndScreen() {
 
     drawEndBtn("Вернуться", endMenuRect);
     drawEndBtn("Заново",       endRestartRect);
+}
+
+
+void Game::clampView() {
+    sf::Vector2f center = worldView.getCenter();
+    sf::Vector2f size = worldView.getSize();
+
+    // Физические границы карты в игровом мире
+    float mapLeft = map.getMapOffset().x;
+    float mapTop = map.getMapOffset().y;
+    float mapRight = mapLeft + map.getWidth() * 64.f;
+    float mapBottom = mapTop + map.getHeight() * 64.f;
+
+    // Допустимый "вылет" за края (например, 20% от размера экрана), 
+    // чтобы игрок видел, что карта закончилась
+    float marginX = size.x * 0.1f;
+    float marginY = size.y * 0.1f;
+
+    // Ограничиваем X
+    if (center.x < mapLeft - marginX) center.x = mapLeft - marginX;
+    if (center.x > mapRight + marginX) center.x = mapRight + marginX;
+
+    // Ограничиваем Y
+    if (center.y < mapTop - marginY) center.y = mapTop - marginY;
+    if (center.y > mapBottom + marginY) center.y = mapBottom + marginY;
+
+    worldView.setCenter(center);
 }

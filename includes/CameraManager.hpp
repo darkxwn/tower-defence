@@ -18,12 +18,12 @@ public:
         float sh = static_cast<float>(windowSize.y);
         float aspect = sw / sh;
 
-        // --- Настройка UI камеры ---
+        // Настройка UI камеры
         // Фиксируем высоту, ширина адаптируется. (0,0) всегда в левом верхнем углу.
         float uiWidth = baseUiHeight * aspect;
         uiView = sf::View(sf::FloatRect({ 0.f, 0.f }, { uiWidth, baseUiHeight }));
 
-        // --- Настройка World камеры ---
+        // Настройка World камеры
         // Чтобы карта на Android не была крошечной, сделаем её масштаб 
         // зависимым от высоты UI, но с учетом зума.
         worldView = sf::View(sf::FloatRect({ 0.f, 0.f }, { uiWidth, baseUiHeight }));
