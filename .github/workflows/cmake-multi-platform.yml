@@ -2,11 +2,54 @@ name: CMake on multiple platforms
 
 on:
   push:
-    branches: [ "crossplatform-main" ]
+    branches: [ "main" ]
   pull_request:
-    branches: [ "crossplatform-main" ]
+    branches: [ "main" ]
 
 jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'gradle'
+
+      - name: Setup Android NDK
+        uses: nttld/setup-ndk@v1
+        id: setup-ndk
+        with:
+          ndk-version: r23c
+          add-to-path: true
+
+      - name: Install Ninja
+        run: sudo apt-get install ninja-build
+
+      - name: Accept Android Licenses
+        run: yes | sdkmanager --licenses || true
+
+      - name: Make Gradle executable
+        run: chmod +x android/gradlew
+
+      - name: Build with Gradle
+        env:
+          ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
+        run: |
+          cd android
+          ./gradlew assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: tower-defence-android-debug
+          # Используем маску, чтобы точно найти файл
+          path: android/app/build/outputs/apk/debug/*.apk
   build:
     runs-on: ${{ matrix.os }}
 
