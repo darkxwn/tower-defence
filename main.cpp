@@ -56,8 +56,6 @@ static void loadResources() {
         chdir(path);
     }
     CFRelease(resourcesURL);
-    assetsPath = "";
-    dataPath = "";
 #endif
 
 #ifdef __ANDROID__
