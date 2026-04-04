@@ -24,7 +24,7 @@ x64/
 x86/
 build/
 out/
-android/app/src/main/jniLibs/*
+android/app/src/main/jniLibs/
 
 # Временные файлы компилятора
 *.exp
