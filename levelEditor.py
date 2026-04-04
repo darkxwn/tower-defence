@@ -120,7 +120,7 @@ class LevelEditor:
                 self.draw_tile(x, y)
 
         win_w = self.width * self.tile_size + 250
-        win_h = max(self.height * self.tile_size, 550)
+        win_h = max(self.height * self.tile_size, 650)
         self.root.geometry(f"{win_w}x{win_h}")
 
     def resize_grid(self):

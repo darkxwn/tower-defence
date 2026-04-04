@@ -106,11 +106,12 @@ int main(int argc, char* argv[]) {
         sf::Style::Default
     );
 
+    window.setVerticalSyncEnabled(true);
+
 #ifdef __ANDROID__
     setImmersiveMode(window);
 #endif
 
-    window.setFramerateLimit(60);
     window.setMinimumSize(sf::Vector2u({ 1280, 720 }));
 
     loadResources();
