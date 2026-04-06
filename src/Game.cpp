@@ -86,173 +86,132 @@ void Game::computePauseBtnLayout() {
     pauseContinueRect = sf::FloatRect({cx + totalW / 2.f - btnW,       btnY}, {btnW, btnH});
 }
 
-//  Обработка событий
+// Обработка событий
 void Game::handleEvents() {
     while (std::optional event = window.pollEvent()) {
-        if (event->is<sf::Event::Closed>())
-            window.close();
+        if (event->is<sf::Event::Closed>()) window.close();
 
-        // 1. КАСАНИЕ (TouchBegan)
-        if (const auto* touch = event->getIf<sf::Event::TouchBegan>()) {
-            if (touch->finger == 0) {
-                isPanning = true;
-                lastInputPos = touch->position;
-            }
-            // Как только коснулся второй палец — включаем режим зума
-            if (touch->finger == 1) {
-                isPinching = true;
-                isPanning = false; // Блокируем перемещение при зуме
-
-                sf::Vector2f p0 = sf::Vector2f(sf::Touch::getPosition(0, window));
-                sf::Vector2f p1 = sf::Vector2f(sf::Touch::getPosition(1, window));
-                initialPinchDistance = std::sqrt(std::pow(p0.x - p1.x, 2) + std::pow(p0.y - p1.y, 2));
-            }
-        }
-
-        // 2. ДВИЖЕНИЕ (TouchMoved)
-        if (const auto* touch = event->getIf<sf::Event::TouchMoved>()) {
-            if (isPinching && sf::Touch::isDown(0) && sf::Touch::isDown(1)) {
-                sf::Vector2i p0_px = sf::Touch::getPosition(0, window);
-                sf::Vector2i p1_px = sf::Touch::getPosition(1, window);
-
-                // 1. Находим центр щипка в пикселях
-                sf::Vector2i center_px((p0_px.x + p1_px.x) / 2, (p0_px.y + p1_px.y) / 2);
-
-                // 2. Запоминаем, какая точка карты была в этом центре ДО зума
-                sf::Vector2f worldPosBefore = window.mapPixelToCoords(center_px, worldView);
-
-                float dx = (float)(p0_px.x - p1_px.x);
-                float dy = (float)(p0_px.y - p1_px.y);
-                float newDist = std::sqrt(dx * dx + dy * dy);
-
-                if (newDist > 10.f && std::abs(newDist - initialPinchDistance) > 1.0f) {
-                    float factor = initialPinchDistance / newDist;
-
-                    float nextZoom = currentZoom * factor;
-                    if (nextZoom > 0.4f && nextZoom < 1.3f) {
-                        // 3. Выполняем сам зум
-                        worldView.zoom(factor);
-                        currentZoom = nextZoom;
-
-                        // 4. Находим, где та же точка в пикселях оказалась ПОСЛЕ зума
-                        // Для этого снова пересчитываем координаты той же экранной точки
-                        sf::Vector2f worldPosAfter = window.mapPixelToCoords(center_px, worldView);
-
-                        // 5. Сдвигаем камеру так, чтобы точка "worldPosBefore" совпала с "worldPosAfter"
-                        worldView.move(worldPosBefore - worldPosAfter);
-
-                        clampView();
-                    }
-                    initialPinchDistance = newDist;
-                }
-            } else if (isPanning && !isPinching && touch->finger == 0) {
-                // Обычное перемещение
-                sf::Vector2f delta = sf::Vector2f(lastInputPos - touch->position);
-                worldView.move(delta * currentZoom);
-                lastInputPos = touch->position;
-
-                clampView();
-            }
-        }
-
-        // 3. ОТПУСКАНИЕ (TouchEnded)
-        if (const auto* touch = event->getIf<sf::Event::TouchEnded>()) {
-            if (touch->finger == 0 || touch->finger == 1) {
-                isPinching = false;
-                isPanning = false;
-            }
-
-            // ЛОГИКА КЛИКА (Постройка башни) | если не зум и не сдвиг
-            if (touch->finger == 0 && !isPinching) {
-                // Если палец почти не двигался, считаем это кликом
-                processInput(touch->position);
-            }
-        }
-
-        // РЕЗАЙЗ
+        // 1. СЛУЖЕБНЫЕ СОБЫТИЯ (Работают всегда)
         if (const auto* resized = event->getIf<sf::Event::Resized>()) {
             sf::Vector2u newSize = { resized->size.x, resized->size.y };
             updateViewSizes(newSize);
             map.centerOnScreen(newSize, 75.f, 120.f);
+            computePauseBtnLayout();
+            continue;
         }
 
-        // ВВОД (МЫШЬ + ТАЧ)
-        if (const auto* click = event->getIf<sf::Event::MouseButtonPressed>()) {
-            if (click->button == sf::Mouse::Button::Left)
-                processInput(click->position);
-        }
-        if (const auto* touch = event->getIf<sf::Event::TouchBegan>()) {
-            processInput(touch->position);
-        }
-
-        // ПЕРЕМЕЩЕНИЕ (МЫШЬ + ТАЧ)
-        if (const auto* click = event->getIf<sf::Event::MouseButtonPressed>()) {
-            if (click->button == sf::Mouse::Button::Middle || click->button == sf::Mouse::Button::Right) {
-                isPanning = true;
-                lastInputPos = click->position;
+        if (const auto* key = event->getIf<sf::Event::KeyPressed>()) {
+            if (key->code == sf::Keyboard::Key::Space) waveSystem.startWave();
+            if (key->code == sf::Keyboard::Key::Escape || key->code == sf::Keyboard::Key::P) {
+                state = (state == GameState::Playing) ? GameState::Paused : GameState::Playing;
             }
         }
 
-        if (const auto* mouseMove = event->getIf<sf::Event::MouseMoved>()) {
-            if (isPanning) {
-                sf::Vector2f delta = sf::Vector2f(lastInputPos - mouseMove->position);
-                worldView.move(delta * currentZoom);
-                lastInputPos = mouseMove->position;
-
-                clampView();
-            }
-        }
-
-        if (const auto* touch = event->getIf<sf::Event::TouchBegan>()) {
-            if (touch->finger == 0) {
-                isPanning = true;
-                lastInputPos = touch->position;
-            }
-        }
-
-        if (const auto* touchMove = event->getIf<sf::Event::TouchMoved>()) {
-            if (isPanning && !isPinching && touchMove->finger == 0) {
-                sf::Vector2f delta = sf::Vector2f(lastInputPos - touchMove->position);
-                worldView.move(delta * currentZoom);
-                lastInputPos = touchMove->position;
-
-                clampView();
-            }
-        }
-
-        // Кнопки отпустили
-        if (event->is<sf::Event::MouseButtonReleased>() || event->is<sf::Event::TouchEnded>()) {
-            isPanning = false;
-        }
-
-        // ЗУМ (Колесико мыши)
-        if (const auto* scroll = event->getIf<sf::Event::MouseWheelScrolled>()) {
-            if (scroll->wheel == sf::Mouse::Wheel::Vertical) {
+        // 2. НАВИГАЦИЯ И ЗУМ (Блокируются, если пауза)
+        if (state == GameState::Playing) {
+            // Зум колесиком
+            if (const auto* scroll = event->getIf<sf::Event::MouseWheelScrolled>()) {
                 float factor = (scroll->delta > 0) ? 0.9f : 1.1f;
-                float nextZoom = currentZoom * factor;
-                if (nextZoom >= 0.4f && nextZoom <= 1.6f) {
-                    // 3. ЗУМ В ТОЧКУ КУРСОРA (Математика как для Android)
-                    // Запоминаем, где была мышь в координатах мира ДО зума
-                    sf::Vector2f worldPosBefore = window.mapPixelToCoords(scroll->position, worldView);
-
+                if ((currentZoom * factor >= 0.4f) && (currentZoom * factor <= 1.6f)) {
+                    sf::Vector2f before = window.mapPixelToCoords(scroll->position, worldView);
                     worldView.zoom(factor);
-                    currentZoom = nextZoom;
-                    sf::Vector2f worldPosAfter = window.mapPixelToCoords(scroll->position, worldView);
-
-                    // Сдвигаем камеру на разницу, чтобы курсор остался над той же точкой карты
-                    worldView.move(worldPosBefore - worldPosAfter);
-
+                    currentZoom *= factor;
+                    worldView.move(before - window.mapPixelToCoords(scroll->position, worldView));
                     clampView();
+                }
+            }
+
+            // Начало перемещения или Pinch-Zoom
+            if (const auto* touch = event->getIf<sf::Event::TouchBegan>()) {
+                if (touch->finger == 0) {
+                    isPanning = true;
+                    wasMoved = false;
+                    startTouchPos = touch->position;
+                    lastInputPos = touch->position;
+                }
+                if (touch->finger == 1 && sf::Touch::isDown(0)) {
+                    isPinching = true;
+                    isPanning = false;
+                    sf::Vector2f p0 = sf::Vector2f(sf::Touch::getPosition(0, window));
+                    sf::Vector2f p1 = sf::Vector2f(sf::Touch::getPosition(1, window));
+                    initialPinchDistance = std::sqrt(std::pow(p0.x - p1.x, 2) + std::pow(p0.y - p1.y, 2));
+                }
+            }
+
+            // ПК: Начало перемещения правой/средней кнопкой
+            if (const auto* click = event->getIf<sf::Event::MouseButtonPressed>()) {
+                if (click->button == sf::Mouse::Button::Right || click->button == sf::Mouse::Button::Middle) {
+                    isPanning = true;
+                    lastInputPos = click->position;
+                }
+            }
+
+            // Процесс перемещения (Мышь и Тач)
+            sf::Vector2i currentPos(-1, -1);
+            if (const auto* m = event->getIf<sf::Event::MouseMoved>()) currentPos = m->position;
+            if (const auto* t = event->getIf<sf::Event::TouchMoved>()) currentPos = t->position;
+
+            if (currentPos.x != -1 && isPanning) {
+                // Если это тач, проверяем, не пора ли переключить флаг с "клик" на "сдвиг"
+                if (event->is<sf::Event::TouchMoved>()) {
+                    float d = std::sqrt(std::pow(currentPos.x - startTouchPos.x, 2) + std::pow(currentPos.y - startTouchPos.y, 2));
+                    if (d > 10.f) wasMoved = true;
+                }
+
+                if (!isPinching) {
+                    sf::Vector2f delta = sf::Vector2f(lastInputPos - currentPos);
+                    worldView.move(delta * currentZoom);
+                    lastInputPos = currentPos;
+                    clampView();
+                }
+            }
+
+            // Процесс Pinch-Zoom (только тач)
+            if (const auto* tMove = event->getIf<sf::Event::TouchMoved>()) {
+                if (isPinching && sf::Touch::isDown(0) && sf::Touch::isDown(1)) {
+                    sf::Vector2i p0 = sf::Touch::getPosition(0, window);
+                    sf::Vector2i p1 = sf::Touch::getPosition(1, window);
+                    sf::Vector2i mid((p0.x + p1.x) / 2, (p0.y + p1.y) / 2);
+                    sf::Vector2f worldBefore = window.mapPixelToCoords(mid, worldView);
+
+                    float newDist = std::sqrt(std::pow((float)p0.x - p1.x, 2) + std::pow((float)p0.y - p1.y, 2));
+                    if (std::abs(newDist - initialPinchDistance) > 2.f) {
+                        float f = initialPinchDistance / newDist;
+                        if (currentZoom * f > 0.4f && currentZoom * f < 1.6f) {
+                            worldView.zoom(f);
+                            currentZoom *= f;
+                            worldView.move(worldBefore - window.mapPixelToCoords(mid, worldView));
+                            clampView();
+                        }
+                        initialPinchDistance = newDist;
+                    }
                 }
             }
         }
 
-        // КЛАВИАТУРА
-        if (const auto* key = event->getIf<sf::Event::KeyPressed>()) {
-            if (key->code == sf::Keyboard::Key::Space) waveSystem.startWave();
-            if (key->code == sf::Keyboard::Key::Escape) {
-                state = (state == GameState::Playing) ? GameState::Paused : GameState::Playing;
+        // 3. ОБРАБОТКА КЛИКОВ / ТАПОВ (Действия)
+        sf::Vector2i actionPos(-1, -1);
+
+        // ПК: Клик левой кнопкой
+        if (const auto* click = event->getIf<sf::Event::MouseButtonPressed>()) {
+            if (click->button == sf::Mouse::Button::Left) actionPos = click->position;
+        }
+
+        // Android: Отпускание пальца (чтобы отличить от свайпа)
+        if (const auto* touch = event->getIf<sf::Event::TouchEnded>()) {
+            if (touch->finger == 0 && !wasMoved && !isPinching) {
+                actionPos = touch->position;
             }
+            if (touch->finger == 0) isPanning = false;
+            if (touch->finger == 1) isPinching = false;
+        }
+
+        // Если кнопка мыши отпущена (ПК)
+        if (event->is<sf::Event::MouseButtonReleased>()) isPanning = false;
+
+        // ВЫПОЛНЯЕМ ЛОГИКУ (HUD, Пауза, Постройка)
+        if (actionPos.x != -1) {
+            processInput(actionPos);
         }
     }
 }

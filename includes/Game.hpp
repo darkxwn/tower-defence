@@ -40,6 +40,8 @@ private:
     float initialPinchDistance = 0.f;   // Растояния раздвига пальцев
     float currentZoom = 1.0f;
     float uiScale = 1.0f;               // Масштабирование для UI
+    bool wasMoved = 0;
+    sf::Vector2i startTouchPos;
 
     GameState state = GameState::Playing;
     GameEndReason endReason = GameEndReason::None;
