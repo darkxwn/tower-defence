@@ -1,0 +1,28 @@
+#pragma once
+#include <SFML/Graphics.hpp>
+#include "Enemy.hpp"
+
+///////////////////////////////////////////////////////////////////////////
+//
+// КЛАСС PROJECTILE
+//
+///////////////////////////////////////////////////////////////////////////
+
+class Projectile {
+private:
+    sf::Vector2f pos;
+    Enemy* target;       // цель снаряда
+    float speed;
+    int damage;
+    int splashRadius;
+    bool alive = true;
+    std::string typeSlug; // идентификатор типа (basic, cannon...)
+
+public:
+    Projectile(sf::Vector2f startPos, Enemy* targetEnemy, int dmg, float spd, int splash, std::string slug);
+
+    void update(float deltaTime, std::vector<Enemy>& enemies);
+    void render(sf::RenderWindow& window, sf::Vector2f mapOffset);
+
+    bool isAlive() const { return alive; }
+};

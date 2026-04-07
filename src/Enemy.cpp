@@ -66,6 +66,7 @@ void Enemy::render(sf::RenderWindow& window, sf::Vector2f mapOffset) {
 
     // спрайт врага
     sf::Sprite sprite(ResourceManager::get(texName));
+    sprite.setScale({ 0.125f, 0.125f });
     sprite.setPosition(mapOffset + pos + offset + sf::Vector2f(16.f, 16.f));
     window.draw(sprite);
 }

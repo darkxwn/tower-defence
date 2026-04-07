@@ -14,6 +14,7 @@ void ResourceManager::load(const std::string& name, const std::string& path) {
     sf::Texture texture;
     if (!texture.loadFromFile(path))
         throw std::runtime_error("[Ошибка]: Ошибка загрузки текстуры: " + path);
+    texture.setSmooth(true);
     textures[name] = std::move(texture);
 }
 

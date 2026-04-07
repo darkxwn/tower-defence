@@ -9,17 +9,17 @@
 
 namespace fs = std::filesystem;
 
-// ─────────────────────────────────────────────────────────────────────────────
+
 //  Конструктор
-// ─────────────────────────────────────────────────────────────────────────────
+
 Menu::Menu(sf::RenderWindow& window) : window(window) {
     updateViewSizes(window.getSize());
     scanLevels();
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+
 //  Обновление камер (инициализация, ресайз окна)
-// ─────────────────────────────────────────────────────────────────────────────
+
 void Menu::updateViewSizes(sf::Vector2u windowSize) {
     float sw = static_cast<float>(windowSize.x);
     float sh = static_cast<float>(windowSize.y);
@@ -43,9 +43,9 @@ void Menu::updateViewSizes(sf::Vector2u windowSize) {
     worldView.setSize({ sw / uiScale, sh / uiScale });
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+
 //  Сканирование уровней
-// ─────────────────────────────────────────────────────────────────────────────
+
 void Menu::scanLevels() {
     levels.clear();
 #ifdef ANDROID
@@ -71,9 +71,9 @@ std::string Menu::readLevelName(const std::string& path) const {
     return "Уровень";
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+
 //  Вычисление геометрии — единственный источник истины о позициях
-// ─────────────────────────────────────────────────────────────────────────────
+
 Menu::MainLayout Menu::computeMainLayout() const {
     MainLayout L;
     sf::Vector2f ws = uiView.getSize();
@@ -145,7 +145,7 @@ void Menu::renderMain(const MainLayout& L) {
     window.draw(titleText);
 
     // Версия
-    std::string ver = "v0.1";
+    std::string ver = "v0.2a";
     sf::Text verText(font, sf::String::fromUtf8(ver.begin(), ver.end()), 22);
     verText.setFillColor(sf::Color(120, 120, 120, 200));
     verText.setPosition({ cx - verText.getLocalBounds().size.x / 2.f, cy - 160.f });

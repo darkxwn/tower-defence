@@ -42,7 +42,7 @@ android {
             // Если Gradle находит две одинаковые либы, он просто берет первую
             pickFirsts.add("lib/arm64-v8a/libtower-defence.so")
             pickFirsts.add("lib/armeabi-v7a/libtower-defence.so")
-            pickFirsts.add("**/libsfml-*.so")
+            pickFirsts.add("*libsfml-*.so")
         }
     }
 }

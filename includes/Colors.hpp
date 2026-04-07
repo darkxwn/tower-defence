@@ -1,6 +1,12 @@
 #pragma once
 #include <SFML/Graphics.hpp>
 
+///////////////////////////////////////////////////////////////////////////
+//
+// ЦВЕТОВЫЕ КОНСТАНТЫ
+//
+///////////////////////////////////////////////////////////////////////////
+
 namespace Colors {
     // UI
     inline const sf::Color panelBg = sf::Color(19, 19, 19, 255);
@@ -13,10 +19,10 @@ namespace Colors {
     inline const sf::Color radiusOutline = sf::Color(255, 255, 255, 80);
 
     // Враги
-    inline const sf::Color hpBarBg = sf::Color(39, 39, 39, 255);
-    inline const sf::Color hpBarFill = sf::Color(255, 0, 64, 255);
+    inline const sf::Color hpBarBg = sf::Color(77, 77, 77, 255);
+    inline const sf::Color hpBarFill = sf::Color(255, 42, 42, 255);
 
     // Фон игры
-    inline const sf::Color gameBg = sf::Color(27, 27, 27, 255);
+    inline const sf::Color gameBg = sf::Color(26, 26, 26, 255);
     
 }

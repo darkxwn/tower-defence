@@ -83,8 +83,7 @@ void Map::load(const std::string& filePath) {
     // Важно: проверяем, что на карте есть и вход, и выход
     if (portalPos.x != -1 && basePos.x != -1) {
         buildPath();
-    }
-    else {
+    } else {
         std::cerr << "[Ошибка]: На карте " << filePath << " не найден портал (1) или база (3)!" << std::endl;
     }
 }
@@ -97,18 +96,28 @@ void Map::render(sf::RenderWindow& window) {
 
             std::string tex;
             switch (tile.type) {
-            case TileType::Road:     tex = "road";     break;
-            case TileType::Platform: tex = "platform"; break;
-            case TileType::Portal:   tex = "portal";   break;
-            case TileType::Base:     tex = "base";     break;
+            case TileType::Road:     
+                tex = "road";     
+                break;
+            case TileType::Platform: 
+                tex = "platform"; 
+                break;
+            case TileType::Portal:   
+                tex = "portal";   
+                break;
+            case TileType::Base:     
+                tex = "base";     
+                break;
             default: continue;
             }
             sf::Sprite sp(ResourceManager::get(tex));
+            sp.setScale({ 0.125f, 0.125f });
             sp.setPosition(sf::Vector2f(tile.gridPos * 64) + mapOffset);
             window.draw(sp);
 
             if (selectedTile == &tile) {
                 sf::Sprite act(ResourceManager::get("active"));
+                act.setScale({ 0.125f, 0.125f });
                 act.setPosition(sp.getPosition());
                 window.draw(act);
             }

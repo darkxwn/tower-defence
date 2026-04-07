@@ -5,9 +5,7 @@
 #include <SFML/Graphics.hpp>
 #include <algorithm>
 
-// ─────────────────────────────────────────────────────────────────────────────
 //  Конструктор
-// ─────────────────────────────────────────────────────────────────────────────
 Game::Game(sf::RenderWindow& window, const std::string& levelPath)
     : window(window), base(sf::Vector2i{ 0, 0 })
 {
@@ -21,9 +19,8 @@ Game::Game(sf::RenderWindow& window, const std::string& levelPath)
     waveSystem.loadWaves(levelPath);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+
 //  Обновление камер (инициализация, ресайз окна)
-// ─────────────────────────────────────────────────────────────────────────────
 void Game::updateViewSizes(sf::Vector2u windowSize) {
     float sw = static_cast<float>(windowSize.x);
     float sh = static_cast<float>(windowSize.y);
@@ -47,9 +44,9 @@ void Game::updateViewSizes(sf::Vector2u windowSize) {
     worldView.setSize({ sw / uiScale, sh / uiScale });
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+
 //  Главный цикл сессии
-// ─────────────────────────────────────────────────────────────────────────────
+
 void Game::run() {
     while (window.isOpen() && endReason == GameEndReason::None) {
         float dt = clock.restart().asSeconds();
@@ -67,9 +64,8 @@ void Game::run() {
 
 GameEndReason Game::getEndReason() const { return endReason; }
 
-// ─────────────────────────────────────────────────────────────────────────────
+
 //  Вычисление позиций кнопок паузы
-// ─────────────────────────────────────────────────────────────────────────────
 void Game::computePauseBtnLayout() {
     sf::Vector2f ws = uiView.getSize();
     float cx    = ws.x / 2.f;
@@ -258,13 +254,9 @@ void Game::processInput(sf::Vector2i pixelPos) {
                         if (t.getGridPos() == tile->gridPos) { occupied = true; break; }
 
                     if (!occupied && money >= cost) {
-                        TowerType type = TowerType::Basic;
-                        if (name == "cannon") type = TowerType::Cannon;
-                        else if (name == "double") type = TowerType::Double;
-                        else if (name == "sniper") type = TowerType::Sniper;
-
                         money -= cost;
-                        towers.emplace_back(type, tile->gridPos);
+                        // Создаем башню по строковому имени типа
+                        towers.emplace_back(name, tile->gridPos);
                         hud.resetSelectedSlot();
                     }
                 }
@@ -281,26 +273,40 @@ void Game::processInput(sf::Vector2i pixelPos) {
 void Game::update(float dt) {
     waveSystem.update(dt, enemies, map.getPath());
 
-    for (auto& e : enemies) e.update(dt);
-    for (auto& t : towers)  t.update(dt, enemies, map.getMapOffset());
+    // обновление врагов
+    for (auto& e : enemies) 
+        e.update(dt);
 
-    // Враги у базы — наносят урон
+    // обновление башен
+    for (auto& t : towers)  
+        t.update(dt, enemies, projectiles, map.getMapOffset());
+
+    // обновление снарядов
+    for (auto& p : projectiles) 
+        p.update(dt, enemies);
+    // очистка мертвых снарядов
+    projectiles.erase(
+        std::remove_if(projectiles.begin(), projectiles.end(),
+            [](const Projectile& p) { return !p.isAlive(); }),
+        projectiles.end());
+
+    // враги у базы — наносят урон
     for (auto& e : enemies)
         if (e.hasReachedBase())
             base.takeDamage(1);
 
-    // Награда за убитых
+    // награда за убитых
     for (auto& e : enemies)
         if (e.isKilled())
             money += GameData::getEnemy(e.getType()).reward;
 
-    // Удаляем мёртвых врагов
+    // удаляем мёртвых врагов
     enemies.erase(
         std::remove_if(enemies.begin(), enemies.end(),
             [](const Enemy& e){ return !e.isAlive(); }),
         enemies.end());
 
-    // Проверка условий завершения
+    // проверка условий завершения
     if (base.isDestroyed())
         state = GameState::GameOver;
     else if (waveSystem.isFinished() && enemies.empty())
@@ -323,12 +329,19 @@ void Game::render() {
     for (auto& e : enemies)
         e.render(window, map.getMapOffset());
 
+    // Снаряды рисуются поверх врагов
+    for (auto& p : projectiles) {
+        p.render(window, map.getMapOffset());
+    }
+
     // СЛОЙ 2: ИНТЕРФЕЙС (HUD, Оверлеи)
     window.setView(uiView);
     hud.render(window, money, base.getLives(), waveSystem.getCurrentWave(), waveSystem.getState());
 
-    if (state == GameState::Paused)              renderPauseOverlay();
-    if (state == GameState::Victory || state == GameState::GameOver) renderEndScreen();
+    if (state == GameState::Paused)              
+        renderPauseOverlay();
+    if (state == GameState::Victory || state == GameState::GameOver) 
+        renderEndScreen();
 
     window.display();
 }

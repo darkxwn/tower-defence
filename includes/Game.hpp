@@ -9,6 +9,12 @@
 #include <string>
 #include <vector>
 
+///////////////////////////////////////////////////////////////////////////
+//
+// КЛАСС GAME
+//
+///////////////////////////////////////////////////////////////////////////
+
 // Внутренние состояния игровой сессии
 enum class GameState {
     Playing,
@@ -50,9 +56,14 @@ private:
     Map map;
     int money = 0;
     Base base;
+
     std::vector<Enemy> enemies;
+
     std::vector<Tower> towers;
+    std::vector<Projectile> projectiles;
+
     WaveSystem waveSystem;
+
 
     // Кнопки оверлея паузы (позиции вычисляются в render)
     sf::FloatRect pauseMenuRect;

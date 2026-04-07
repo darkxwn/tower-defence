@@ -5,6 +5,13 @@
 #include "ResourceManager.hpp"
 #include <string>
 
+///////////////////////////////////////////////////////////////////////////
+//
+// ТОЧКА ВХОДА
+//
+///////////////////////////////////////////////////////////////////////////
+
+
 #ifdef __ANDROID__
 #include <android/native_activity.h>
 #include <SFML/System/NativeActivity.hpp>
@@ -63,7 +70,7 @@ static void loadResources() {
     dataPath = "";
 #endif
 
-    // ШРИФТ (Убедись, что нет лишних /)
+    // ШРИФТ
     ResourceManager::loadFont("main", assetsPath + "fonts/web_ibm_mda.ttf");
 
     // ИКОНКИ
@@ -83,19 +90,18 @@ static void loadResources() {
     ResourceManager::load("base", assetsPath + "sprites/tile-base.png");
     ResourceManager::load("active", assetsPath + "sprites/tile-active-layer.png");
 
-    // ВРАГИ (Убрал лишний / перед sprites)
+    // ВРАГИ 
     ResourceManager::load("enemy-basic", assetsPath + "sprites/enemy-basic.png");
     ResourceManager::load("enemy-fast", assetsPath + "sprites/enemy-fast.png");
     ResourceManager::load("enemy-strong", assetsPath + "sprites/enemy-strong.png");
 
-    // ВАЖНО: На Android GameData::load() упадет, если использует std::ifstream!
-    // Пока просто вызываем, но будь готов переделывать GameData
     GameData::load();
 
     for (const auto& name : GameData::getTowerNames()) {
         ResourceManager::load("tower-" + name + "-base", assetsPath + "sprites/tower-" + name + "-base.png");
         ResourceManager::load("tower-" + name + "-turret", assetsPath + "sprites/tower-" + name + "-turret.png");
         ResourceManager::load("tower-" + name + "-preview", assetsPath + "sprites/tower-" + name + "-preview.png");
+        ResourceManager::load("tower-" + name + "-proj", assetsPath + "sprites/tower-" + name + "-proj.png");
     }
 }
 
@@ -121,14 +127,14 @@ int main(int argc, char* argv[]) {
     // Главный цикл приложения: Меню ↔ Игра
     while (window.isOpen()) {
 
-        // ── Показываем меню до тех пор, пока игрок не выберет уровень ──
+        // Показываем меню до тех пор, пока игрок не выберет уровень
         while (window.isOpen() && !menu.isLevelChosen()) {
             menu.handleEvents();
             menu.render();
         }
         if (!window.isOpen()) break;
 
-        // ── Запускаем игровую сессию ──
+        // Запускаем игровую сессию
         std::string levelPath = menu.getChosenLevel();
         menu.resetChoice(); // сбрасываем флаг, но остаёмся в LevelSelect
 

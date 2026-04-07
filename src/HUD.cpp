@@ -100,7 +100,7 @@ void HUD::render(sf::RenderWindow& window, int money, int lives, int wave, WaveS
 
         if (i < (int)towerNames.size()) {
             sf::Sprite preview(ResourceManager::get("tower-" + towerNames[i] + "-preview"));
-            preview.setScale({ 1.25f, 1.25f });
+            preview.setScale({ 0.15625f, 0.15625f });
             auto slotPos = towerSlots[i].getPosition();
             preview.setPosition(slotPos + sf::Vector2f(5.f, 0.f));
             window.draw(preview);

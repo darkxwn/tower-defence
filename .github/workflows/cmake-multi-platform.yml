@@ -62,7 +62,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: tower-defence-android-${{ github.run_number }}
-          path: android/app/build/outputs/apk/debug/*.apk
+          path: android/app/build/outputs/apk/debug//.apk
   build:
     runs-on: ${{ matrix.os }}
 
@@ -138,9 +138,9 @@ jobs:
       with:
         name: tower-defence-${{ matrix.os }}-${{ matrix.c_compiler }}
         path: |
-          ${{ steps.strings.outputs.build-output-dir }}/**/tower-defence.exe
-          ${{ steps.strings.outputs.build-output-dir }}/**/tower-defence
-          ${{ steps.strings.outputs.build-output-dir }}/**/assets/
-          ${{ steps.strings.outputs.build-output-dir }}/**/data/
-          ${{ steps.strings.outputs.build-output-dir }}/**/*.app
+          ${{ steps.strings.outputs.build-output-dir }}//tower-defence.exe
+          ${{ steps.strings.outputs.build-output-dir }}//tower-defence
+          ${{ steps.strings.outputs.build-output-dir }}//assets/
+          ${{ steps.strings.outputs.build-output-dir }}//data/
+          ${{ steps.strings.outputs.build-output-dir }}//*.app
         include-hidden-files: false
