@@ -83,12 +83,18 @@ static void loadResources() {
     ResourceManager::load("icon-settings", assetsPath + "icons/settings.png");
     ResourceManager::load("icon-exit", assetsPath + "icons/exit.png");
 
+    ResourceManager::load("icon-speed1", assetsPath + "icons/icon-speed1.png");
+    ResourceManager::load("icon-speed2", assetsPath + "icons/icon-speed2.png");
+    ResourceManager::load("icon-speed3", assetsPath + "icons/icon-speed3.png");
+
     // ТАЙЛЫ
     ResourceManager::load("road", assetsPath + "sprites/tile-road.png");
     ResourceManager::load("platform", assetsPath + "sprites/tile-platform.png");
-    ResourceManager::load("portal", assetsPath + "sprites/tile-portal.png");
-    ResourceManager::load("base", assetsPath + "sprites/tile-base.png");
     ResourceManager::load("active", assetsPath + "sprites/tile-active-layer.png");
+    ResourceManager::load("portal", assetsPath + "sprites/tile-portal.png");
+    ResourceManager::load("portal-layer1", assetsPath + "sprites/tile-portal-layer1.png");
+    ResourceManager::load("portal-layer2", assetsPath + "sprites/tile-portal-layer2.png");
+    ResourceManager::load("base", assetsPath + "sprites/tile-base.png");
 
     // ВРАГИ 
     ResourceManager::load("enemy-basic", assetsPath + "sprites/enemy-basic.png");

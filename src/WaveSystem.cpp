@@ -61,7 +61,7 @@ void WaveSystem::loadWaves(const std::string& path) {
     }
 }
 
-void WaveSystem::update(float deltaTime, std::vector<Enemy>& enemies, const std::vector<sf::Vector2i>& path) {
+void WaveSystem::update(float deltaTime, std::list<std::shared_ptr<Enemy>>& enemies, const std::vector<sf::Vector2i>& path) {
     if (currentWave >= (int)waves.size()) return;
 
     if (state == WaveState::Idle) return;
@@ -94,7 +94,8 @@ void WaveSystem::update(float deltaTime, std::vector<Enemy>& enemies, const std:
         spawnTimer = 0.f;
 
         auto stats = GameData::getEnemy(wave.type);
-        enemies.emplace_back(wave.type, stats.health, stats.speed, path);
+        enemies.push_back(std::make_shared<Enemy>(wave.type, stats.health, stats.speed, path));
+
 
         spawned++;
 

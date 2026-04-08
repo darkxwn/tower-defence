@@ -12,6 +12,9 @@ Game::Game(sf::RenderWindow& window, const std::string& levelPath)
     // Инициализируем камеры
     updateViewSizes(window.getSize());
 
+    projectiles.clear(); 
+    enemies.clear();
+
     map.load(levelPath);
     map.centerOnScreen(window.getSize(), 75.f, 120.f);
     money = map.getStartMoney();
@@ -20,7 +23,7 @@ Game::Game(sf::RenderWindow& window, const std::string& levelPath)
 }
 
 
-//  Обновление камер (инициализация, ресайз окна)
+// Обновление камер (инициализация, ресайз окна)
 void Game::updateViewSizes(sf::Vector2u windowSize) {
     float sw = static_cast<float>(windowSize.x);
     float sh = static_cast<float>(windowSize.y);
@@ -36,12 +39,12 @@ void Game::updateViewSizes(sf::Vector2u windowSize) {
     float uiW = uiH * aspect;
 
     uiView = sf::View(sf::FloatRect({ 0.f, 0.f }, { uiW, uiH }));
-
     worldView = sf::View(sf::FloatRect({ 0.f, 0.f }, { sw, sh }));
     worldView.zoom(currentZoom);
-    worldView.setCenter({ sw / 2.f, sh / 2.f });
-
     worldView.setSize({ sw / uiScale, sh / uiScale });
+    hud.updateLayout(uiView.getSize());
+    
+
 }
 
 
@@ -91,8 +94,10 @@ void Game::handleEvents() {
         if (const auto* resized = event->getIf<sf::Event::Resized>()) {
             sf::Vector2u newSize = { resized->size.x, resized->size.y };
             updateViewSizes(newSize);
+            worldView.zoom(currentZoom);
             map.centerOnScreen(newSize, 75.f, 120.f);
             computePauseBtnLayout();
+            clampView();
             continue;
         }
 
@@ -271,19 +276,27 @@ void Game::processInput(sf::Vector2i pixelPos) {
 
 //  Обновление
 void Game::update(float dt) {
-    waveSystem.update(dt, enemies, map.getPath());
+    // Получаем текущую скорость игры из HUD
+    float timeScale = hud.getGameSpeed();
+    float scaledDt = dt * timeScale;
+
+    // обновляем анимации карты
+    map.update(scaledDt);
+
+    waveSystem.update(scaledDt, enemies, map.getPath());
 
     // обновление врагов
     for (auto& e : enemies) 
-        e.update(dt);
+        e->update(scaledDt);
 
     // обновление башен
     for (auto& t : towers)  
-        t.update(dt, enemies, projectiles, map.getMapOffset());
+        t.update(scaledDt, enemies, projectiles, map.getMapOffset());
 
     // обновление снарядов
     for (auto& p : projectiles) 
-        p.update(dt, enemies);
+        p.update(scaledDt, enemies);
+
     // очистка мертвых снарядов
     projectiles.erase(
         std::remove_if(projectiles.begin(), projectiles.end(),
@@ -292,19 +305,18 @@ void Game::update(float dt) {
 
     // враги у базы — наносят урон
     for (auto& e : enemies)
-        if (e.hasReachedBase())
+        if (e->hasReachedBase())
             base.takeDamage(1);
 
-    // награда за убитых
+    // награда за убитых врагов
     for (auto& e : enemies)
-        if (e.isKilled())
-            money += GameData::getEnemy(e.getType()).reward;
+        if (e->isKilled())
+            money += GameData::getEnemy(e->getType()).reward;
 
     // удаляем мёртвых врагов
-    enemies.erase(
-        std::remove_if(enemies.begin(), enemies.end(),
-            [](const Enemy& e){ return !e.isAlive(); }),
-        enemies.end());
+    enemies.remove_if([](const std::shared_ptr<Enemy>& e) {
+        return !e->isAlive();
+        });
 
     // проверка условий завершения
     if (base.isDestroyed())
@@ -327,7 +339,7 @@ void Game::render() {
         t.render(window, map.getMapOffset(), showR);
     }
     for (auto& e : enemies)
-        e.render(window, map.getMapOffset());
+        e->render(window, map.getMapOffset());
 
     // Снаряды рисуются поверх врагов
     for (auto& p : projectiles) {

@@ -66,7 +66,7 @@ void Enemy::render(sf::RenderWindow& window, sf::Vector2f mapOffset) {
 
     // спрайт врага
     sf::Sprite sprite(ResourceManager::get(texName));
-    sprite.setScale({ 0.125f, 0.125f });
+    sprite.setScale({ 0.11f, 0.11f });
     sprite.setPosition(mapOffset + pos + offset + sf::Vector2f(16.f, 16.f));
     window.draw(sprite);
 }
@@ -78,14 +78,28 @@ void Enemy::takeDamage(int damage) {
     }
 }
 
-// Считаем направление движения
 sf::Vector2f Enemy::getVelocity() const {
-    if (pathIndex >= (int)path->size()) return { 0.f, 0.f };
-    sf::Vector2f target = sf::Vector2f((*path)[pathIndex] * 64);
-    sf::Vector2f dir = target - pos;
-    float length = std::sqrt(dir.x * dir.x + dir.y * dir.y);
-    if (length < 0.1f) return { 0.f, 0.f };
-    return (dir / length) * (float)speed;
+    // если враг уже прошел путь или путей нет
+    if (path->empty() || pathIndex >= (int)path->size()) return { 0.f, 0.f };
+
+    // определяем следующую точку
+    // Если мы стоим в path[pathIndex], берем следующую
+    int nextIdx = pathIndex;
+    sf::Vector2f targetPos = sf::Vector2f((*path)[nextIdx] * 64);
+
+    sf::Vector2f dir = targetPos - pos;
+    float len = std::sqrt(dir.x * dir.x + dir.y * dir.y);
+
+    // Если мы уже очень близко к текущей точке, смотрим на следующую
+    if (len < 1.0f && nextIdx + 1 < (int)path->size()) {
+        nextIdx++;
+        targetPos = sf::Vector2f((*path)[nextIdx] * 64);
+        dir = targetPos - pos;
+        len = std::sqrt(dir.x * dir.x + dir.y * dir.y);
+    }
+
+    if (len < 0.1f) return { 0.f, 0.f };
+    return (dir / len) * (float)speed;
 }
 
 bool Enemy::isAlive() const { return alive; }
@@ -99,3 +113,4 @@ sf::Vector2f Enemy::getPos() const { return pos; }
 bool Enemy::isKilled() const { return !alive && !reachedBase; }
 
 int Enemy::getPathIndex() const { return pathIndex; }
+

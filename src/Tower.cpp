@@ -2,7 +2,7 @@
 #include "Enemy.hpp"
 #include "ResourceManager.hpp"
 #include "Colors.hpp"
-#include <Projectile.hpp>
+#include "Projectile.hpp"
 
 Tower::Tower(const std::string& slug, sf::Vector2i gridPos)
     : typeSlug(slug), gridPos(gridPos) {
@@ -38,47 +38,70 @@ void Tower::render(sf::RenderWindow& window, sf::Vector2f mapOffset, bool showRa
     window.draw(turret);
 }
 
-void Tower::update(float deltaTime, std::vector<Enemy>& enemies, std::vector<Projectile>& projectiles, sf::Vector2f mapOffset) {
-    // Логический центр башни на карте (БЕЗ mapOffset) 
+void Tower::update(float deltaTime, std::list<std::shared_ptr<Enemy>>& enemies, std::vector<Projectile>& projectiles, sf::Vector2f mapOffset) {
+    // Логический центр башни на карте
     sf::Vector2f towerMapPos = sf::Vector2f(gridPos * 64) + sf::Vector2f(32.f, 32.f);
 
-    enemyIndex = -1;
+    std::shared_ptr<Enemy> targetShared = nullptr; // храним указатель на цель
     int maxPathIndex = -1;
 
-    for (int i = 0; i < (int)enemies.size(); i++) {
-        if (!enemies[i].isAlive()) continue;
-
-        // Расстояние считаем в координатах карты 
-        sf::Vector2f diff = enemies[i].getPos() - towerMapPos;
+    // Поиск цели
+    for (auto& e : enemies) {
+        if (!e->isAlive()) continue;
+        sf::Vector2f diff = e->getPos() - towerMapPos;
         float dist = std::sqrt(diff.x * diff.x + diff.y * diff.y);
-
-        if (dist <= stats.range && enemies[i].getPathIndex() > maxPathIndex) {
-            maxPathIndex = enemies[i].getPathIndex();
-            enemyIndex = i;
+        if (dist <= stats.range && e->getPathIndex() > maxPathIndex) {
+            maxPathIndex = e->getPathIndex();
+            targetShared = e;
         }
     }
 
-    if (enemyIndex != -1) {
-        Enemy& target = enemies[enemyIndex];
-        sf::Vector2f diff = target.getPos() - towerMapPos;
-        float deg = std::atan2(diff.y, diff.x) * (180.f / 3.14159f) + 90.f;
+    if (targetShared) {
+        // текущие данные врага
+        sf::Vector2f enemyPos = targetShared->getPos();
+        sf::Vector2f enemyVel = targetShared->getVelocity();
 
-        // Плавный поворот 
-        float angleDiff = deg - currentAngle;
+        // расстояние до врага для расчета времени полета снаряда
+        sf::Vector2f currentDiff = enemyPos - towerMapPos;
+        float currentDist = std::sqrt(currentDiff.x * currentDiff.x + currentDiff.y * currentDiff.y);
+
+        float projectileSpeed = 600.f;
+        float timeToHit = currentDist / projectileSpeed;
+
+        // предсказание
+        sf::Vector2f predictedPos = enemyPos + sf::Vector2f(32.f, 32.f) + (enemyVel * timeToHit);
+
+        sf::Vector2f aimDiff = predictedPos - towerMapPos;
+        float targetDeg = std::atan2(aimDiff.y, aimDiff.x) * (180.f / 3.14159f) + 90.f;
+
+        float angleDiff = targetDeg - currentAngle;
         while (angleDiff > 180.f)  angleDiff -= 360.f;
         while (angleDiff < -180.f) angleDiff += 360.f;
 
         float step = rotationSpeed * deltaTime;
-        if (std::abs(angleDiff) <= step) currentAngle = deg;
-        else currentAngle += (angleDiff > 0 ? step : -step);
+        if (std::abs(angleDiff) <= step) {
+            currentAngle = targetDeg;
+        } else {
+            currentAngle += (angleDiff > 0 ? step : -step);
+        }
 
-        // Таймер стрельбы 
+        currentAngle = fmod(currentAngle, 360.f);
+        if (currentAngle < 0) currentAngle += 360.f;
+
         fireTimer += deltaTime;
         if (fireTimer >= 1.f / stats.firerate) {
-            // Спавним снаряд в координатах карты 
-            if (std::abs(angleDiff) < 15.f) {
+            if (std::abs(angleDiff) < 10.f) {
                 fireTimer = 0.f;
-                projectiles.emplace_back(towerMapPos, &target, stats.damage, 600.f, stats.splash, typeSlug);
+
+                float muzzleOffset = 26.f;
+                float rad = (currentAngle - 90.f) * (3.14159f / 180.f);
+
+                sf::Vector2f muzzlePos;
+                muzzlePos.x = towerMapPos.x + std::cos(rad) * muzzleOffset;
+                muzzlePos.y = towerMapPos.y + std::sin(rad) * muzzleOffset;
+
+                // Передаем указатель на цель
+                projectiles.emplace_back(muzzlePos, targetShared, stats.damage, 600.f, stats.splash, typeSlug);
             }
         }
     }

@@ -39,7 +39,7 @@ private:
 
 public:
     void loadWaves(const std::string& path);
-    void update(float deltaTime, std::vector<Enemy>& enemies, const std::vector<sf::Vector2i>& path);
+    void update(float deltaTime, std::list<std::shared_ptr<Enemy>>& enemies, const std::vector<sf::Vector2i>& path);
 
     void startWave();
     bool isFinished() const;

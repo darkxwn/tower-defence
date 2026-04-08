@@ -19,13 +19,13 @@ private:
     int enemyIndex = -1;
     float fireTimer = 0.f;
     float currentAngle = 0.f;
-    float rotationSpeed = 360.f;
+    float rotationSpeed = 180.f;
 
 public:
     // Конструктор теперь принимает строку имени типа
     Tower(const std::string& slug, sf::Vector2i gridPos);
 
-    void update(float deltaTime, std::vector<Enemy>& enemies, std::vector<Projectile>& projectiles, sf::Vector2f mapOffset);
+    void update(float deltaTime, std::list<std::shared_ptr<Enemy>>& enemies, std::vector<Projectile>& projectiles, sf::Vector2f mapOffset);
     void render(sf::RenderWindow& window, sf::Vector2f mapOffset, bool showRadius = false);
 
     sf::Vector2i getGridPos() const;

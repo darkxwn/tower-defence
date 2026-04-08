@@ -88,6 +88,11 @@ void Map::load(const std::string& filePath) {
     }
 }
 
+void Map::update(float dt) {
+    portalAngle += 75.f * dt; // Скорость вращения слоя (град/сек)
+    if (portalAngle >= 360.f) portalAngle -= 360.f;
+}
+
 void Map::render(sf::RenderWindow& window) {
     for (int y = 0; y < (int)tiles.size(); y++) {
         for (int x = 0; x < (int)tiles[y].size(); x++) {
@@ -108,12 +113,38 @@ void Map::render(sf::RenderWindow& window) {
             case TileType::Base:     
                 tex = "base";     
                 break;
-            default: continue;
+            default: 
+                continue;
             }
+
             sf::Sprite sp(ResourceManager::get(tex));
             sp.setScale({ 0.125f, 0.125f });
             sp.setPosition(sf::Vector2f(tile.gridPos * 64) + mapOffset);
             window.draw(sp);
+
+            if (tile.type == TileType::Portal) {
+                // Позиционируем точно в центр тайла
+                sf::Vector2f center = sf::Vector2f(tile.gridPos * 64) + mapOffset + sf::Vector2f(32.f, 32.f);
+                
+                sf::Sprite layer1(ResourceManager::get("portal-layer1"));
+                // Устанавливаем центр вращения (512 / 2 = 256)
+                layer1.setOrigin({ 256.f, 256.f });
+                layer1.setScale({ 0.12f, 0.12f }); // Слой чуть меньше основного, чтобы не вылезал
+                layer1.setPosition(center);
+                layer1.setRotation(sf::degrees(portalAngle));
+
+
+                sf::Sprite layer2(ResourceManager::get("portal-layer2"));
+                // Устанавливаем центр вращения (512 / 2 = 256)
+                layer2.setOrigin({ 256.f, 256.f });
+                layer2.setScale({ 0.085f, 0.085f }); // Слой чуть меньше основного, чтобы не вылезал
+
+                layer2.setPosition(center);
+                layer2.setRotation(sf::degrees(-portalAngle));
+
+                window.draw(layer1);
+                window.draw(layer2);
+            }
 
             if (selectedTile == &tile) {
                 sf::Sprite act(ResourceManager::get("active"));

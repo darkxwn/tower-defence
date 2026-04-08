@@ -8,7 +8,7 @@ project(tower-defence LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Настройки статической сборки (важно для кроссплатформенности)
+# Настройки статической сборки
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 set(SFML_STATIC_LIBRARIES ON CACHE BOOL "" FORCE)
 
@@ -42,6 +42,7 @@ set(SOURCES
     src/WaveSystem.cpp
     src/Projectile.cpp
 )
+
 
 # Ресурсы для Windows и macOS
 set(WIN_RESOURCES "")
@@ -99,7 +100,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     SFML::Graphics
     SFML::Window
     SFML::System
-    SFML::Audio
+    # SFML::Audio
 )
 
 # Дополнительные либы по платформам

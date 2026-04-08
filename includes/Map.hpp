@@ -18,6 +18,8 @@ private:
     std::vector<std::vector<Tile>> tiles;
     Tile* selectedTile = nullptr;
 
+    float portalAngle = 0.f; // Угол для вращения слоя
+
     std::vector<sf::Vector2i> path;
     sf::Vector2i portalPos;
     sf::Vector2i basePos;
@@ -28,6 +30,8 @@ private:
 public:
     Map() = default;
     void load(const std::string& filePath); // загружает уровень из .map файла
+    
+    void update(float dt);
 
     void render(sf::RenderWindow& window);
     void centerOnScreen(sf::Vector2u windowSize, float topPanelH, float bottomPanelH);

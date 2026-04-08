@@ -7,7 +7,7 @@
 #include "WaveSystem.hpp"
 #include <SFML/Graphics.hpp>
 #include <string>
-#include <vector>
+#include <list>
 
 ///////////////////////////////////////////////////////////////////////////
 //
@@ -57,7 +57,7 @@ private:
     int money = 0;
     Base base;
 
-    std::vector<Enemy> enemies;
+    std::list<std::shared_ptr<Enemy>> enemies;
 
     std::vector<Tower> towers;
     std::vector<Projectile> projectiles;
