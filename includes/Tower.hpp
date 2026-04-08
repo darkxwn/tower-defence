@@ -3,6 +3,7 @@
 #include "Enemy.hpp"
 #include "GameData.hpp"
 #include <cmath>
+#include <list>
 #include <Projectile.hpp>
 
 ///////////////////////////////////////////////////////////////////////////
