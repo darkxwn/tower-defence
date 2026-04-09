@@ -14,15 +14,6 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
-        
-      - name: Verify Source Code
-        run: |
-          echo "=== ПРОВЕРКА КОДА В МЕНЮ ==="
-          grep -C 5 "uiView" src/Menu.cpp || echo "uiView НЕ НАЙДЕН В КОДЕ!"
-          echo "=== ПРОВЕРКА КОДА В ГЕЙМЕ ==="
-          grep "camera" src/Game.cpp || echo "CameraManager НЕ НАЙДЕН!"
-          echo "=== ТЕКУЩИЙ ХЭШ И СООБЩЕНИЕ ==="
-          git log -1
 
       - name: set up JDK 17
         uses: actions/setup-java@v4
@@ -51,10 +42,7 @@ jobs:
           ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
         run: |
           cd android
-          rm -rf .gradle
-          rm -rf app/build
-          rm -rf app/.cxx
-          rm -rf app/src/main/jniLibs
+          rm -rf .gradle app/build app/.cxx app/src/main/jniLibs
           chmod +x gradlew
           ./gradlew assembleDebug --no-build-cache
 
@@ -62,16 +50,16 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: tower-defence-android-${{ github.run_number }}
-          path: android/app/build/outputs/apk/debug//.apk
+          # Используем маску, чтобы найти APK в любой подпапке build
+          path: android/app/build/outputs/apk/**/*.apk
+
   build:
     runs-on: ${{ matrix.os }}
-
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         build_type: [Release]
-        # Оставляем clang и cl как основные
         c_compiler: [clang, cl]
         include:
           - os: windows-latest
@@ -137,10 +125,12 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: tower-defence-${{ matrix.os }}-${{ matrix.c_compiler }}
+        # Магия '**' позволяет находить файлы в подпапках конфигурации (Release/Debug)
         path: |
-          ${{ steps.strings.outputs.build-output-dir }}//tower-defence.exe
-          ${{ steps.strings.outputs.build-output-dir }}//tower-defence
-          ${{ steps.strings.outputs.build-output-dir }}//assets/
-          ${{ steps.strings.outputs.build-output-dir }}//data/
-          ${{ steps.strings.outputs.build-output-dir }}//*.app
+          ${{ steps.strings.outputs.build-output-dir }}/**/*.exe
+          ${{ steps.strings.outputs.build-output-dir }}/**/tower-defence
+          ${{ steps.strings.outputs.build-output-dir }}/**/assets/
+          ${{ steps.strings.outputs.build-output-dir }}/**/data/
+          ${{ steps.strings.outputs.build-output-dir }}/**/*.app
+        if-no-files-found: warn
         include-hidden-files: false
