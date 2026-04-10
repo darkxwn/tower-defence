@@ -1,8 +1,10 @@
 #include <SFML/Graphics.hpp>
 #include "Menu.hpp"
+#include "Logger.hpp"
 #include "Game.hpp"
 #include "GameData.hpp"
 #include "ResourceManager.hpp"
+#include "SettingsManager.hpp"
 #include <string>
 
 ///////////////////////////////////////////////////////////////////////////
@@ -111,24 +113,32 @@ static void loadResources() {
     }
 }
 
-int main(int argc, char* argv[]) {
-    sf::RenderWindow window(
-        sf::VideoMode({ 1920, 1080 }),
-        "Tower Defence",
-        sf::Style::Default
-    );
+// Вспомогательная функция для настройки окна
+void setupWindow(sf::RenderWindow& window, SettingsManager& settings) {
+    bool isFullscreen = settings.getBool("fullscreen");
 
+    // Выбираем стиль
+    auto style = isFullscreen ? sf::State::Fullscreen : sf::State::Windowed;
+
+    // Пересоздаем окно
+    window.create(sf::VideoMode({ 1920, 1080 }), "Tower Defence", style);
     window.setVerticalSyncEnabled(true);
+    window.setMinimumSize(sf::Vector2u({ 1280, 720 }));
+}
+
+int main(int argc, char* argv[]) {
+    SettingsManager settings;
+    sf::RenderWindow window;
+
+    setupWindow(window, settings);
 
 #ifdef __ANDROID__
     setImmersiveMode(window);
 #endif
 
-    window.setMinimumSize(sf::Vector2u({ 1280, 720 }));
-
     loadResources();
 
-    Menu menu(window);
+    Menu menu(window, settings);
 
     // Главный цикл приложения: Меню ↔ Игра
     while (window.isOpen()) {
@@ -136,6 +146,12 @@ int main(int argc, char* argv[]) {
         // Показываем меню до тех пор, пока игрок не выберет уровень
         while (window.isOpen() && !menu.isLevelChosen()) {
             menu.handleEvents();
+
+            if (menu.consumesWindowRecreationRequest()) {
+                setupWindow(window, settings);
+                menu.updateViewSizes(window.getSize());
+            }
+
             menu.render();
         }
         if (!window.isOpen()) break;
@@ -146,7 +162,7 @@ int main(int argc, char* argv[]) {
 
         bool keepPlaying = true;
         while (keepPlaying && window.isOpen()) {
-            Game game(window, levelPath);
+            Game game(window, settings, levelPath);
             game.run();
 
             GameEndReason reason = game.getEndReason();

@@ -6,8 +6,8 @@
 #include <algorithm>
 
 //  Конструктор
-Game::Game(sf::RenderWindow& window, const std::string& levelPath)
-    : window(window), base(sf::Vector2i{ 0, 0 })
+Game::Game(sf::RenderWindow& window, SettingsManager& settings, const std::string& levelPath)
+    : window(window), base(sf::Vector2i{ 0, 0 }), settings(settings)
 {
     // Инициализируем камеры
     updateViewSizes(window.getSize());
@@ -29,11 +29,7 @@ void Game::updateViewSizes(sf::Vector2u windowSize) {
     float sh = static_cast<float>(windowSize.y);
     float aspect = sw / sh;
 
-#ifdef __ANDROID__
-    uiScale = 1.6f;
-#else
-    uiScale = 1.0f; // На ПК оставляем 1 к 1
-#endif
+    uiScale = settings.getFloat("ui_scale");
     
     float uiH = sh / uiScale;
     float uiW = uiH * aspect;
@@ -43,8 +39,6 @@ void Game::updateViewSizes(sf::Vector2u windowSize) {
     worldView.zoom(currentZoom);
     worldView.setSize({ sw / uiScale, sh / uiScale });
     hud.updateLayout(uiView.getSize());
-    
-
 }
 
 
@@ -113,7 +107,7 @@ void Game::handleEvents() {
             // Зум колесиком
             if (const auto* scroll = event->getIf<sf::Event::MouseWheelScrolled>()) {
                 float factor = (scroll->delta > 0) ? 0.9f : 1.1f;
-                if ((currentZoom * factor >= 0.4f) && (currentZoom * factor <= 1.6f)) {
+                if ((currentZoom * factor >= 0.5f) && (currentZoom * factor <= 1.6f)) {
                     sf::Vector2f before = window.mapPixelToCoords(scroll->position, worldView);
                     worldView.zoom(factor);
                     currentZoom *= factor;
@@ -161,7 +155,7 @@ void Game::handleEvents() {
 
                 if (!isPinching) {
                     sf::Vector2f delta = sf::Vector2f(lastInputPos - currentPos);
-                    worldView.move(delta * currentZoom);
+                    worldView.move(delta * (currentZoom * settings.getFloat("sensivity")));
                     lastInputPos = currentPos;
                     clampView();
                 }
@@ -178,7 +172,7 @@ void Game::handleEvents() {
                     float newDist = std::sqrt(std::pow((float)p0.x - p1.x, 2) + std::pow((float)p0.y - p1.y, 2));
                     if (std::abs(newDist - initialPinchDistance) > 2.f) {
                         float f = initialPinchDistance / newDist;
-                        if (currentZoom * f > 0.4f && currentZoom * f < 1.6f) {
+                        if (currentZoom * f > 0.5f && currentZoom * f < 1.6f) {
                             worldView.zoom(f);
                             currentZoom *= f;
                             worldView.move(worldBefore - window.mapPixelToCoords(mid, worldView));

@@ -1,4 +1,5 @@
 #pragma once
+#include "SettingsManager.hpp"
 #include <SFML/Graphics.hpp>
 #include <string>
 #include <vector>
@@ -20,6 +21,7 @@ struct LevelInfo {
     std::string name;
     int index; // 0-based порядковый номер
 };
+
 
 // Класс главного меню.
 // Ключевой принцип надёжности кликов: вся геометрия кнопок/карточек
@@ -45,8 +47,21 @@ public:
         int rowCount;    // строк
     };
 
+    struct SettingsLayout {
+        sf::FloatRect musicSlider;
+        sf::FloatRect sfxSlider;
+        sf::FloatRect uiScaleMinus, uiScalePlus;
+        sf::FloatRect sensMinus, sensPlus;
+        sf::FloatRect fullscreenToggle;
+        sf::FloatRect saveSettingsBtn;
+        sf::FloatRect backBtn;
+
+        float rowHeight = 80.f;
+    };
+
 private:
     sf::RenderWindow& window;
+    SettingsManager& settings;
     MenuState state = MenuState::Main;
 
     std::vector<LevelInfo> levels;
@@ -57,6 +72,8 @@ private:
     sf::View uiView;    // Камера для кнопок и текста
     float currentZoom = 1.0f;
     float uiScale = 1.0f;
+    bool windowRecreationRequired = false;
+
 
     // Метод для синхронизации размеров при старте и ресайзе
 
@@ -66,16 +83,20 @@ private:
     // Геометрия — вычисляется один раз за кадр
     MainLayout        computeMainLayout()        const;
     LevelSelectLayout computeLevelSelectLayout() const;
+    SettingsLayout computeSettingsLayout() const;
 
     // Отрисовка
     void renderMain(const MainLayout& L);
     void renderLevelSelect(const LevelSelectLayout& L);
+    void renderSettings(const SettingsLayout& L);
     void renderResultOverlay(); // баннер победы/поражения поверх LevelSelect
     void renderStub(const std::string& title);
-    void updateViewSizes(sf::Vector2u windowSize);
+    void drawSlider(const std::string& label, sf::FloatRect r, float value);
+    void drawStepper(const std::string& label, sf::FloatRect rMinus, sf::FloatRect rPlus, std::string value);
 
     // Обработка кликов
     void handleMainClick(sf::Vector2f pos, const MainLayout& L);
+    void handleSettingsClick(sf::Vector2f pos, const SettingsLayout& L);
     void handleLevelSelectClick(sf::Vector2f pos, const LevelSelectLayout& L);
 
     // Утилиты
@@ -86,7 +107,7 @@ private:
         sf::Color customFill = sf::Color::Transparent) const;
 
 public:
-    explicit Menu(sf::RenderWindow& window);
+    explicit Menu(sf::RenderWindow& window, SettingsManager& settings);
 
     void handleEvents();
     void render();
@@ -94,6 +115,16 @@ public:
     bool        isLevelChosen()  const;
     std::string getChosenLevel() const;
     void        resetChoice();   // вызывать ПОСЛЕ getChosenLevel()
+
+    bool consumesWindowRecreationRequest() {
+        if (windowRecreationRequired) {
+            windowRecreationRequired = false; // сбрасываем флаг после прочтения
+            return true;
+        }
+        return false;
+    }
+
+    void updateViewSizes(sf::Vector2u windowSize);
 
     // Вызывается из main после завершения игровой сессии
     void notifyResult(SessionResult result, const std::string& levelPath);

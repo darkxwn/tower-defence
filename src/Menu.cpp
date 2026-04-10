@@ -1,18 +1,22 @@
 #include "Menu.hpp"
 #include "ResourceManager.hpp"
 #include "GeneratedLevels.hpp"
+#include "SettingsManager.hpp"
 #include "Colors.hpp"
 #include <filesystem>
 #include <fstream>
 #include <algorithm>
+#include <sstream>
 #include <cmath>
+#include <SFML/System/FileInputStream.hpp>
 
 namespace fs = std::filesystem;
 
 
 //  Конструктор
 
-Menu::Menu(sf::RenderWindow& window) : window(window) {
+Menu::Menu(sf::RenderWindow& window, SettingsManager& settings) : window(window), settings(settings) {
+    this->uiScale = this->settings.getFloat("ui_scale");
     updateViewSizes(window.getSize());
     scanLevels();
 }
@@ -24,15 +28,10 @@ void Menu::updateViewSizes(sf::Vector2u windowSize) {
     float sw = static_cast<float>(windowSize.x);
     float sh = static_cast<float>(windowSize.y);
     float aspect = sw / sh;
-
-#ifdef __ANDROID__
-    uiScale = 1.6f;
-#else
-    uiScale = 1.0f;
-#endif
-
     float uiH = sh / uiScale;
     float uiW = uiH * aspect;
+
+    uiScale = settings.getFloat("ui_scale");
 
     uiView = sf::View(sf::FloatRect({ 0.f, 0.f }, { uiW, uiH }));
 
@@ -62,13 +61,31 @@ void Menu::scanLevels() {
 }
 
 std::string Menu::readLevelName(const std::string& path) const {
-    std::ifstream f(path);
+    sf::FileInputStream stream;
+    if (!stream.open(path)) {
+        return "Ошибка пути";
+    }
+
+    std::string content;
+    auto size = stream.getSize();
+    if (size) {
+        content.resize(*size);
+        stream.read(content.data(), *size);
+    }
+
+    std::istringstream f(content);
     std::string line;
     while (std::getline(f, line)) {
-        if (line.rfind("name=", 0) == 0) return line.substr(5);
-        if (line == "tiles=") break;
+        if (!line.empty() && line.back() == '\r') line.pop_back();
+        size_t pos = line.find("name=");
+        if (pos != std::string::npos) {
+            std::string name = line.substr(pos + 5);
+            if (!name.empty()) return name;
+        }
+        if (line.find("tiles=") != std::string::npos) break;
     }
-    return "Уровень";
+
+    return "Без названия";
 }
 
 
@@ -86,6 +103,41 @@ Menu::MainLayout Menu::computeMainLayout() const {
         float y = cy - 60.f + i * (sz.y + gap);
         L.btns[i] = sf::FloatRect({ cx - sz.x / 2.f, y }, sz);
     }
+    return L;
+}
+
+Menu::SettingsLayout Menu::computeSettingsLayout() const {
+    SettingsLayout L;
+    sf::Vector2f ws = uiView.getSize();
+    float cx = ws.x / 2.f;
+    float cy = ws.y / 2.f;
+
+    float startY = cy - 220.f;
+    float rowG = 90.f;  // Отступ между строками
+    float controlX = cx - 50.f; // Элементы управления начинаются чуть левее центра
+    float sliderW = 400.f;
+    float btnW = 220.f;
+    float btnH = 56.f;
+
+    // Правый столбец (Элементы управления)
+    L.musicSlider = sf::FloatRect({ controlX, startY }, { sliderW, 40.f });
+    L.sfxSlider = sf::FloatRect({ controlX, startY + rowG }, { sliderW, 40.f });
+
+    // Степперы (кнопки +/-)
+    L.uiScaleMinus = sf::FloatRect({ controlX,           startY + rowG * 2 }, { 55.f, 55.f });
+    L.uiScalePlus = sf::FloatRect({ controlX + 130.f,    startY + rowG * 2 }, { 55.f, 55.f });
+
+    L.sensMinus = sf::FloatRect({ controlX,           startY + rowG * 3 }, { 55.f, 55.f });
+    L.sensPlus = sf::FloatRect({ controlX + 130.f,    startY + rowG * 3 }, { 55.f, 55.f });
+
+#ifndef ANDROID
+    L.fullscreenToggle = sf::FloatRect({ controlX, startY + rowG * 4 }, { 300.f, 56.f });
+#endif
+
+    // Центрированные кнопки внизу
+    L.saveSettingsBtn = sf::FloatRect({ cx - btnW / 2.f, startY + rowG * 5.2f }, { btnW, btnH });
+    L.backBtn = sf::FloatRect({ cx - btnW / 2.f, startY + rowG * 6.2f }, { btnW, btnH });
+
     return L;
 }
 
@@ -236,6 +288,95 @@ void Menu::renderLevelSelect(const LevelSelectLayout& L) {
     // ограничивая диапазон [0, maxScroll]. Показывать скроллбар справа.
 }
 
+void Menu::renderSettings(const SettingsLayout& L) {
+    auto& font = ResourceManager::getFont("main");
+    auto ws = uiView.getSize();
+    float cx = ws.x / 2.f;
+    sf::Vector2f mouse = window.mapPixelToCoords(sf::Mouse::getPosition(window), uiView);
+
+    std::string title = "НАСТРОЙКИ";
+    sf::Text titleText(font, sf::String::fromUtf8(title.begin(), title.end()), 64);
+    titleText.setFillColor(sf::Color::White);
+    titleText.setPosition({ cx - titleText.getLocalBounds().size.x / 2.f, 60.f });
+    window.draw(titleText);
+
+    drawSlider("МУЗЫКА", L.musicSlider, settings.getFloat("music_volume"));
+    drawSlider("ЗВУКИ", L.sfxSlider, settings.getFloat("sfx_volume"));
+
+    drawStepper("МАСШТАБ UI", L.uiScaleMinus, L.uiScalePlus, std::to_string(settings.getFloat("ui_scale")).substr(0, 3));
+    drawStepper("СЕНСА", L.sensMinus, L.sensPlus, std::to_string(settings.getFloat("sensivity")).substr(0, 4));
+
+#ifndef ANDROID
+    // Рисуем лейбл для полноэкранного режима вручную
+    std::string fsTxt = "ПОЛНЫЙ ЭКРАН";
+    sf::Text fsLabel(font, sf::String::fromUtf8(fsTxt.begin(), fsTxt.end()), 24);
+    fsLabel.setPosition({ L.fullscreenToggle.position.x - fsLabel.getLocalBounds().size.x - 40.f, L.fullscreenToggle.position.y + 10.f });
+    window.draw(fsLabel);
+
+    std::string stateText = settings.getBool("fullscreen") ? "ВКЛ" : "ВЫКЛ";
+    drawBtn(stateText, L.fullscreenToggle, L.fullscreenToggle.contains(mouse));
+#endif
+
+    drawBtn("СОХРАНИТЬ", L.saveSettingsBtn, L.saveSettingsBtn.contains(mouse));
+    drawBtn("НАЗАД", L.backBtn, L.backBtn.contains(mouse));
+}
+
+void Menu::drawSlider(const std::string& label, sf::FloatRect r, float value) {
+    auto& font = ResourceManager::getFont("main");
+    // Текст
+    sf::Text t(font, sf::String::fromUtf8(label.begin(), label.end()), 24);
+    float labelX = r.position.x - t.getLocalBounds().size.x - 40.f;
+    t.setPosition({ labelX, r.position.y + 2.f });
+    window.draw(t);
+
+    // Полоска
+    sf::RectangleShape bar({ r.size.x, 8.f });
+    bar.setPosition({ r.position.x, r.position.y + r.size.y / 2.f - 4.f });
+    bar.setFillColor(sf::Color(60, 60, 60));
+    window.draw(bar);
+
+    // Прогресс
+    sf::RectangleShape prog({ r.size.x * (value / 100.f), 8.f });
+    prog.setPosition(bar.getPosition());
+    prog.setFillColor(Colors::moneyText);
+    window.draw(prog);
+
+    // Ползунок
+    sf::CircleShape cap(15.f);
+    cap.setOrigin({ 15.f, 15.f });
+    cap.setPosition({ r.position.x + r.size.x * (value / 100.f), r.position.y + r.size.y / 2.f });
+    window.draw(cap);
+}
+
+void Menu::drawStepper(const std::string& label, sf::FloatRect rMinus, sf::FloatRect rPlus, std::string value) {
+    auto& font = ResourceManager::getFont("main");
+    sf::Vector2f mouse = window.mapPixelToCoords(sf::Mouse::getPosition(window), uiView);
+
+    // 1. Рисуем подпись (слева от кнопок)
+    sf::Text t(font, sf::String::fromUtf8(label.begin(), label.end()), 24);
+    // Отступаем влево от кнопки "минус"
+    float labelX = rMinus.position.x - t.getLocalBounds().size.x - 40.f;
+    t.setPosition({ labelX, rMinus.position.y + 10.f });
+    window.draw(t);
+
+    drawBtn("-", rMinus, rMinus.contains(mouse));
+    drawBtn("+", rPlus, rPlus.contains(mouse));
+
+    // 3. Рисуем текущее значение между кнопками
+    sf::Text valText(font, value, 24);
+    valText.setFillColor(Colors::moneyText);
+    valText.setPosition({ rPlus.position.x + rPlus.size.x + 20.f, rPlus.position.y + 10.f });
+
+    // Считаем центр между кнопками
+    float centerX = (rMinus.position.x + rMinus.size.x + rPlus.position.x) / 2.f;
+    valText.setPosition({
+        centerX - valText.getLocalBounds().size.x / 2.f,
+        rMinus.position.y + 8.f
+        });
+
+    window.draw(valText);
+}
+
 void Menu::handleLevelSelectClick(sf::Vector2f pos, const LevelSelectLayout& L) {
     // Клик по карточке уровня
     for (const auto& card : L.cards) {
@@ -259,6 +400,59 @@ void Menu::handleLevelSelectClick(sf::Vector2f pos, const LevelSelectLayout& L) 
         state = MenuState::Main;
         selectedLevel = "";
         lastResult = SessionResult::None;
+    }
+}
+
+void Menu::handleSettingsClick(sf::Vector2f pos, const SettingsLayout& L) {
+    if (L.backBtn.contains(pos)) {
+        settings.save(); // Сохраняем при выходе из настроек
+        state = MenuState::Main;
+    }
+
+    if (L.musicSlider.contains(pos)) {
+        float val = (pos.x - L.musicSlider.position.x) / L.musicSlider.size.x * 100.f;
+        settings.set("music_volume", std::clamp(val, 0.f, 100.f));
+    }
+
+    if (L.sfxSlider.contains(pos)) {
+        float val = (pos.x - L.sfxSlider.position.x) / L.sfxSlider.size.x * 100.f;
+        settings.set("sfx_volume", std::clamp(val, 0.f, 100.f));
+    }
+
+    // Кнопки масштаба
+    if (L.uiScalePlus.contains(pos)) {
+        float s = settings.getFloat("ui_scale") + 0.1f;
+        settings.set("ui_scale", std::min(s, 3.0f));
+        this->uiScale = s;
+    }
+    if (L.uiScaleMinus.contains(pos)) {
+        float s = settings.getFloat("ui_scale") - 0.1f;
+        settings.set("ui_scale", std::max(s, 0.5f));
+        this->uiScale = s;
+    }
+
+    if (L.sensPlus.contains(pos)) {
+        float s = settings.getFloat("sensivity") + 0.1f;
+        settings.set("sensivity", std::min(s, 3.0f));
+    }
+    if (L.sensMinus.contains(pos)) {
+        float s = settings.getFloat("sensivity") - 0.1f;
+        settings.set("sensivity", std::max(s, 0.5f));
+    }
+
+    // Фуллскрин (только для ПК)
+#ifndef ANDROID
+    if (L.fullscreenToggle.contains(pos)) {
+        bool current = settings.getBool("fullscreen");
+        settings.set("fullscreen", !current);
+        windowRecreationRequired = true;
+    }
+#endif
+
+    if (L.saveSettingsBtn.contains(pos)) {
+        settings.save();
+        updateViewSizes(window.getSize());
+        window.setView(uiView);
     }
 }
 
@@ -341,6 +535,7 @@ static void handleResultOverlayClick(sf::Vector2f pos,
 void Menu::handleEvents() {
     auto mainL = computeMainLayout();
     auto levelL = computeLevelSelectLayout();
+    auto settingsL = computeSettingsLayout();
 
     while (std::optional event = window.pollEvent()) {
         if (event->is<sf::Event::Closed>())
@@ -368,6 +563,7 @@ void Menu::handleEvents() {
             // Пересчитываем лейауты сразу после ресайза
             mainL = computeMainLayout();
             levelL = computeLevelSelectLayout();
+            settingsL = computeSettingsLayout();
         }
 
         // --- ЕДИНАЯ ЛОГИКА ВВОДА ---
@@ -400,10 +596,17 @@ void Menu::handleEvents() {
                 case MenuState::LevelSelect:
                     handleLevelSelectClick(pos, levelL);
                     break;
+                case MenuState::Settings:
+                    handleSettingsClick(pos, settingsL);
                 default:
                     break;
                 }
             }
+        }
+        if (pressed) {
+            mainL = computeMainLayout();
+            levelL = computeLevelSelectLayout();
+            auto settingsL = computeSettingsLayout(); // Считаем актуальные позиции
         }
     }
 }
@@ -465,6 +668,7 @@ void Menu::render() {
 
     auto mainL = computeMainLayout();
     auto levelL = computeLevelSelectLayout();
+    auto settingsL = computeSettingsLayout();
 
     switch (state) {
     case MenuState::Main:        renderMain(mainL);          break;
@@ -473,7 +677,7 @@ void Menu::render() {
         if (lastResult != SessionResult::None) renderResultOverlay();
         break;
     case MenuState::Upgrades: renderStub("УЛУЧШЕНИЯ"); break;
-    case MenuState::Settings: renderStub("НАСТРОЙКИ"); break;
+    case MenuState::Settings: renderSettings(settingsL); break;
     }
 
     window.display();

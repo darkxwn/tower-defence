@@ -1,5 +1,6 @@
 #pragma once
 #include "Base.hpp"
+#include "SettingsManager.hpp"
 #include "Enemy.hpp"
 #include "HUD.hpp"
 #include "Map.hpp"
@@ -36,6 +37,7 @@ enum class GameEndReason {
 class Game {
 private:
     sf::RenderWindow& window;
+    SettingsManager& settings;
     sf::Clock clock;
 
     sf::View worldView;
@@ -90,7 +92,7 @@ private:
     void computePauseBtnLayout();
 
 public:
-    Game(sf::RenderWindow& window, const std::string& levelPath);
+    Game(sf::RenderWindow& window, SettingsManager& settings, const std::string& levelPath);
 
     // Запускает цикл уровня; возвращает управление когда сессия завершена
     void run();

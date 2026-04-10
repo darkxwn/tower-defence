@@ -41,6 +41,7 @@ set(SOURCES
     src/Tower.cpp
     src/WaveSystem.cpp
     src/Projectile.cpp
+    src/SettingsManager.cpp
 )
 
 
