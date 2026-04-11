@@ -1,7 +1,9 @@
 #include "Menu.hpp"
 #include "ResourceManager.hpp"
 #include "GeneratedLevels.hpp"
-#include "SettingsManager.hpp"
+#include "utils/SettingsManager.hpp"
+#include "utils/FileReader.hpp"
+#include "utils/Logger.hpp"
 #include "Colors.hpp"
 #include <filesystem>
 #include <fstream>
@@ -15,8 +17,20 @@ namespace fs = std::filesystem;
 
 //  Конструктор
 
-Menu::Menu(sf::RenderWindow& window, SettingsManager& settings) : window(window), settings(settings) {
-    this->uiScale = this->settings.getFloat("ui_scale");
+Menu::Menu(sf::RenderWindow& window, SettingsManager& settings) : 
+    window(window), 
+    settings(settings),
+    titleLabel(ResourceManager::getFont("main"), "TOWER DEFENCE", 96),
+    subTitleVersion(ResourceManager::getFont("main"), "v0.3a", 22),
+    titleLevelSelect(ResourceManager::getFont("main"), "ВЫБОР УРОВНЯ", 64),
+    titleSettings(ResourceManager::getFont("main"), "НАСТРОЙКИ", 64),
+    lblWinScreen(ResourceManager::getFont("main"), "", 96)
+{
+    mainButtons.emplace_back(sf::Vector2f(0,0), sf::Vector2f(280, 58), "ИГРАТЬ");
+    mainButtons.emplace_back(sf::Vector2f(0,0), sf::Vector2f(280, 58), "УЛУЧШЕНИЯ");
+    mainButtons.emplace_back(sf::Vector2f(0,0), sf::Vector2f(280, 58), "НАСТРОЙКИ");
+    mainButtons.emplace_back(sf::Vector2f(0,0), sf::Vector2f(280, 58), "ВЫХОД");
+
     updateViewSizes(window.getSize());
     scanLevels();
 }
@@ -35,11 +49,17 @@ void Menu::updateViewSizes(sf::Vector2u windowSize) {
 
     uiView = sf::View(sf::FloatRect({ 0.f, 0.f }, { uiW, uiH }));
 
-    worldView = sf::View(sf::FloatRect({ 0.f, 0.f }, { sw, sh }));
-    worldView.zoom(currentZoom);
-    worldView.setCenter({ sw / 2.f, sh / 2.f });
+    sf::Vector2f ws = uiView.getSize();
+    float cx = ws.x / 2.f;
+    float cy = ws.y / 2.f;
+    sf::Vector2f sz(280.f, 58.f);
+    float gap = 16.f;
 
-    worldView.setSize({ sw / uiScale, sh / uiScale });
+    // ЦИКЛ ПО КНОПКАМ: Расставляем их по вертикали
+    for (int i = 0; i < (int)mainButtons.size(); i++) {
+        float y = cy - 60.f + i * (sz.y + gap);
+        mainButtons[i].setPosition({ cx - sz.x / 2.f, y });
+    }
 }
 
 
@@ -61,19 +81,14 @@ void Menu::scanLevels() {
 }
 
 std::string Menu::readLevelName(const std::string& path) const {
-    sf::FileInputStream stream;
-    if (!stream.open(path)) {
-        return "Ошибка пути";
+    auto content = readFile(path);
+
+    if (!content.has_value()) {
+        LOGI("[ERROR]: Не удалось открыть файл карты: %s", path.c_str());
+        return "Без названия";
     }
 
-    std::string content;
-    auto size = stream.getSize();
-    if (size) {
-        content.resize(*size);
-        stream.read(content.data(), *size);
-    }
-
-    std::istringstream f(content);
+    std::istringstream f(content.value());
     std::string line;
     while (std::getline(f, line)) {
         if (!line.empty() && line.back() == '\r') line.pop_back();
@@ -99,10 +114,11 @@ Menu::MainLayout Menu::computeMainLayout() const {
     sf::Vector2f sz(280.f, 58.f);
     constexpr float gap = 16.f;
 
-    for (int i = 0; i < MainLayout::BTN_COUNT; i++) {
+    for (int i = 0; i < (int)mainButtons.size(); i++) {
         float y = cy - 60.f + i * (sz.y + gap);
         L.btns[i] = sf::FloatRect({ cx - sz.x / 2.f, y }, sz);
     }
+
     return L;
 }
 
@@ -135,8 +151,11 @@ Menu::SettingsLayout Menu::computeSettingsLayout() const {
 #endif
 
     // Центрированные кнопки внизу
-    L.saveSettingsBtn = sf::FloatRect({ cx - btnW / 2.f, startY + rowG * 5.2f }, { btnW, btnH });
-    L.backBtn = sf::FloatRect({ cx - btnW / 2.f, startY + rowG * 6.2f }, { btnW, btnH });
+    float saveY = startY + rowG * 5.2f;
+    float backY = startY + rowG * 6.2f;
+    
+    L.buttons.emplace_back(sf::Vector2f(cx - btnW / 2.f, saveY), sf::Vector2f(btnW, btnH), "СОХРАНИТЬ");
+    L.buttons.emplace_back(sf::Vector2f(cx - btnW / 2.f, backY), sf::Vector2f(btnW, btnH), "НАЗАД");
 
     return L;
 }
@@ -177,8 +196,24 @@ Menu::LevelSelectLayout Menu::computeLevelSelectLayout() const {
     float playY = gridBot + 36.f;
     float backY = playY + btnH + btnGap;
 
-    L.playBtn = sf::FloatRect({ cx - btnW / 2.f, playY }, { btnW, btnH });
-    L.backBtn = sf::FloatRect({ cx - btnW / 2.f, backY }, { btnW, btnH });
+    L.buttons.emplace_back(sf::Vector2f(cx - btnW / 2.f, playY), sf::Vector2f(btnW, btnH), "ИГРАТЬ");
+    L.buttons.emplace_back(sf::Vector2f(cx - btnW / 2.f, backY), sf::Vector2f(btnW, btnH), "НАЗАД");
+    
+    return L;
+}
+
+Menu::ResultOverlayLayout Menu::computeResultOverlayLayout() const {
+    ResultOverlayLayout L;
+    auto ws = uiView.getSize();
+    float cx = ws.x / 2.f;
+    float cy = ws.y / 2.f;
+
+    const float btnW = 240.f, btnH = 58.f, btnGap = 16.f;
+    float totalW = btnW * 2 + btnGap;
+    
+    L.buttons.emplace_back(sf::Vector2f(cx - totalW / 2.f, cy + 20.f), sf::Vector2f(btnW, btnH), "ИГРАТЬ СНОВА");
+    L.buttons.emplace_back(sf::Vector2f(cx - totalW / 2.f + btnW + btnGap, cy + 20.f), sf::Vector2f(btnW, btnH), "ВЫБРАТЬ УРОВЕНЬ");
+    
     return L;
 }
 
@@ -190,38 +225,21 @@ void Menu::renderMain(const MainLayout& L) {
     float cy = ws.y / 2.f;
 
     // Заголовок
-    std::string title = "TOWER DEFENCE";
-    sf::Text titleText(font, sf::String::fromUtf8(title.begin(), title.end()), 96);
-    titleText.setFillColor(sf::Color::White);
-    titleText.setPosition({ cx - titleText.getLocalBounds().size.x / 2.f, cy - 260.f });
-    window.draw(titleText);
+    titleLabel.setCenteredX(ws.x / 2.f, cy - 260.f);
+    titleLabel.render(window);
 
     // Версия
-    std::string ver = "v0.2a";
-    sf::Text verText(font, sf::String::fromUtf8(ver.begin(), ver.end()), 22);
-    verText.setFillColor(sf::Color(120, 120, 120, 200));
-    verText.setPosition({ cx - verText.getLocalBounds().size.x / 2.f, cy - 160.f });
-    window.draw(verText);
+    subTitleVersion.setColor(sf::Color(120, 120, 120, 200));
+    subTitleVersion.setCenteredX(cx, cy - 160.f);
+    subTitleVersion.render(window);
 
     static const std::string labels[MainLayout::BTN_COUNT] = {
         "ИГРАТЬ", "УЛУЧШЕНИЯ", "НАСТРОЙКИ", "ВЫХОД"
     };
-    sf::Vector2f mouse = sf::Vector2f(sf::Mouse::getPosition(window));
+    sf::Vector2f mouse = window.mapPixelToCoords(sf::Mouse::getPosition(window), uiView);
 
-    for (int i = 0; i < MainLayout::BTN_COUNT; i++)
-        drawBtn(labels[i], L.btns[i], L.btns[i].contains(mouse));
-}
-
-void Menu::handleMainClick(sf::Vector2f pos, const MainLayout& L) {
-    for (int i = 0; i < MainLayout::BTN_COUNT; i++) {
-        if (!L.btns[i].contains(pos)) continue;
-        switch (i) {
-        case 0: state = MenuState::LevelSelect; break;
-        case 1: state = MenuState::Upgrades;    break;
-        case 2: state = MenuState::Settings;    break;
-        case 3: window.close();                 break;
-        }
-        return;
+    for (auto& btn : mainButtons) {
+        btn.render(window, font, mouse);
     }
 }
 
@@ -233,11 +251,8 @@ void Menu::renderLevelSelect(const LevelSelectLayout& L) {
     sf::Vector2f mouse = window.mapPixelToCoords(sf::Mouse::getPosition(window), uiView);
 
     // Заголовок
-    std::string title = "ВЫБОР УРОВНЯ";
-    sf::Text titleText(font, sf::String::fromUtf8(title.begin(), title.end()), 64);
-    titleText.setFillColor(sf::Color::White);
-    titleText.setPosition({ cx - titleText.getLocalBounds().size.x / 2.f, 60.f });
-    window.draw(titleText);
+    titleLevelSelect.setCenteredX(cx, 60.f);
+    titleLevelSelect.render(window);
 
     // Карточки уровней
     for (const auto& card : L.cards) {
@@ -278,8 +293,16 @@ void Menu::renderLevelSelect(const LevelSelectLayout& L) {
 
     // Кнопки
     bool canPlay = !selectedLevel.empty();
-    drawBtn("ИГРАТЬ", L.playBtn, canPlay && L.playBtn.contains(mouse), canPlay);
-    drawBtn("НАЗАД", L.backBtn, L.backBtn.contains(mouse));
+    
+    // Кнопки "Играть" и "Назад"
+    if (L.buttons.size() >= 2) {
+        // Создаем копии, чтобы модифицировать (layout - const)
+        auto playBtn = L.buttons[0];
+        auto backBtn = L.buttons[1];
+        playBtn.setEnabled(canPlay);
+        playBtn.render(window, font, mouse);
+        backBtn.render(window, font, mouse);
+    }
 
     // Заметка о скролле (TODO)
     // При большом количестве уровней (> ~15-20) нужен вертикальный скролл.
@@ -294,17 +317,15 @@ void Menu::renderSettings(const SettingsLayout& L) {
     float cx = ws.x / 2.f;
     sf::Vector2f mouse = window.mapPixelToCoords(sf::Mouse::getPosition(window), uiView);
 
-    std::string title = "НАСТРОЙКИ";
-    sf::Text titleText(font, sf::String::fromUtf8(title.begin(), title.end()), 64);
-    titleText.setFillColor(sf::Color::White);
-    titleText.setPosition({ cx - titleText.getLocalBounds().size.x / 2.f, 60.f });
-    window.draw(titleText);
+    // Заголовок
+    titleSettings.setCenteredX(cx, 60.f);
+    titleSettings.render(window);
 
     drawSlider("МУЗЫКА", L.musicSlider, settings.getFloat("music_volume"));
     drawSlider("ЗВУКИ", L.sfxSlider, settings.getFloat("sfx_volume"));
 
     drawStepper("МАСШТАБ UI", L.uiScaleMinus, L.uiScalePlus, std::to_string(settings.getFloat("ui_scale")).substr(0, 3));
-    drawStepper("СЕНСА", L.sensMinus, L.sensPlus, std::to_string(settings.getFloat("sensivity")).substr(0, 4));
+    drawStepper("СЕНСА", L.sensMinus, L.sensPlus, std::to_string(settings.getFloat("sensitivity")).substr(0, 4));
 
 #ifndef ANDROID
     // Рисуем лейбл для полноэкранного режима вручную
@@ -317,8 +338,11 @@ void Menu::renderSettings(const SettingsLayout& L) {
     drawBtn(stateText, L.fullscreenToggle, L.fullscreenToggle.contains(mouse));
 #endif
 
-    drawBtn("СОХРАНИТЬ", L.saveSettingsBtn, L.saveSettingsBtn.contains(mouse));
-    drawBtn("НАЗАД", L.backBtn, L.backBtn.contains(mouse));
+    // Кнопки "Сохранить" и "Назад"
+    if (L.buttons.size() >= 2) {
+        L.buttons[0].render(window, font, mouse);
+        L.buttons[1].render(window, font, mouse);
+    }
 }
 
 void Menu::drawSlider(const std::string& label, sf::FloatRect r, float value) {
@@ -377,6 +401,13 @@ void Menu::drawStepper(const std::string& label, sf::FloatRect rMinus, sf::Float
     window.draw(valText);
 }
 
+void Menu::handleMainClick(sf::Vector2f pos, const MainLayout& L) {
+    if (L.btns[Play].contains(pos))      state = MenuState::LevelSelect;
+    else if (L.btns[Upgrades].contains(pos))  state = MenuState::Upgrades;
+    else if (L.btns[Settings].contains(pos))  state = MenuState::Settings;
+    else if (L.btns[Exit].contains(pos))      window.close();
+}
+
 void Menu::handleLevelSelectClick(sf::Vector2f pos, const LevelSelectLayout& L) {
     // Клик по карточке уровня
     for (const auto& card : L.cards) {
@@ -389,14 +420,14 @@ void Menu::handleLevelSelectClick(sf::Vector2f pos, const LevelSelectLayout& L) 
     }
 
     // Кнопка "Играть"
-    if (L.playBtn.contains(pos) && !selectedLevel.empty()) {
+    if (L.buttons.size() >= 1 && L.buttons[0].contains(pos) && !selectedLevel.empty()) {
         levelChosen = true;
         lastResult = SessionResult::None;
         return;
     }
 
     // Кнопка "Назад"
-    if (L.backBtn.contains(pos)) {
+    if (L.buttons.size() >= 2 && L.buttons[1].contains(pos)) {
         state = MenuState::Main;
         selectedLevel = "";
         lastResult = SessionResult::None;
@@ -404,7 +435,7 @@ void Menu::handleLevelSelectClick(sf::Vector2f pos, const LevelSelectLayout& L) 
 }
 
 void Menu::handleSettingsClick(sf::Vector2f pos, const SettingsLayout& L) {
-    if (L.backBtn.contains(pos)) {
+    if (L.buttons.size() >= 2 && L.buttons[1].contains(pos)) {
         settings.save(); // Сохраняем при выходе из настроек
         state = MenuState::Main;
     }
@@ -432,12 +463,12 @@ void Menu::handleSettingsClick(sf::Vector2f pos, const SettingsLayout& L) {
     }
 
     if (L.sensPlus.contains(pos)) {
-        float s = settings.getFloat("sensivity") + 0.1f;
-        settings.set("sensivity", std::min(s, 3.0f));
+        float s = settings.getFloat("sensitivity") + 0.1f;
+        settings.set("sensitivity", std::min(s, 3.0f));
     }
     if (L.sensMinus.contains(pos)) {
-        float s = settings.getFloat("sensivity") - 0.1f;
-        settings.set("sensivity", std::max(s, 0.5f));
+        float s = settings.getFloat("sensitivity") - 0.1f;
+        settings.set("sensitivity", std::max(s, 0.5f));
     }
 
     // Фуллскрин (только для ПК)
@@ -449,7 +480,7 @@ void Menu::handleSettingsClick(sf::Vector2f pos, const SettingsLayout& L) {
     }
 #endif
 
-    if (L.saveSettingsBtn.contains(pos)) {
+    if (L.buttons.size() >= 1 && L.buttons[0].contains(pos)) {
         settings.save();
         updateViewSizes(window.getSize());
         window.setView(uiView);
@@ -475,10 +506,11 @@ void Menu::renderResultOverlay() {
     std::string header = win ? "ПОБЕДА!" : "ПОРАЖЕНИЕ";
     sf::Color   headerColor = win ? sf::Color(255, 200, 37, 255)
         : sf::Color(234, 50, 60, 255);
-    sf::Text headerText(font, sf::String::fromUtf8(header.begin(), header.end()), 96);
-    headerText.setFillColor(headerColor);
-    headerText.setPosition({ cx - headerText.getLocalBounds().size.x / 2.f, cy - 180.f });
-    window.draw(headerText);
+
+    lblWinScreen.setText(header);
+    lblWinScreen.setColor(headerColor);
+    lblWinScreen.setCenteredX(cx, 180.f);
+    lblWinScreen.render(window);
 
     // Подпись
     std::string sub = win ? "Уровень пройден!" : "База уничтожена...";
@@ -487,44 +519,31 @@ void Menu::renderResultOverlay() {
     subText.setPosition({ cx - subText.getLocalBounds().size.x / 2.f, cy - 70.f });
     window.draw(subText);
 
-    // Кнопки: "Играть снова" и "Выбрать уровень"
-    const float btnW = 240.f, btnH = 58.f, btnGap = 16.f;
-    float totalW = btnW * 2 + btnGap;
-    sf::FloatRect againBtn({ cx - totalW / 2.f, cy + 20.f }, { btnW, btnH });
-    sf::FloatRect selectBtn({ cx - totalW / 2.f + btnW + btnGap, cy + 20.f }, { btnW, btnH });
-
-    drawBtn("ИГРАТЬ СНОВА", againBtn, againBtn.contains(mouse), !lastLevelPath.empty());
-    drawBtn("ВЫБРАТЬ УРОВЕНЬ", selectBtn, selectBtn.contains(mouse));
-
-    // Обработка кликов прямо здесь — оверлей активен только поверх LevelSelect
-    if (sf::Mouse::isButtonPressed(sf::Mouse::Button::Left)) {
-        // Клики обрабатываются в handleLevelSelectClick через обычный поток событий.
-        // Кнопки оверлея обрабатываем отдельно через флаги — см. handleEvents.
-        // (Этот метод только рисует; клики — в handleEvents через overlayClick)
+    // Кнопки оверлея
+    auto overlayLayout = computeResultOverlayLayout();
+    bool canPlayAgain = !lastLevelPath.empty();
+    if (overlayLayout.buttons.size() >= 2) {
+        overlayLayout.buttons[0].setEnabled(canPlayAgain);
+        overlayLayout.buttons[0].render(window, font, mouse);
+        overlayLayout.buttons[1].render(window, font, mouse);
     }
 }
 
 //  Обработка кликов по оверлею результата
 //  (вызывается из handleEvents когда state == LevelSelect && lastResult != None)
-static void handleResultOverlayClick(sf::Vector2f pos,
-    sf::Vector2u ws, SessionResult& lastResult,
-    std::string& lastLevelPath, std::string& selectedLevel,
-    bool& levelChosen) {
-    float cx = ws.x / 2.f;
-    float cy = ws.y / 2.f;
-    const float btnW = 240.f, btnH = 58.f, btnGap = 16.f;
-    float totalW = btnW * 2 + btnGap;
-
-    sf::FloatRect againBtn({ cx - totalW / 2.f,              cy + 20.f }, { btnW, btnH });
-    sf::FloatRect selectBtn({ cx - totalW / 2.f + btnW + btnGap, cy + 20.f }, { btnW, btnH });
-
-    if (againBtn.contains(pos) && !lastLevelPath.empty()) {
+void Menu::handleResultOverlayClick(sf::Vector2f pos, const ResultOverlayLayout& L) {
+    if (L.buttons.size() < 2) return;
+    
+    // Кнопка "Играть снова"
+    if (L.buttons[0].contains(pos) && !lastLevelPath.empty()) {
         selectedLevel = lastLevelPath;
         levelChosen = true;
         lastResult = SessionResult::None;
         return;
     }
-    if (selectBtn.contains(pos)) {
+    
+    // Кнопка "Выбрать уровень"
+    if (L.buttons[1].contains(pos)) {
         lastResult = SessionResult::None;
         selectedLevel = "";
         // просто закрываем оверлей — остаёмся в LevelSelect
@@ -533,9 +552,9 @@ static void handleResultOverlayClick(sf::Vector2f pos,
 
 // Переопределяем handleEvents чтобы обработать клики по оверлею
 void Menu::handleEvents() {
-    auto mainL = computeMainLayout();
-    auto levelL = computeLevelSelectLayout();
-    auto settingsL = computeSettingsLayout();
+    auto mainLayout = computeMainLayout();
+    auto levelLayout = computeLevelSelectLayout();
+    auto settingsLayout = computeSettingsLayout();
 
     while (std::optional event = window.pollEvent()) {
         if (event->is<sf::Event::Closed>())
@@ -561,9 +580,9 @@ void Menu::handleEvents() {
             updateViewSizes(newSize);
             window.setView(uiView); // Устанавливаем обновленный вид в окно немедленно
             // Пересчитываем лейауты сразу после ресайза
-            mainL = computeMainLayout();
-            levelL = computeLevelSelectLayout();
-            settingsL = computeSettingsLayout();
+            mainLayout = computeMainLayout();
+            levelLayout = computeLevelSelectLayout();
+            settingsLayout = computeSettingsLayout();
         }
 
         // --- ЕДИНАЯ ЛОГИКА ВВОДА ---
@@ -585,28 +604,28 @@ void Menu::handleEvents() {
         if (pressed && pos.x != -1.f) {
             // Оверлей результата
             if (state == MenuState::LevelSelect && lastResult != SessionResult::None) {
-                handleResultOverlayClick(pos, window.getSize(),
-                    lastResult, lastLevelPath, selectedLevel, levelChosen);
+                auto overlayLayout = computeResultOverlayLayout();
+                handleResultOverlayClick(pos, overlayLayout);
             }
             else {
                 switch (state) {
                 case MenuState::Main:
-                    handleMainClick(pos, mainL);
+                    handleMainClick(pos, mainLayout);
                     break;
                 case MenuState::LevelSelect:
-                    handleLevelSelectClick(pos, levelL);
+                    handleLevelSelectClick(pos, levelLayout);
                     break;
                 case MenuState::Settings:
-                    handleSettingsClick(pos, settingsL);
+                    handleSettingsClick(pos, settingsLayout);
                 default:
                     break;
                 }
             }
         }
         if (pressed) {
-            mainL = computeMainLayout();
-            levelL = computeLevelSelectLayout();
-            auto settingsL = computeSettingsLayout(); // Считаем актуальные позиции
+            mainLayout = computeMainLayout();
+            levelLayout = computeLevelSelectLayout();
+            auto settingsLayout = computeSettingsLayout(); // Считаем актуальные позиции
         }
     }
 }
@@ -666,18 +685,18 @@ void Menu::render() {
     window.clear(Colors::gameBg);
     window.setView(uiView);
 
-    auto mainL = computeMainLayout();
-    auto levelL = computeLevelSelectLayout();
-    auto settingsL = computeSettingsLayout();
+    auto mainLayout = computeMainLayout();
+    auto levelLayout = computeLevelSelectLayout();
+    auto settingsLayout = computeSettingsLayout();
 
     switch (state) {
-    case MenuState::Main:        renderMain(mainL);          break;
+    case MenuState::Main:        renderMain(mainLayout);          break;
     case MenuState::LevelSelect:
-        renderLevelSelect(levelL);
+        renderLevelSelect(levelLayout);
         if (lastResult != SessionResult::None) renderResultOverlay();
         break;
     case MenuState::Upgrades: renderStub("УЛУЧШЕНИЯ"); break;
-    case MenuState::Settings: renderSettings(settingsL); break;
+    case MenuState::Settings: renderSettings(settingsLayout); break;
     }
 
     window.display();

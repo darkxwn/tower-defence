@@ -1,4 +1,4 @@
-#include "SettingsManager.hpp"
+#include "utils/SettingsManager.hpp"
 #include <fstream>
 #include <sstream>
 #include <iostream>
@@ -31,10 +31,10 @@ void SettingsManager::setDefaults() {
     settings["sfx_volume"] = "100";
 #ifdef ANDROID
     settings["ui_scale"] = "2.0";
-    settings["sensivity"] = "1.45";
+    settings["sensitivity"] = "1.45";
 #else
     settings["ui_scale"] = "1.0";
-    settings["sensivity"] = "1.0";
+    settings["sensitivity"] = "1.0";
 #endif  
     settings["fullscreen"] = "0";
 }

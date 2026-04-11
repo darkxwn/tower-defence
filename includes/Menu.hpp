@@ -1,5 +1,7 @@
 #pragma once
-#include "SettingsManager.hpp"
+#include "utils/SettingsManager.hpp"
+#include "Label.hpp"
+#include "Button.hpp"
 #include <SFML/Graphics.hpp>
 #include <string>
 #include <vector>
@@ -41,8 +43,7 @@ public:
 
     struct LevelSelectLayout {
         std::vector<CardLayout> cards;
-        sf::FloatRect playBtn;
-        sf::FloatRect backBtn;
+        std::vector<Button> buttons; // 0=Играть, 1=Назад
         int rowSize;     // карточек в строке
         int rowCount;    // строк
     };
@@ -53,10 +54,13 @@ public:
         sf::FloatRect uiScaleMinus, uiScalePlus;
         sf::FloatRect sensMinus, sensPlus;
         sf::FloatRect fullscreenToggle;
-        sf::FloatRect saveSettingsBtn;
-        sf::FloatRect backBtn;
+        std::vector<Button> buttons; // 0=Сохранить, 1=Назад (+ Fullscreen на ПК)
 
         float rowHeight = 80.f;
+    };
+
+    struct ResultOverlayLayout {
+        std::vector<Button> buttons; // 0=Играть снова, 1=Выбрать уровень
     };
 
 private:
@@ -74,9 +78,17 @@ private:
     float uiScale = 1.0f;
     bool windowRecreationRequired = false;
 
+    // Заголовки
+    Label titleLabel;
+    Label subTitleVersion;
+    Label titleLevelSelect;
+    Label titleSettings;
+    Label lblWinScreen;
 
-    // Метод для синхронизации размеров при старте и ресайзе
+    enum MainBtnIdx { Play, Upgrades, Settings, Exit, COUNT };
 
+    std::vector<Button> mainButtons;
+    
     SessionResult lastResult = SessionResult::None;
     std::string   lastLevelPath; // путь к последнему сыгранному уровню
 
@@ -84,6 +96,7 @@ private:
     MainLayout        computeMainLayout()        const;
     LevelSelectLayout computeLevelSelectLayout() const;
     SettingsLayout computeSettingsLayout() const;
+    ResultOverlayLayout computeResultOverlayLayout() const;
 
     // Отрисовка
     void renderMain(const MainLayout& L);
@@ -98,6 +111,7 @@ private:
     void handleMainClick(sf::Vector2f pos, const MainLayout& L);
     void handleSettingsClick(sf::Vector2f pos, const SettingsLayout& L);
     void handleLevelSelectClick(sf::Vector2f pos, const LevelSelectLayout& L);
+    void handleResultOverlayClick(sf::Vector2f pos, const ResultOverlayLayout& L);
 
     // Утилиты
     void        scanLevels();

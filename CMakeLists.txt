@@ -41,9 +41,11 @@ set(SOURCES
     src/Tower.cpp
     src/WaveSystem.cpp
     src/Projectile.cpp
-    src/SettingsManager.cpp
+    src/Label.cpp
+    src/Button.cpp
+    src/utils/SettingsManager.cpp
+    src/utils/FileReader.cpp
 )
-
 
 # Ресурсы для Windows и macOS
 set(WIN_RESOURCES "")
@@ -69,7 +71,9 @@ if(ANDROID)
     add_library(${PROJECT_NAME} SHARED ${SOURCES})
 else()
     # Остальные - исполняемый файл
-    add_executable(${PROJECT_NAME} WIN32 MACOSX_BUNDLE ${SOURCES} ${WIN_RESOURCES} ${MACOS_ICON})
+    add_executable(${PROJECT_NAME} WIN32 MACOSX_BUNDLE ${SOURCES} ${WIN_RESOURCES} ${MACOS_ICON}
+
+    )
 endif()
 
 # НАСТРОЙКИ СПЕЦИФИЧНЫХ ПЛАТФОРМ

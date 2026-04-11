@@ -1,6 +1,7 @@
 #include "Enemy.hpp"
 #include "ResourceManager.hpp"
-#include <cstdlib>
+#include "utils/Logger.hpp"
+#include "utils/Random.hpp"
 #include <iostream>
 #include "Colors.hpp"
 
@@ -9,9 +10,13 @@ Enemy::Enemy(EnemyType type, int health, int speed, const std::vector<sf::Vector
 {
     pos = sf::Vector2f(path[0] * 64);
     offset = {
-        (float)(rand() % 30) - 15.f,
-        (float)(rand() % 30) - 15.f
+        Random::getFloat(-15.f, 15.f),
+        Random::getFloat(-15.f, 15.f)
     };
+
+    if (path.empty()) {
+        LOGI("[ERROR]: Путь для врагов не был найден!");
+    }
 }
 
 void Enemy::update(float deltaTime) {

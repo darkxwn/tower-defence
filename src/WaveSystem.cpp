@@ -1,5 +1,6 @@
 #include "WaveSystem.hpp"
 #include "GameData.hpp"
+#include "utils/FileReader.hpp"
 #include "Enemy.hpp"
 #include <fstream>
 #include <sstream>
@@ -17,20 +18,9 @@ void WaveSystem::loadWaves(const std::string& path) {
     currentWave = 0;
     state = WaveState::Idle;
 
-    sf::FileInputStream stream;
-    if (!stream.open(path)) {
-        return;
-    }
+    auto content = readFile(path);
 
-    // Читаем весь файл в строку (как в Map.cpp)
-    std::string content;
-    auto size = stream.getSize();
-    if (size) {
-        content.resize(*size);
-        stream.read(content.data(), *size);
-    }
-
-    std::istringstream file(content);
+    std::istringstream file(content.value());
     std::string line;
     bool parsingWaves = false;
 

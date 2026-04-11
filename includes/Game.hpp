@@ -1,13 +1,16 @@
 #pragma once
 #include "Base.hpp"
-#include "SettingsManager.hpp"
+#include "utils/SettingsManager.hpp"
+#include "Button.hpp"
 #include "Enemy.hpp"
+#include "Label.hpp"
 #include "HUD.hpp"
 #include "Map.hpp"
 #include "Tower.hpp"
 #include "WaveSystem.hpp"
 #include <SFML/Graphics.hpp>
 #include <string>
+#include <vector>
 #include <list>
 
 ///////////////////////////////////////////////////////////////////////////
@@ -48,8 +51,13 @@ private:
     float initialPinchDistance = 0.f;   // Растояния раздвига пальцев
     float currentZoom = 1.0f;
     float uiScale = 1.0f;               // Масштабирование для UI
-    bool wasMoved = 0;
+    bool hasMoved = 0;
     sf::Vector2i startTouchPos;
+
+    // Текст
+    Label lblPause;
+    Label lblEndScreen;
+    Label subLblEndScreen;
 
     GameState state = GameState::Playing;
     GameEndReason endReason = GameEndReason::None;
@@ -66,15 +74,17 @@ private:
 
     WaveSystem waveSystem;
 
+    // Layout'ы для оверлеев
+    struct PauseLayout {
+        std::vector<Button> buttons; // 0=Завершить, 1=Заново, 2=Продолжить
+    };
 
-    // Кнопки оверлея паузы (позиции вычисляются в render)
-    sf::FloatRect pauseMenuRect;
-    sf::FloatRect pauseRestartRect;
-    sf::FloatRect pauseContinueRect;
+    struct EndScreenLayout {
+        std::vector<Button> buttons; // 0=Вернуться, 1=Заново
+    };
 
-    // Кнопки экранов победы/поражения
-    sf::FloatRect endMenuRect;
-    sf::FloatRect endRestartRect;
+    PauseLayout computePauseBtnLayout() const;
+    EndScreenLayout computeEndScreenLayout() const;
 
     void update(float deltaTime);
     void render();
@@ -87,9 +97,6 @@ private:
 
     void renderPauseOverlay();
     void renderEndScreen();   // общий экран для Victory и GameOver
-
-    // Вычисляет позиции трёх кнопок паузы по центру экрана
-    void computePauseBtnLayout();
 
 public:
     Game(sf::RenderWindow& window, SettingsManager& settings, const std::string& levelPath);

@@ -1,5 +1,7 @@
 #include "Map.hpp"
 #include "ResourceManager.hpp"
+#include "utils/FileReader.hpp"
+#include "utils/Logger.hpp"
 #include <algorithm>
 #include <fstream>
 #include <queue>
@@ -18,32 +20,16 @@ void Map::load(const std::string& filePath) {
     portalPos = { -1, -1 };
     basePos = { -1, -1 };
 
-    sf::FileInputStream stream;
-    if (!stream.open(filePath)) {
-        return;
-    }
+    auto content = readFile(filePath);
 
-    // 1. Исправляем ошибку C2440 (std::optional -> size_t)
-    auto sizeOptional = stream.getSize();
-    if (!sizeOptional.has_value()) {
-        return; // Файл пустой или ошибка доступа
-    }
-
-    std::size_t size = sizeOptional.value();
-
-    std::string content;
-    content.resize(size);
-
-    // Сохраняем результат в переменную, чтобы компилятор не ворчал на [[nodiscard]]
-    auto bytesRead = stream.read(content.data(), size);
-    if (!bytesRead) {
-        std::cerr << "[Ошибка]: Не удалось прочитать данные из " << filePath << std::endl;
+    if (!content.has_value()) {
+        LOGI("[ERROR]: Не удалось открыть файл карты: %s", filePath.c_str());
         return;
     }
 
     // 3. Используем istringstream вместо ifstream
     // Вся логика парсинга ниже остается ПОЧТИ такой же
-    std::istringstream file(content);
+    std::istringstream file(content.value());
     std::string line;
 
     // Метаданные
@@ -117,10 +103,10 @@ void Map::render(sf::RenderWindow& window) {
                 continue;
             }
 
-            sf::Sprite sp(ResourceManager::get(tex));
-            sp.setScale({ 0.125f, 0.125f });
-            sp.setPosition(sf::Vector2f(tile.gridPos * 64) + mapOffset);
-            window.draw(sp);
+            sf::Sprite sprite(ResourceManager::get(tex));
+            sprite.setScale({ 0.125f, 0.125f });
+            sprite.setPosition(sf::Vector2f(tile.gridPos * 64) + mapOffset);
+            window.draw(sprite);
 
             if (tile.type == TileType::Portal) {
                 // Позиционируем точно в центр тайла
@@ -149,7 +135,7 @@ void Map::render(sf::RenderWindow& window) {
             if (selectedTile == &tile) {
                 sf::Sprite act(ResourceManager::get("active"));
                 act.setScale({ 0.125f, 0.125f });
-                act.setPosition(sp.getPosition());
+                act.setPosition(sprite.getPosition());
                 window.draw(act);
             }
         }
@@ -193,14 +179,14 @@ void Map::buildPath() {
     std::reverse(path.begin(), path.end());
 }
 
-Tile* Map::getTileAtScreen(sf::Vector2f sp) const {
-    sf::Vector2i gp = sf::Vector2i((sp - mapOffset) / 64.f);
+Tile* Map::getTileAtScreen(sf::Vector2f sprite) const {
+    sf::Vector2i gp = sf::Vector2i((sprite - mapOffset) / 64.f);
     if (gp.x < 0 || gp.x >= width || gp.y < 0 || gp.y >= height) return nullptr;
     return const_cast<Tile*>(&tiles[gp.y][gp.x]);
 }
 
-void Map::setSelectedTile(sf::Vector2f sp) {
-    Tile* t = getTileAtScreen(sp);
+void Map::setSelectedTile(sf::Vector2f sprite) {
+    Tile* t = getTileAtScreen(sprite);
     selectedTile = (t && t->type == TileType::Platform) ? t : nullptr;
 }
 

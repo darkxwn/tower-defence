@@ -1,10 +1,10 @@
 #include <SFML/Graphics.hpp>
 #include "Menu.hpp"
-#include "Logger.hpp"
+#include "utils/Logger.hpp"
 #include "Game.hpp"
 #include "GameData.hpp"
 #include "ResourceManager.hpp"
-#include "SettingsManager.hpp"
+#include "utils/SettingsManager.hpp"
 #include <string>
 
 ///////////////////////////////////////////////////////////////////////////
@@ -116,14 +116,10 @@ static void loadResources() {
 // Вспомогательная функция для настройки окна
 void setupWindow(sf::RenderWindow& window, SettingsManager& settings) {
     bool isFullscreen = settings.getBool("fullscreen");
-
-    // Выбираем стиль
     auto style = isFullscreen ? sf::State::Fullscreen : sf::State::Windowed;
-
-    // Пересоздаем окно
     window.create(sf::VideoMode({ 1920, 1080 }), "Tower Defence", style);
-    window.setVerticalSyncEnabled(true);
     window.setMinimumSize(sf::Vector2u({ 1280, 720 }));
+    window.setVerticalSyncEnabled(true);
 }
 
 int main(int argc, char* argv[]) {

@@ -6,8 +6,13 @@
 #include <algorithm>
 
 //  Конструктор
-Game::Game(sf::RenderWindow& window, SettingsManager& settings, const std::string& levelPath)
-    : window(window), base(sf::Vector2i{ 0, 0 }), settings(settings)
+Game::Game(sf::RenderWindow& window, SettingsManager& settings, const std::string& levelPath): 
+    window(window), 
+    base(sf::Vector2i{ 0, 0 }), 
+    settings(settings),
+    lblPause(ResourceManager::getFont("main"), "ПАУЗА", 128),
+    lblEndScreen(ResourceManager::getFont("main"), "", 112),
+    subLblEndScreen(ResourceManager::getFont("main"), "", 32)
 {
     // Инициализируем камеры
     updateViewSizes(window.getSize());
@@ -63,7 +68,8 @@ GameEndReason Game::getEndReason() const { return endReason; }
 
 
 //  Вычисление позиций кнопок паузы
-void Game::computePauseBtnLayout() {
+Game::PauseLayout Game::computePauseBtnLayout() const {
+    PauseLayout L;
     sf::Vector2f ws = uiView.getSize();
     float cx    = ws.x / 2.f;
     float cy    = ws.y / 2.f;
@@ -74,9 +80,24 @@ void Game::computePauseBtnLayout() {
     // Кнопки размещаются в нижней половине экрана, на расстоянии от текста
     float btnY  = cy + 60.f;
 
-    pauseMenuRect     = sf::FloatRect({cx - totalW / 2.f,              btnY}, {btnW, btnH});
-    pauseRestartRect  = sf::FloatRect({cx - btnW / 2.f,                btnY}, {btnW, btnH});
-    pauseContinueRect = sf::FloatRect({cx + totalW / 2.f - btnW,       btnY}, {btnW, btnH});
+    L.buttons.emplace_back(sf::Vector2f(cx - totalW / 2.f, btnY), sf::Vector2f(btnW, btnH), "Завершить");
+    L.buttons.emplace_back(sf::Vector2f(cx - btnW / 2.f,       btnY), sf::Vector2f(btnW, btnH), "Заново");
+    L.buttons.emplace_back(sf::Vector2f(cx + totalW / 2.f - btnW, btnY), sf::Vector2f(btnW, btnH), "Продолжить");
+    return L;
+}
+
+// Вычисление позиций кнопок конца игры
+Game::EndScreenLayout Game::computeEndScreenLayout() const {
+    EndScreenLayout L;
+    auto ws = uiView.getSize();
+    float cx = ws.x / 2.f;
+    float cy = ws.y / 2.f;
+
+    float btnW = 230.f, btnH = 60.f, btnGap = 24.f;
+    
+    L.buttons.emplace_back(sf::Vector2f(cx - (btnW * 2 + btnGap) / 2.f, cy + 40.f), sf::Vector2f(btnW, btnH), "Вернуться");
+    L.buttons.emplace_back(sf::Vector2f(cx + btnGap / 2.f,               cy + 40.f), sf::Vector2f(btnW, btnH), "Заново");
+    return L;
 }
 
 // Обработка событий
@@ -90,7 +111,6 @@ void Game::handleEvents() {
             updateViewSizes(newSize);
             worldView.zoom(currentZoom);
             map.centerOnScreen(newSize, 75.f, 120.f);
-            computePauseBtnLayout();
             clampView();
             continue;
         }
@@ -120,7 +140,7 @@ void Game::handleEvents() {
             if (const auto* touch = event->getIf<sf::Event::TouchBegan>()) {
                 if (touch->finger == 0) {
                     isPanning = true;
-                    wasMoved = false;
+                    hasMoved = false;
                     startTouchPos = touch->position;
                     lastInputPos = touch->position;
                 }
@@ -150,12 +170,12 @@ void Game::handleEvents() {
                 // Если это тач, проверяем, не пора ли переключить флаг с "клик" на "сдвиг"
                 if (event->is<sf::Event::TouchMoved>()) {
                     float d = std::sqrt(std::pow(currentPos.x - startTouchPos.x, 2) + std::pow(currentPos.y - startTouchPos.y, 2));
-                    if (d > 10.f) wasMoved = true;
+                    if (d > 10.f) hasMoved = true;
                 }
 
                 if (!isPinching) {
                     sf::Vector2f delta = sf::Vector2f(lastInputPos - currentPos);
-                    worldView.move(delta * (currentZoom * settings.getFloat("sensivity")));
+                    worldView.move(delta * (currentZoom * settings.getFloat("sensitivity")));
                     lastInputPos = currentPos;
                     clampView();
                 }
@@ -194,7 +214,7 @@ void Game::handleEvents() {
 
         // Android: Отпускание пальца (чтобы отличить от свайпа)
         if (const auto* touch = event->getIf<sf::Event::TouchEnded>()) {
-            if (touch->finger == 0 && !wasMoved && !isPinching) {
+            if (touch->finger == 0 && !hasMoved && !isPinching) {
                 actionPos = touch->position;
             }
             if (touch->finger == 0) isPanning = false;
@@ -220,15 +240,21 @@ void Game::processInput(sf::Vector2i pixelPos) {
     sf::Vector2f worldPos = window.mapPixelToCoords(pixelPos, worldView);
 
     if (state == GameState::Paused) {
-        if (pauseContinueRect.contains(uiPos)) state = GameState::Playing;
-        else if (pauseRestartRect.contains(uiPos)) endReason = GameEndReason::Restart;
-        else if (pauseMenuRect.contains(uiPos)) endReason = GameEndReason::ReturnToMenu;
+        auto pauseLayout = computePauseBtnLayout();
+        if (pauseLayout.buttons.size() >= 3) {
+            if (pauseLayout.buttons[2].contains(uiPos)) state = GameState::Playing;        // Продолжить
+            else if (pauseLayout.buttons[1].contains(uiPos)) endReason = GameEndReason::Restart;   // Заново
+            else if (pauseLayout.buttons[0].contains(uiPos)) endReason = GameEndReason::ReturnToMenu; // Завершить
+        }
         return;
     }
 
     if (state == GameState::Victory || state == GameState::GameOver) {
-        if (endMenuRect.contains(uiPos)) endReason = GameEndReason::ReturnToMenu;
-        else if (endRestartRect.contains(uiPos)) endReason = GameEndReason::Restart;
+        auto endLayout = computeEndScreenLayout();
+        if (endLayout.buttons.size() >= 2) {
+            if (endLayout.buttons[0].contains(uiPos)) endReason = GameEndReason::ReturnToMenu; // Вернуться
+            else if (endLayout.buttons[1].contains(uiPos)) endReason = GameEndReason::Restart; // Заново
+        }
         return;
     }
 
@@ -355,7 +381,6 @@ void Game::render() {
 // Отрисовка оверлея паузы
 void Game::renderPauseOverlay() {
     auto& font = ResourceManager::getFont("main");
-    // Используем размер uiView (всегда 1920x1080), а не окна!
     sf::Vector2f uiSize = uiView.getSize();
     float cx = uiSize.x / 2.f;
     float cy = uiSize.y / 2.f;
@@ -365,36 +390,16 @@ void Game::renderPauseOverlay() {
     window.draw(dim);
 
     // Текст "ПАУЗА"
-    std::string ps = "ПАУЗА";
-    sf::Text pauseTxt(font, sf::String::fromUtf8(ps.begin(), ps.end()), 128);
-    pauseTxt.setFillColor(sf::Color::White);
-    pauseTxt.setPosition({cx - pauseTxt.getLocalBounds().size.x / 2.f, cy - 180.f});
-    window.draw(pauseTxt);
+    lblPause.setCenteredX(cx, 180.f);
+    lblPause.render(window);
 
-    // Пересчитываем позиции кнопок (зависят от размера окна)
-    computePauseBtnLayout();
-
+    // Кнопки паузы
+    auto pauseLayout = computePauseBtnLayout();
     sf::Vector2f mouse = window.mapPixelToCoords(sf::Mouse::getPosition(window), uiView);
 
-    auto drawPauseBtn = [&](const std::string& label, sf::FloatRect r) {
-        bool hov = r.contains(mouse);
-        sf::RectangleShape bg(r.size);
-        bg.setPosition(r.position);
-        bg.setFillColor(hov ? sf::Color(72, 72, 72, 230) : Colors::slotBg);
-        window.draw(bg);
-
-        sf::Text t(font, sf::String::fromUtf8(label.begin(), label.end()), 24);
-        t.setFillColor(sf::Color::White);
-        t.setPosition({
-            r.position.x + (r.size.x - t.getLocalBounds().size.x) / 2.f,
-            r.position.y + (r.size.y - t.getLocalBounds().size.y) / 2.f - 4.f
-        });
-        window.draw(t);
-    };
-
-    drawPauseBtn("Завершить", pauseMenuRect);
-    drawPauseBtn("Заново",       pauseRestartRect);
-    drawPauseBtn("Продолжить",   pauseContinueRect);
+    for (auto& btn : pauseLayout.buttons) {
+        btn.render(window, font, mouse);
+    }
 }
 
 // Метод отрисовки экрана победы / поражения
@@ -415,42 +420,24 @@ void Game::renderEndScreen() {
     bool isWin = (state == GameState::Victory);
     std::string header = isWin ? "ПОБЕДА!" : "ПОРАЖЕНИЕ";
     sf::Color   hColor = isWin ? Colors::moneyText : Colors::livesText;
+    lblEndScreen.setText(header);
+    lblEndScreen.setColor(hColor);
+    lblEndScreen.setCenteredX(cx, 200.f);
+    lblEndScreen.render(window);
 
-    sf::Text hTxt(font, sf::String::fromUtf8(header.begin(), header.end()), 112);
-    hTxt.setFillColor(hColor);
-    hTxt.setPosition({cx - hTxt.getLocalBounds().size.x / 2.f, cy - 200.f});
-    window.draw(hTxt);
 
     // Подпись
     std::string sub = isWin ? "Все волны отражены!" : "База уничтожена";
-    sf::Text subTxt(font, sf::String::fromUtf8(sub.begin(), sub.end()), 30);
-    subTxt.setFillColor(sf::Color(190, 190, 190, 220));
-    subTxt.setPosition({cx - subTxt.getLocalBounds().size.x / 2.f, cy - 70.f});
-    window.draw(subTxt);
+    subLblEndScreen.setText(sub);
+    subLblEndScreen.setColor(sf::Color(190, 190, 190, 220));
+    subLblEndScreen.setCenteredX(cx, cy - 70.f);
+    subLblEndScreen.render(window);
 
-    // Кнопки
-    float btnW = 230.f, btnH = 60.f, btnGap = 24.f;
-    float totalW = btnW * 2 + btnGap;
-    endMenuRect    = sf::FloatRect({cx - totalW / 2.f,           cy + 40.f}, {btnW, btnH});
-    endRestartRect = sf::FloatRect({cx + btnGap / 2.f,           cy + 40.f}, {btnW, btnH});
-
-    auto drawEndBtn = [&](const std::string& label, sf::FloatRect r) {
-        bool hov = r.contains(mouse);
-        sf::RectangleShape bg(r.size);
-        bg.setPosition(r.position);
-        bg.setFillColor(hov ? sf::Color(72, 72, 72, 230) : Colors::slotBg);
-        window.draw(bg);
-        sf::Text t(font, sf::String::fromUtf8(label.begin(), label.end()), 24);
-        t.setFillColor(sf::Color::White);
-        t.setPosition({
-            r.position.x + (r.size.x - t.getLocalBounds().size.x) / 2.f,
-            r.position.y + (r.size.y - t.getLocalBounds().size.y) / 2.f - 4.f
-        });
-        window.draw(t);
-    };
-
-    drawEndBtn("Вернуться", endMenuRect);
-    drawEndBtn("Заново",       endRestartRect);
+    // Кнопки конца игры
+    auto endLayout = computeEndScreenLayout();
+    for (auto& btn : endLayout.buttons) {
+        btn.render(window, font, mouse);
+    }
 }
 
 

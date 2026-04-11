@@ -1,5 +1,7 @@
 # Папки настроек пользователя 
 .vs/
+.qtcreator/
+.vscode/
 *.suo
 *.user
 *.userosscache
@@ -37,6 +39,8 @@ android/app/src/main/jniLibs/
 *.exe
 *.dll
 
+# КАЮСЬ, ГРЕШИЛ, НО ЗАТО С КАКИМ УДОВОЛЬСТВИЕМ
+.qwen/
 
 .todo
 /android/app/.cxx/RelWithDebInfo/1k2d3n5a

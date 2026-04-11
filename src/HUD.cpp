@@ -150,19 +150,19 @@ void HUD::render(sf::RenderWindow& window, int money, int lives, int wave, WaveS
 
     // иконка скорости
     std::string speedTex = "icon-speed" + std::to_string(speedMode + 1);
-    sf::Sprite sBtnIcon(ResourceManager::get(speedTex));
-    sBtnIcon.setPosition({ 12.0f, winSize.y - 96.0f - 12.0f });
-    window.draw(sBtnIcon);
+    sf::Sprite speedBtnIcon(ResourceManager::get(speedTex));
+    speedBtnIcon.setPosition({ 12.0f, winSize.y - 96.0f - 12.0f });
+    window.draw(speedBtnIcon);
 
     // текста скорости
     std::string speedLabels[] = { "x1", "x2", "x3" };
-    sf::Text sText(font, speedLabels[speedMode], 22);
-    sText.setFillColor(sf::Color::White);
+    sf::Text speedText(font, speedLabels[speedMode], 22);
+    speedText.setFillColor(sf::Color::White);
     // центрируем текст
-    sf::FloatRect tBounds = sText.getLocalBounds();
-    sText.setOrigin({ tBounds.size.x / 2.f, tBounds.size.y / 2.f });
-    sText.setPosition({ 12.0f + 48.f, winSize.y - 96.0f + 44.f - 12.0f});
-    window.draw(sText);
+    sf::FloatRect tBounds = speedText.getLocalBounds();
+    speedText.setOrigin({ tBounds.size.x / 2.f, tBounds.size.y / 2.f });
+    speedText.setPosition({ 12.0f + 48.f, winSize.y - 96.0f + 44.f - 12.0f});
+    window.draw(speedText);
 }
 
 void HUD::handleClick(sf::Vector2f mousePos) {
