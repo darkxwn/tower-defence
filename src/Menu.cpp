@@ -291,22 +291,6 @@ void Menu::updateViewSizes(sf::Vector2u windowSize) {
     }
 }
 
-//void Menu::scanLevels() {
-//    levels.clear();
-//    std::string path = "data/levels";
-//    if (!fs::exists(path)) return;
-//    int idx = 0;
-//    for (const auto& entry : fs::directory_iterator(path)) {
-//        if (entry.path().extension() == ".map") {
-//            LevelInfo info;
-//            info.filePath = entry.path().string();
-//            info.name = readLevelName(info.filePath);
-//            info.index = idx++;
-//            levels.push_back(info);
-//        }
-//    }
-//}
-
 void Menu::scanLevels() {
     levels.clear();
 #ifdef ANDROID

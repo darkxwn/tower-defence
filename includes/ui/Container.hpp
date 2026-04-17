@@ -42,6 +42,8 @@ namespace UI {
         float scrollOffset = 0.f; // текущее смещение прокрутки по вертикали
         bool scrollEnabled = false; // флаг активности прокрутки
         float maxContentHeight = 0.f; // общая высота всего содержимого
+        sf::Vector2i lastTouchPos; // последняя позиция касания для скролла
+        bool isDragging = false; // флаг процесса перетаскивания (скролла)
 
         // Расчет позиций и размеров дочерних элементов
         void recalculateLayout();

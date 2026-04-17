@@ -141,6 +141,7 @@ namespace UI {
     void Container::recalculateLayout() {
         maxContentHeight = 0.f;
         
+        // сбор элементов, участвующих в автоматической расстановке
         std::vector<Widget*> layoutChildren;
         for (auto& child : children) {
             if (child->isVisible() && child->getFollowsLayout()) {
@@ -150,6 +151,7 @@ namespace UI {
 
         if (layoutChildren.empty()) return;
 
+        // структура для управления линиями при переносе (Wrap)
         struct Line {
             std::vector<Widget*> items; 
             float mainSize = 0.f; 
@@ -161,6 +163,7 @@ namespace UI {
 
         float maxMainSize = (direction == Direction::Row) ? (size.x - padding.x * 2.f) : (size.y - padding.y * 2.f);
 
+        // распределение элементов по линиям
         for (auto* item : layoutChildren) {
             sf::Vector2f itemSize = item->getSize();
             float itemMain = (direction == Direction::Row) ? itemSize.x : itemSize.y;
@@ -183,9 +186,11 @@ namespace UI {
             }
         }
 
+        // расчет общего размера всех линий по поперечной оси
         float totalLinesCrossSize = (lines.size() - 1) * gap;
         for (const auto& line : lines) totalLinesCrossSize += line.crossSize;
 
+        // определение начальной позиции по поперечной оси
         float currentCrossPos = 0.f;
         float containerCrossSize = (direction == Direction::Row) ? (size.y - padding.y * 2.f) : (size.x - padding.x * 2.f);
 
@@ -196,6 +201,7 @@ namespace UI {
             currentCrossPos = std::max(0.f, containerCrossSize - totalLinesCrossSize);
         }
 
+        // позиционирование каждой линии и элементов внутри нее
         for (const auto& line : lines) {
             float currentMainPos = 0.f;
 
@@ -240,6 +246,7 @@ namespace UI {
             currentCrossPos += line.crossSize + gap;
         }
         
+        // Виджеты, которые не участвуют в расстановке, принудительно ставятся в начало контейнера
         for (auto& child : children) {
             if (child->isVisible() && !child->getFollowsLayout()) {
                 child->setPosition(position);
@@ -255,17 +262,40 @@ namespace UI {
         sf::Vector2f mousePos = window.mapPixelToCoords(pixelPos, uiView);
         bool mouseInside = getGlobalBounds().contains(mousePos);
 
-        // обработка прокрутки
-        if (scrollEnabled && mouseInside) {
-            if (const auto* scroll = event.getIf<sf::Event::MouseWheelScrolled>()) {
-                if (scroll->wheel == sf::Mouse::Wheel::Vertical) {
-                    scrollOffset -= scroll->delta * 40.f;
-                    float maxScroll = std::max(0.f, maxContentHeight - size.y);
-                    if (scrollOffset < 0.f) scrollOffset = 0.f;
-                    if (scrollOffset > maxScroll) scrollOffset = maxScroll;
-                    return; 
+        // ОБРАБОТКА ПРОКРУТКИ (Колесико мыши + Сенсорное перетаскивание)
+        if (scrollEnabled) {
+            // Колесико мыши
+            if (mouseInside) {
+                if (const auto* scroll = event.getIf<sf::Event::MouseWheelScrolled>()) {
+                    if (scroll->wheel == sf::Mouse::Wheel::Vertical) {
+                        scrollOffset -= scroll->delta * 40.f;
+                    }
                 }
             }
+
+            // Сенсорное перетаскивание (Android)
+            if (const auto* touch = event.getIf<sf::Event::TouchBegan>()) {
+                sf::Vector2f touchPos = window.mapPixelToCoords(touch->position, uiView);
+                if (getGlobalBounds().contains(touchPos)) {
+                    isDragging = true;
+                    lastTouchPos = touch->position;
+                }
+            }
+            else if (const auto* tMoved = event.getIf<sf::Event::TouchMoved>()) {
+                if (isDragging) {
+                    float deltaY = static_cast<float>(lastTouchPos.y - tMoved->position.y);
+                    scrollOffset += deltaY;
+                    lastTouchPos = tMoved->position;
+                }
+            }
+            else if (event.is<sf::Event::TouchEnded>()) {
+                isDragging = false;
+            }
+
+            // Ограничение скролла
+            float maxScroll = std::max(0.f, maxContentHeight - size.y);
+            if (scrollOffset < 0.f) scrollOffset = 0.f;
+            if (scrollOffset > maxScroll) scrollOffset = maxScroll;
         }
 
         // Если скролл включен, создаем скорректированный вид с вьюпортом для детей
