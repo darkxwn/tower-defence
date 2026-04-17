@@ -1,5 +1,6 @@
 #include "Menu.hpp"
 #include "ResourceManager.hpp"
+#include "GeneratedLevels.hpp"
 #include "utils/FileReader.hpp"
 #include "Colors.hpp"
 #include <filesystem>
@@ -296,18 +297,16 @@ void Menu::updateViewSizes(sf::Vector2u windowSize) {
 
 void Menu::scanLevels() {
     levels.clear();
-    // Здесь должен быть вызов GeneratedLevels, но я сначала починю стабильность
-    std::string path = "data/levels";
-    if (!fs::exists(path)) return;
-    int idx = 0;
-    for (const auto& entry : fs::directory_iterator(path)) {
-        if (entry.path().extension() == ".map") {
-            LevelInfo info;
-            info.filePath = entry.path().string();
-            info.name = readLevelName(info.filePath);
-            info.index = idx++;
-            levels.push_back(info);
-        }
+#ifdef ANDROID
+    std::string dir = "levels/";
+#else
+    std::string dir = "data/levels/";
+#endif
+    std::vector<std::string> mapNames = getLevelList();
+
+    for (int i = 0; i < (int)mapNames.size(); ++i) {
+        std::string fullPath = dir + mapNames[i];
+        levels.push_back({ fullPath, readLevelName(fullPath), i });
     }
 }
 

@@ -68,7 +68,6 @@ file(WRITE "${CMAKE_BINARY_DIR}/GeneratedLevels.hpp"
      "inline std::vector<std::string> getLevelList() { return { ${MAP_STR} }; }")
 include_directories("${CMAKE_BINARY_DIR}")
 
-
 # СОЗДАНИЕ ЦЕЛИ (Target)
 if(ANDROID)
     # Android требует библиотеку .so
