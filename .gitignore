@@ -39,9 +39,9 @@ android/app/src/main/jniLibs/
 *.exe
 *.dll
 
-# КАЮСЬ, ГРЕШИЛ, НО ЗАТО С КАКИМ УДОВОЛЬСТВИЕМ
-# ОСУЖДАТЬ НЕ БУДУ )))
 .qwen/
+HISTORY.md
+PLAN.md
 
 .todo
 /android/app/.cxx/RelWithDebInfo/1k2d3n5a

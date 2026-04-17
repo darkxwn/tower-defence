@@ -1,6 +1,0 @@
-```
-Серьезность	Код	Описание	Проект	Файл	Строка	Состояние подавления	Подробности
-Ошибка	C2664	"void UI::Container::setSize(sf::Vector2f)": невозможно преобразовать аргумент 1 из "initializer list" в "sf::Vector2f"	C:\Users\Acer\source\repos\tower-defence\out\build\windows-x64-debug\tower-defence	C:\Users\Acer\source\repos\tower-defence\src\Menu.cpp	146		
-Ошибка (активно)	E0020	идентификатор "navBtnSize" не определен	tower-defence.exe - Windows x64 Debug	C:\Users\Acer\source\repos\tower-defence\src\Menu.cpp	146		
-Ошибка	C2065	navBtnSize: необъявленный идентификатор	C:\Users\Acer\source\repos\tower-defence\out\build\windows-x64-debug\tower-defence	C:\Users\Acer\source\repos\tower-defence\src\Menu.cpp	146						
-```	
