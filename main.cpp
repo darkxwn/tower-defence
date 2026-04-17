@@ -4,8 +4,9 @@
 #include "Game.hpp"
 #include "GameData.hpp"
 #include "ResourceManager.hpp"
-#include "utils/SettingsManager.hpp"
+#include "SettingsManager.hpp"
 #include <string>
+#include <vector>
 
 ///////////////////////////////////////////////////////////////////////////
 //
@@ -13,36 +14,25 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 
-
 #ifdef __ANDROID__
 #include <android/native_activity.h>
 #include <SFML/System/NativeActivity.hpp>
 
-// Функция для включения "Immersive Mode" (скрытия всех панелей)
-void setImmersiveMode(sf::RenderWindow& window) {
+static void setImmersiveMode(sf::RenderWindow& window) {
     ANativeActivity* activity = sf::getNativeActivity();
     JavaVM* vm = activity->vm;
     JNIEnv* env = nullptr;
     vm->AttachCurrentThread(&env, nullptr);
-
     jobject activityObj = activity->clazz;
     jclass activityClass = env->GetObjectClass(activityObj);
-
-    // Получаем окно
     jmethodID getWindow = env->GetMethodID(activityClass, "getWindow", "()Landroid/view/Window;");
     jobject windowObj = env->CallObjectMethod(activityObj, getWindow);
     jclass windowClass = env->GetObjectClass(windowObj);
-
-    // Получаем декоратор
     jmethodID getDecorView = env->GetMethodID(windowClass, "getDecorView", "()Landroid/view/View;");
     jobject decorViewObj = env->CallObjectMethod(windowObj, getDecorView);
     jclass viewClass = env->GetObjectClass(decorViewObj);
-
-    // Флаги: Fullscreen + HideNavigation + ImmersiveSticky
-    // Значение 5894 — это комбинация системных флагов Android для скрытия всего
     jmethodID setSystemUiVisibility = env->GetMethodID(viewClass, "setSystemUiVisibility", "(I)V");
     env->CallVoidMethod(decorViewObj, setSystemUiVisibility, 5894);
-
     vm->DetachCurrentThread();
 }
 #endif
@@ -53,24 +43,19 @@ void setImmersiveMode(sf::RenderWindow& window) {
 #endif
 
 static void loadResources() {
-    // Используем "assets/" для ПК и "" для мобилок
     std::string assetsPath = "assets/";
-    std::string dataPath = "data/";
-
 #ifdef __APPLE__
     CFBundleRef mainBundle = CFBundleGetMainBundle();
     CFURLRef resourcesURL = CFBundleCopyResourcesDirectoryURL(mainBundle);
     char path[1024];
-    if (CFURLGetFileSystemRepresentation(resourcesURL, TRUE, (UInt8*)path, 1024)) {
-        chdir(path);
-    }
+    if (CFURLGetFileSystemRepresentation(resourcesURL, TRUE, (UInt8*)path, 1024)) chdir(path);
     CFRelease(resourcesURL);
 #endif
-
 #ifdef __ANDROID__
     assetsPath = "";
-    dataPath = "";
 #endif
+
+    GameData::load();
 
     // ШРИФТ
     ResourceManager::loadFont("main", assetsPath + "fonts/web_ibm_mda.ttf");
@@ -84,7 +69,6 @@ static void loadResources() {
     ResourceManager::load("icon-upgrades", assetsPath + "icons/upgrades.png");
     ResourceManager::load("icon-settings", assetsPath + "icons/settings.png");
     ResourceManager::load("icon-exit", assetsPath + "icons/exit.png");
-
     ResourceManager::load("icon-speed1", assetsPath + "icons/icon-speed1.png");
     ResourceManager::load("icon-speed2", assetsPath + "icons/icon-speed2.png");
     ResourceManager::load("icon-speed3", assetsPath + "icons/icon-speed3.png");
@@ -98,63 +82,53 @@ static void loadResources() {
     ResourceManager::load("portal-layer2", assetsPath + "sprites/tile-portal-layer2.png");
     ResourceManager::load("base", assetsPath + "sprites/tile-base.png");
 
-    // ВРАГИ 
-    ResourceManager::load("enemy-basic", assetsPath + "sprites/enemy-basic.png");
-    ResourceManager::load("enemy-fast", assetsPath + "sprites/enemy-fast.png");
-    ResourceManager::load("enemy-strong", assetsPath + "sprites/enemy-strong.png");
+    // ВРАГИ
+    std::vector<std::string> enemyTypes = { "basic", "fast", "strong" };
+    for (const auto& type : enemyTypes) {
+        ResourceManager::load("enemy-" + type, assetsPath + "sprites/enemy-" + type + ".png");
+    }
 
-    GameData::load();
-
-    for (const auto& name : GameData::getTowerNames()) {
-        ResourceManager::load("tower-" + name + "-base", assetsPath + "sprites/tower-" + name + "-base.png");
-        ResourceManager::load("tower-" + name + "-turret", assetsPath + "sprites/tower-" + name + "-turret.png");
-        ResourceManager::load("tower-" + name + "-preview", assetsPath + "sprites/tower-" + name + "-preview.png");
-        ResourceManager::load("tower-" + name + "-proj", assetsPath + "sprites/tower-" + name + "-proj.png");
+    // БАШНИ
+    auto towerNames = GameData::getTowerNames();
+    for (const auto& name : towerNames) {
+        std::vector<std::string> parts = { "base", "turret", "proj", "preview" };
+        for (const auto& part : parts) {
+            std::string resId = "tower-" + name + "-" + part;
+            ResourceManager::load(resId, assetsPath + "sprites/" + resId + ".png");
+        }
     }
 }
 
-// Вспомогательная функция для настройки окна
-void setupWindow(sf::RenderWindow& window, SettingsManager& settings) {
-    bool isFullscreen = settings.getBool("fullscreen");
-    auto style = isFullscreen ? sf::State::Fullscreen : sf::State::Windowed;
-    window.create(sf::VideoMode({ 1920, 1080 }), "Tower Defence", style);
-    window.setMinimumSize(sf::Vector2u({ 1280, 720 }));
-    window.setVerticalSyncEnabled(true);
-}
-
-int main(int argc, char* argv[]) {
+int main() {
     SettingsManager settings;
-    sf::RenderWindow window;
-
-    setupWindow(window, settings);
-
-#ifdef __ANDROID__
-    setImmersiveMode(window);
-#endif
-
+    settings.load();
+    
+    sf::RenderWindow window(sf::VideoMode({1280, 720}), "Tower Defence");
+    window.setFramerateLimit(60);
+    
     loadResources();
 
-    Menu menu(window, settings);
+    auto menu = std::make_unique<Menu>(window, settings);
 
-    // Главный цикл приложения: Меню ↔ Игра
     while (window.isOpen()) {
+        while (window.isOpen() && !menu->isLevelChosen()) {
+            menu->handleEvents();
+            if (!window.isOpen()) { menu.reset(); return 0; }
 
-        // Показываем меню до тех пор, пока игрок не выберет уровень
-        while (window.isOpen() && !menu.isLevelChosen()) {
-            menu.handleEvents();
-
-            if (menu.consumesWindowRecreationRequest()) {
-                setupWindow(window, settings);
-                menu.updateViewSizes(window.getSize());
+            if (menu->consumesWindowRecreationRequest()) {
+                bool fs = settings.getBool("fullscreen");
+                window.create(sf::VideoMode({1280, 720}), "Tower Defence", fs ? sf::State::Fullscreen : sf::State::Windowed);
+                window.setFramerateLimit(60);
+                menu->updateViewSizes(window.getSize());
             }
 
-            menu.render();
+            menu->render();
+            if (!window.isOpen()) { menu.reset(); return 0; }
         }
-        if (!window.isOpen()) break;
+        if (!window.isOpen()) { menu.reset(); return 0; }
 
-        // Запускаем игровую сессию
-        std::string levelPath = menu.getChosenLevel();
-        menu.resetChoice(); // сбрасываем флаг, но остаёмся в LevelSelect
+        std::string levelPath = menu->getChosenLevel();
+        menu->resetChoice();
 
         bool keepPlaying = true;
         while (keepPlaying && window.isOpen()) {
@@ -162,32 +136,23 @@ int main(int argc, char* argv[]) {
             game.run();
 
             GameEndReason reason = game.getEndReason();
-
-            switch (reason) {
-            case GameEndReason::Restart:
-                // Пересоздаём Game с тем же уровнем — цикл повторится
-                break;
-
-            case GameEndReason::Win:
-                menu.notifyResult(SessionResult::Win, levelPath);
+            if (reason == GameEndReason::ReturnToMenu) {
                 keepPlaying = false;
-                break;
-
-            case GameEndReason::Lose:
-                menu.notifyResult(SessionResult::Lose, levelPath);
+            } else if (reason == GameEndReason::Restart) {
+                continue; 
+            } else if (reason == GameEndReason::Win || reason == GameEndReason::Lose) {
+                menu->notifyResult(reason == GameEndReason::Win ? SessionResult::Win : SessionResult::Lose, levelPath);
                 keepPlaying = false;
-                break;
-
-            case GameEndReason::ReturnToMenu:
-            default:
-                // Возврат в меню без оверлея результата
+            } else {
                 keepPlaying = false;
-                break;
             }
         }
-        // После выхода из keepPlaying — возвращаемся в меню
-        // (menu уже настроен notifyResult или просто ждёт в LevelSelect)
+        
+        if (window.isOpen()) {
+            menu->updateViewSizes(window.getSize());
+        }
     }
 
+    menu.reset();
     return 0;
 }

@@ -7,15 +7,17 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 
+// Типы тайлов
 enum class TileType {
-	Empty,           // 0 Тайл фона
-	Portal,          // 1 Тайл портала - место выхода врагов
-	Road,            // 2 Тайл дороги
-	Base,            // 3 Тайл базы
-	Platform         // 4 Тайл платформы
+	Empty, // пустой тайл
+	Portal, // тайл портала
+	Road, // тайл дороги
+	Base, // тайл базы
+	Platform // тайл платформы
 };
 
+// Структура тайла
 struct Tile {
-	TileType type = TileType::Empty;          // Тип тайла
-	sf::Vector2i gridPos;   // Позиция на карте
+	TileType type = TileType::Empty; // тип тайла
+	sf::Vector2i gridPos; // позиция на сетке
 };

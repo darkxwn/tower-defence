@@ -9,32 +9,39 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 
-// Структура статов врага
+// Статы врага
 struct EnemyStats {
-	int health;      // Количество жизней 
-	int speed;       // Скорость 
-	int damage;      // Урон по базе
-	int reward;      // Награда за убийство
+	int health; // количество жизней
+	int speed; // скорость
+	int damage; // урон по базе
+	int reward; // награда за убийство
 };
 
-// Структура статов башни
+// Статы башни
 struct TowerStats {
-	int damage;      // Урон
-	float range;     // Радиус атаки
-	float firerate;  // Скорострельность
-	int cost;        // Цена постройки
-	int splash;      // Урон по области 
+	int damage; // урон
+	float range; // радиус атаки
+	float firerate; // скорострельность
+	int cost; // цена постройки
+	int splash; // урон по области
 };
 
 class GameData {
 private:
-	static std::map<EnemyType, EnemyStats>  enemies;
-	static std::map<std::string, TowerStats> towers;
-	static std::vector<std::string> towerOrder;
+	static std::map<EnemyType, EnemyStats> enemies; // хранилище статов врагов
+	static std::map<std::string, TowerStats> towers; // хранилище статов башен
+	static std::vector<std::string> towerOrder; // порядок башен
 
 public:
+	// Загрузка данных из конфигурационных файлов
 	static void load();
+
+	// Получение статов врага по типу
 	static EnemyStats getEnemy(EnemyType type);
+
+	// Получение статов башни по имени
 	static TowerStats getTower(const std::string& name);
+
+	// Получение имён всех башен
 	static std::vector<std::string> getTowerNames();
 };

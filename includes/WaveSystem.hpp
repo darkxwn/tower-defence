@@ -11,41 +11,58 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 
+// Структура волны
 struct Wave {
-    EnemyType type;   // Тип врага
-    int count;        // Количество врагов в группе
+    EnemyType type; // тип врага
+    int count; // количество врагов в группе
 };
 
+// Состояния системы волн
 enum class WaveState {
-    Idle,      // первая волна — ждём кнопку
-    Waiting,   // между волнами — идёт таймер
-    Spawning,  // спавним врагов
-    Fighting   // все заспавнены — ждём пока убьют
+    Idle, // ожидание запуска первой волны
+    Waiting, // пауза между волнами
+    Spawning, // спавн врагов
+    Fighting // все заспавнены, ожидание завершения
 };
 
 class WaveSystem {
 private:
-    std::vector<Wave> waves;
+    std::vector<Wave> waves; // список всех волн
 
-    int currentWave = 0;  // индекс текущей волны
-    int spawned = 0;      // сколько врагов уже заспавнено
+    int currentWave = 0; // индекс текущей волны
+    int spawned = 0; // количество заспавненных врагов
 
-    float spawnTimer = 0.f;
-    float waitTimer = 0.f;
-    float waitInterval = 8.f;  // пауза между волнами в секундах
+    float spawnTimer = 0.f; // таймер спавна
+    float waitTimer = 0.f; // таймер паузы
+    float waitInterval = 8.f; // пауза между волнами
 
-    WaveState state = WaveState::Idle;
+    WaveState state = WaveState::Idle; // текущее состояние
 
+    // Интервал спавна по типу врага
     float getSpawnInterval(EnemyType type) const;
 
 public:
+    // Загрузка волн из файла
     void loadWaves(const std::string& path);
-    void update(float deltaTime, std::list<std::shared_ptr<Enemy>>& enemies, const std::vector<sf::Vector2i>& path);
 
+    // Обновление системы волн
+    void update(float deltaTime, std::vector<std::unique_ptr<Enemy>>& enemies, const std::vector<sf::Vector2i>& path);
+
+    // Запуск волны
     void startWave();
+
+    // Проверка завершения всех волн
     bool isFinished() const;
+
+    // Получение текущего состояния
     WaveState getState() const;
+
+    // Получение таймера паузы
     float getWaitTimer() const;
+
+    // Получение индекса текущей волны
     int getCurrentWave() const;
+
+    // Получение данных волны по индексу
     Wave getWave(int waveIndex) const;
 };

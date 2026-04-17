@@ -4,10 +4,13 @@
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
+
+// Хранилище ресурсов
 std::map<EnemyType, EnemyStats> GameData::enemies;
 std::map<std::string, TowerStats> GameData::towers;
 std::vector<std::string> GameData::towerOrder;
 
+// Загрузка данных из конфигурационных файлов
 void GameData::load() {
     enemies.clear();
     towers.clear();
@@ -21,12 +24,12 @@ void GameData::load() {
     std::string towerPath = "data/config/towers.cfg";
 #endif
 
-    // ЗАГРУЗКА ВРАГОВ
+    // загрузка врагов
     auto enemyData = readFile(enemyPath);
     std::istringstream ssFile(enemyData.value());
     std::string line;
     while (std::getline(ssFile, line)) {
-        if (!line.empty() && line.back() == '\r') line.pop_back(); // Чистим Windows-переносы
+        if (!line.empty() && line.back() == '\r') line.pop_back();
         if (line.empty()) continue;
 
         std::istringstream ss(line);
@@ -56,13 +59,13 @@ void GameData::load() {
         enemies[type] = stats;
     }
 
-    // ЗАГРУЗКА БАШЕН
+    // загрузка башен
     auto towerData = readFile(towerPath);
     std::istringstream ssFileTower(towerData.value());
     std::string lineTower;
     while (std::getline(ssFileTower, lineTower)) {
-        if (!line.empty() && line.back() == '\r') line.pop_back();
-        if (line.empty()) continue;
+        if (!lineTower.empty() && lineTower.back() == '\r') lineTower.pop_back();
+        if (lineTower.empty()) continue;
 
         std::istringstream ss(lineTower);
         std::string name;
@@ -78,7 +81,6 @@ void GameData::load() {
 
             if (key == "damage")   stats.damage = std::stoi(valStr);
             else if (key == "firerate") {
-                // Заменяем запятую на точку для stof, если конфиг был с запятой
                 std::replace(valStr.begin(), valStr.end(), ',', '.');
                 stats.firerate = std::stof(valStr);
             }
@@ -92,7 +94,7 @@ void GameData::load() {
     }
 }
 
-// Метод получения статов врага по его типу
+// Получение статов врага по типу
 EnemyStats GameData::getEnemy(EnemyType type) {
     auto it = enemies.find(type);
     if (it == enemies.end())
@@ -100,7 +102,7 @@ EnemyStats GameData::getEnemy(EnemyType type) {
     return it->second;
 }
 
-// Метод получения статов башни по ее типу
+// Получение статов башни по имени
 TowerStats GameData::getTower(const std::string& name) {
     auto it = towers.find(name);
     if (it == towers.end())
@@ -108,4 +110,7 @@ TowerStats GameData::getTower(const std::string& name) {
     return it->second;
 }
 
-std::vector<std::string> GameData::getTowerNames() { return towerOrder; }
+// Получение имён всех башен
+std::vector<std::string> GameData::getTowerNames() {
+    return towerOrder;
+}

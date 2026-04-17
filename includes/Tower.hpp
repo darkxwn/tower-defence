@@ -14,20 +14,23 @@
 
 class Tower {
 private:
-    std::string typeSlug;      
-    TowerStats stats;
-    sf::Vector2i gridPos;
-    int enemyIndex = -1;
-    float fireTimer = 0.f;
-    float currentAngle = 0.f;
-    float rotationSpeed = 180.f;
+    std::string typeSlug; // slug типа башни
+    TowerStats stats; // статы башни
+    sf::Vector2i gridPos; // позиция на сетке
+    int enemyIndex = -1; // индекс выбранного врага
+    float fireTimer = 0.f; // таймер стрельбы
+    float currentAngle = 0.f; // текущий угол поворота турели
+    float rotationSpeed = 180.f; // скорость поворота турели
 
 public:
-    // Конструктор теперь принимает строку имени типа
     Tower(const std::string& slug, sf::Vector2i gridPos);
 
-    void update(float deltaTime, std::list<std::shared_ptr<Enemy>>& enemies, std::vector<Projectile>& projectiles, sf::Vector2f mapOffset);
+    // Обновление башни
+    void update(float deltaTime, std::vector<std::unique_ptr<Enemy>>& enemies, std::vector<Projectile>& projectiles, sf::Vector2f mapOffset);
+
+    // Отрисовка башни
     void render(sf::RenderWindow& window, sf::Vector2f mapOffset, bool showRadius = false);
 
+    // Получение позиции на сетке
     sf::Vector2i getGridPos() const;
 };

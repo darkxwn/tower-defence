@@ -1,196 +1,184 @@
 #include "HUD.hpp"
 #include "ResourceManager.hpp"
 #include "GameData.hpp"
-#include <SFML/Graphics.hpp>
 #include "Colors.hpp"
+#include <SFML/Graphics.hpp>
 
+// Конструктор инициализирует кнопки и их логику
 HUD::HUD() {
-    pauseBtn.setSize({ 48.f, 48.f });
-    pauseBtn.setFillColor(sf::Color::Transparent);
+    auto& font = ResourceManager::getFont("main"); // основной шрифт
 
-    skipBtn.setSize({ 48.f, 48.f });
-    skipBtn.setFillColor(sf::Color::Transparent);
+    // Инициализация управляющих кнопок
+    pauseBtn = UI::Button(ResourceManager::get("icon-pause"), sf::Vector2f(48.f, 48.f));
+    pauseBtn.setTransparent(true);
+    pauseBtn.setCallback([this]() { pauseRequested = true; });
 
-    speedBtn.setSize({ 96.f, 96.f });
-    speedBtn.setFillColor(sf::Color::Transparent);
+    skipBtn = UI::Button(ResourceManager::get("icon-skip"), sf::Vector2f(48.f, 48.f));
+    skipBtn.setTransparent(true);
+    skipBtn.setCallback([this]() { skipRequested = true; });
 
-    for (int i = 0; i < 4; i++) {
-        sf::RectangleShape slot({ 90.f, 100.f });
-        slot.setFillColor(Colors::slotBg);
-        towerSlots.push_back(slot);
+    // speedBtn — иконка в полный размер кнопки, без фона
+    speedBtn = UI::Button(ResourceManager::get("icon-speed1"), sf::Vector2f(96.f, 96.f));
+    speedBtn.setTransparent(true);
+    speedBtn.setCallback([this]() {
+        speedMode = (speedMode + 1) % 3;
+        speedBtn.setTexture(ResourceManager::get("icon-speed" + std::to_string(speedMode + 1)));
+    });
+
+    // Создание слотов для башен
+    auto towerNames = GameData::getTowerNames();
+    towerSlots.reserve((int)towerNames.size());
+    for (int i = 0; i < (int)towerNames.size(); i++) {
+        int cost = GameData::getTower(towerNames[i]).cost;
+        UI::Button slot(ResourceManager::get("tower-" + towerNames[i] + "-preview"), font, std::to_string(cost) + "$", sf::Vector2f(90.f, 100.f));
+        slot.setIconScale(sf::Vector2f(0.15625f, 0.15625f));
+        slot.setTextSize(16);
+        slot.setTextColor(Colors::Theme::TextMoney);
+        slot.setCallback([this, i]() {
+            selectedTowerSlot = (selectedTowerSlot == i) ? -1 : i;
+        });
+        towerSlots.push_back(std::move(slot));
     }
 }
 
+// Расставляет элементы интерфейса согласно размеру логического экрана
 void HUD::updateLayout(sf::Vector2f viewSize) {
-    pauseBtn.setPosition({ 10.f, 10.f });
+    float cx = viewSize.x / 2.f; // центр по горизонтали
 
-    // skipBtn позиционируется в render динамически, 
-    // но для handleClick нам нужно актуальное положение:
-    float cx = viewSize.x / 2.f;
+    pauseBtn.setPosition({ 20.f, 20.f });
     skipBtn.setPosition({ cx + 150.f, 10.f });
+    speedBtn.setPosition({ 15.0f, viewSize.y - 111.0f });
 
-    // Кнопка скорости (слева внизу)
-    speedBtn.setPosition({ 15.0f, viewSize.y - (96.0f + 15.0f) });
-
-    // Обновляем позиции слотов башен (они тоже зависят от центра экрана)
-    int slots = 2 + (int)towerSlots.size();
-    float panelWidth = slots * 100.f;
+    float panelWidth = (2 + (int)towerSlots.size()) * 100.f;
     float startXPos = cx - panelWidth / 2.f;
+
     for (int i = 0; i < (int)towerSlots.size(); i++) {
         towerSlots[i].setPosition({ (startXPos + 100.f) + i * 100.f, viewSize.y - 110.f });
     }
 }
 
+// Отрисовывает интерфейс: панели, ресурсы, волны и кнопки
 void HUD::render(sf::RenderWindow& window, int money, int lives, int wave, WaveState state) {
-    auto& font = ResourceManager::getFont("main");
-    sf::Vector2f winSize = window.getView().getSize();
+    auto& font = ResourceManager::getFont("main"); // шрифт
+    sf::Vector2f ws = window.getView().getSize(); // логический размер UI
+    float cx = ws.x / 2.f; // центр
 
-    float viewW = winSize.x;
-    float viewH = winSize.y;
+    pauseBtn.render(window);
 
-    float cx = winSize.x / 2.f;
-
-    window.draw(pauseBtn);
-    sf::Sprite pauseIcon(ResourceManager::get("icon-pause"));
-    pauseIcon.setPosition(pauseBtn.getPosition());
-    window.draw(pauseIcon);
-
+    // Верхняя панель волн
     sf::ConvexShape trapezoid;
     trapezoid.setPointCount(4);
     trapezoid.setPoint(0, { cx - 300.f, 0.f });
     trapezoid.setPoint(1, { cx + 300.f, 0.f });
     trapezoid.setPoint(2, { cx + 200.f, 75.f });
     trapezoid.setPoint(3, { cx - 200.f, 75.f });
-    trapezoid.setFillColor(Colors::panelBg);
+    trapezoid.setFillColor(Colors::Theme::PanelBg);
     window.draw(trapezoid);
 
     std::string waveStr = "ВОЛНА " + std::to_string(wave + 1);
     sf::Text waveText(font, sf::String::fromUtf8(waveStr.begin(), waveStr.end()), 28);
-    waveText.setFillColor(sf::Color::White);
-    float waveTextX = cx - waveText.getLocalBounds().size.x / 2.f;
-    waveText.setPosition({ waveTextX, 15.f });
+    sf::FloatRect wtB = waveText.getLocalBounds();
+    waveText.setOrigin({ wtB.position.x + wtB.size.x / 2.f, 0.f });
+    waveText.setPosition({ cx, 15.f });
     window.draw(waveText);
 
     if (state == WaveState::Waiting || state == WaveState::Idle) {
-        skipBtn.setPosition({ cx + 150.f, 10.f });
-        window.draw(skipBtn);
-        sf::Sprite skipIcon(ResourceManager::get("icon-skip"));
-        skipIcon.setPosition(skipBtn.getPosition());
-        window.draw(skipIcon);
+        skipBtn.render(window);
     }
 
-    int slots = 2 + (int)towerSlots.size();
-    float panelWidth = slots * 100.f;
-    float startXPos = cx - panelWidth / 2.f;
+    // Нижняя панель башен
+    int slotsCount = (int)towerSlots.size();
+    float panelW = (2 + slotsCount) * 100.f;
+    float startX = cx - panelW / 2.f;
 
     sf::ConvexShape hexagon;
-    float hexagonWidth = slots * 100.f;
-    float hexagonHeight = 120.f;
     hexagon.setPointCount(6);
-    hexagon.setPoint(0, { cx - hexagonWidth / 2.f, (float)winSize.y  });
-    hexagon.setPoint(1, { cx - hexagonWidth / 2.f - 25.f, (float)winSize.y  - hexagonHeight / 2.f });
-    hexagon.setPoint(2, { cx - hexagonWidth / 2.f, (float)winSize.y  - hexagonHeight });
-    hexagon.setPoint(3, { cx + hexagonWidth / 2.f, (float)winSize.y  - hexagonHeight });
-    hexagon.setPoint(4, { cx + hexagonWidth / 2.f + 25.f, (float)winSize.y  - hexagonHeight / 2.f });
-    hexagon.setPoint(5, { cx + hexagonWidth / 2.f, (float)winSize.y  });
-    hexagon.setFillColor(Colors::panelBg);
+    hexagon.setPoint(0, { cx - panelW / 2.f, ws.y });
+    hexagon.setPoint(1, { cx - panelW / 2.f - 25.f, ws.y - 60.f });
+    hexagon.setPoint(2, { cx - panelW / 2.f, ws.y - 120.f });
+    hexagon.setPoint(3, { cx + panelW / 2.f, ws.y - 120.f });
+    hexagon.setPoint(4, { cx + panelW / 2.f + 25.f, ws.y - 60.f });
+    hexagon.setPoint(5, { cx + panelW / 2.f, ws.y });
+    hexagon.setFillColor(Colors::Theme::PanelBg);
     window.draw(hexagon);
-    
-    // иконка денег
-    sf::Sprite coinsIcon(ResourceManager::get("icon-coins"));
-    coinsIcon.setScale({ 1.25f, 1.25f });
-    coinsIcon.setPosition({ startXPos + 15.f, (float)winSize.y - 105.f  });
-    window.draw(coinsIcon);
-    // текст денег
-    sf::Text moneyText(font, std::to_string(money) + "$", 26);
-    moneyText.setFillColor(Colors::moneyText);
-    moneyText.setPosition({ startXPos + (90.f - moneyText.getLocalBounds().size.x) / 2, (float)winSize.y - 40.f  });
-    window.draw(moneyText);
 
+    // Ресурсы
+    sf::Sprite coins(ResourceManager::get("icon-coins"));
+    coins.setScale({ 1.25f, 1.25f });
+    coins.setPosition({ startX + 15.f, ws.y - 105.f });
+    window.draw(coins);
+
+    sf::Text mText(font, std::to_string(money) + "$", 26);
+    mText.setFillColor(Colors::Theme::TextMoney);
+    mText.setPosition({ startX + (90.f - mText.getLocalBounds().size.x) / 2, ws.y - 40.f });
+    window.draw(mText);
+
+    // Магазин башен
     auto towerNames = GameData::getTowerNames();
     for (int i = 0; i < (int)towerSlots.size(); i++) {
-        towerSlots[i].setPosition({ (startXPos + 100.f) + i * 100.f, (float)winSize.y - 110.f  });
-        window.draw(towerSlots[i]);
+        towerSlots[i].render(window);
+        sf::Vector2f slotPos = towerSlots[i].getGlobalBounds().position;
 
-        // подсветка башни в хотбаре
         if (i == selectedTowerSlot) {
             sf::RectangleShape highlight({ 90.f, 100.f });
-            highlight.setPosition(towerSlots[i].getPosition());
+            highlight.setPosition(slotPos);
             highlight.setFillColor(sf::Color::Transparent);
-            highlight.setOutlineColor(Colors::moneyText);
+            highlight.setOutlineColor(Colors::Theme::TextMoney);
             highlight.setOutlineThickness(2.f);
             window.draw(highlight);
         }
-
-        if (i < (int)towerNames.size()) {
-            // иконка башни
-            sf::Sprite preview(ResourceManager::get("tower-" + towerNames[i] + "-preview"));
-            preview.setScale({ 0.15625f, 0.15625f });
-            auto slotPos = towerSlots[i].getPosition();
-            preview.setPosition(slotPos + sf::Vector2f(5.f, 0.f));
-            window.draw(preview);
-            // цена башни
-            int cost = GameData::getTower(towerNames[i]).cost;
-            sf::Text costText(font, std::to_string(cost) + "$", 18);
-            costText.setFillColor(Colors::moneyText);
-            costText.setPosition(slotPos + sf::Vector2f((90.f - costText.getLocalBounds().size.x) / 2, 75.f));
-            window.draw(costText);
-        }
     }
-    // иконка жизней
-    sf::Sprite heartIcon(ResourceManager::get("icon-heart"));
-    heartIcon.setScale({ 1.25f, 1.25f });
-    heartIcon.setPosition({ startXPos + ((int)towerSlots.size() + 1) * 100.f + 15.f, (float)winSize.y - 105.f  });
-    window.draw(heartIcon);
-    // текст жизней
-    sf::Text livesText(font, std::to_string(lives), 26);
-    livesText.setFillColor(Colors::livesText);
-    livesText.setPosition({ startXPos + ((int)towerSlots.size() + 1) * 100.f + (90.f - livesText.getLocalBounds().size.x) / 2, (float)winSize.y - 40.f  });
-    window.draw(livesText);
 
-    // иконка скорости
-    std::string speedTex = "icon-speed" + std::to_string(speedMode + 1);
-    sf::Sprite speedBtnIcon(ResourceManager::get(speedTex));
-    speedBtnIcon.setPosition({ 12.0f, winSize.y - 96.0f - 12.0f });
-    window.draw(speedBtnIcon);
+    // Состояние базы
+    sf::Sprite heart(ResourceManager::get("icon-heart"));
+    heart.setScale({ 1.25f, 1.25f });
+    heart.setPosition({ startX + (slotsCount + 1) * 100.f + 15.f, ws.y - 105.f });
+    window.draw(heart);
 
-    // текста скорости
-    std::string speedLabels[] = { "x1", "x2", "x3" };
-    sf::Text speedText(font, speedLabels[speedMode], 22);
-    speedText.setFillColor(sf::Color::White);
-    // центрируем текст
-    sf::FloatRect tBounds = speedText.getLocalBounds();
-    speedText.setOrigin({ tBounds.size.x / 2.f, tBounds.size.y / 2.f });
-    speedText.setPosition({ 12.0f + 48.f, winSize.y - 96.0f + 44.f - 12.0f});
-    window.draw(speedText);
+    sf::Text lText(font, std::to_string(lives), 26);
+    lText.setFillColor(Colors::Theme::TextLives);
+    lText.setPosition({ startX + (slotsCount + 1) * 100.f + (90.f - lText.getLocalBounds().size.x) / 2, ws.y - 40.f });
+    window.draw(lText);
+
+    speedBtn.render(window);
 }
 
-void HUD::handleClick(sf::Vector2f mousePos) {
-    pauseClicked = false;
-    skipClicked = false;
-    if (pauseBtn.getGlobalBounds().contains(mousePos)) { pauseClicked = true; return; }
-    if (skipBtn.getGlobalBounds().contains(mousePos)) { skipClicked = true;  return; }
-    for (int i = 0; i < (int)towerSlots.size(); i++) {
-        if (towerSlots[i].getGlobalBounds().contains(mousePos)) {
-            selectedTowerSlot = (selectedTowerSlot == i) ? -1 : i;
-            return;
-        }
-    }
-    // Проверка нажатия на кнопку скорости
-    if (speedBtn.getGlobalBounds().contains(mousePos)) {
-        speedMode = (speedMode + 1) % 3;
-        return;
+// Пробрасывает события во все кнопки HUD
+void HUD::handleEvent(const sf::Event& event, const sf::RenderWindow& window, const sf::View& uiView) {
+    pauseRequested = false;
+    skipRequested = false;
+
+    pauseBtn.handleEvent(event, window, uiView);
+    skipBtn.handleEvent(event, window, uiView);
+    speedBtn.handleEvent(event, window, uiView);
+    for (auto& slot : towerSlots) {
+        slot.handleEvent(event, window, uiView);
     }
 }
 
-// Возвращает коэффициент ускорения
+// Получение множителя скорости игры
 float HUD::getGameSpeed() const {
     if (speedMode == 1) return 2.0f;
     if (speedMode == 2) return 3.0f;
     return 1.0f;
 }
 
-int HUD::getSelectedSlot() const { return selectedTowerSlot; }
-bool HUD::isPauseClicked() const { return pauseClicked; }
-bool HUD::isSkipClicked() const { return skipClicked; }
-void HUD::resetSelectedSlot() { selectedTowerSlot = -1; }
+// Получение индекса выбранного слота
+int HUD::getSelectedSlot() const {
+    return selectedTowerSlot;
+}
+
+// Проверка запроса на паузу
+bool HUD::isPauseRequested() const {
+    return pauseRequested;
+}
+
+// Проверка запроса на старт волны
+bool HUD::isSkipRequested() const {
+    return skipRequested;
+}
+
+// Сброс выделенного слота
+void HUD::resetSelectedSlot() {
+    selectedTowerSlot = -1;
+}

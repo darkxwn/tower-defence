@@ -1,46 +1,49 @@
 #include "Enemy.hpp"
 #include "ResourceManager.hpp"
 #include "utils/Logger.hpp"
-#include "utils/Random.hpp"
-#include <iostream>
+#include "utils/Math.hpp"
 #include "Colors.hpp"
 
+// Конструктор врага
 Enemy::Enemy(EnemyType type, int health, int speed, const std::vector<sf::Vector2i>& path)
     : type(type), health(health), maxHealth(health), speed(speed), alive(true), path(&path)
 {
     pos = sf::Vector2f(path[0] * 64);
     offset = {
-        Random::getFloat(-15.f, 15.f),
-        Random::getFloat(-15.f, 15.f)
+        Math::Random::getFloat(-15.f, 15.f),
+        Math::Random::getFloat(-15.f, 15.f)
     };
 
     if (path.empty()) {
-        LOGI("[ERROR]: Путь для врагов не был найден!");
+        LOGI("[ERROR]: путь для врагов не найден");
     }
 }
 
+// Обновление состояния врага
 void Enemy::update(float deltaTime) {
-    // враг дошел до базы
+    // проверка достижения конца пути
     if (pathIndex >= (int)path->size()) {
         reachedBase = true;
         alive = false;
         return;
     }
 
+    // движение к следующей точке
     sf::Vector2f target = sf::Vector2f((*path)[pathIndex] * 64);
     sf::Vector2f dir = target - pos;
-    float length = std::sqrt(dir.x * dir.x + dir.y * dir.y);
+    float distSq = Math::getDistSq(pos, target);
 
-    if (length < 2.f) {
-        // достигли точки — переходим к следующей
+    if (distSq < 4.f) {
         pathIndex++;
     } else {
-        dir /= length;
+        sf::Vector2f dir = Math::normalize(target - pos);
         pos += dir * (float)speed * deltaTime;
     }
 }
 
+// Отрисовка врага
 void Enemy::render(sf::RenderWindow& window, sf::Vector2f mapOffset) {
+    // выбор текстуры по типу
     std::string texName;
     switch (type) {
     case EnemyType::Basic:
@@ -53,19 +56,22 @@ void Enemy::render(sf::RenderWindow& window, sf::Vector2f mapOffset) {
         texName = "enemy-strong";
         break;
     }
-    // позиция полоски — над спрайтом врага
+
+    // позиция полоски жизней
     sf::Vector2f barPos = mapOffset + pos + offset + sf::Vector2f(16.0f, 8.f);
     float barWidth = 32.f;
     float barHeight = 4.f;
+
     // фон полоски
     sf::RectangleShape bgBar({ barWidth, barHeight });
-    bgBar.setFillColor(Colors::hpBarBg);
+    bgBar.setFillColor(Colors::Theme::HpBarBg);
     bgBar.setPosition(barPos);
     window.draw(bgBar);
-    // заполненная часть — пропорционально текущему HP
+
+    // заполнение полоски пропорционально hp
     float ratio = (float)health / (float)maxHealth;
     sf::RectangleShape hpBar({ barWidth * ratio, barHeight });
-    hpBar.setFillColor(Colors::hpBarFill);
+    hpBar.setFillColor(Colors::Theme::HpBarFill);
     hpBar.setPosition(barPos);
     window.draw(hpBar);
 
@@ -76,6 +82,7 @@ void Enemy::render(sf::RenderWindow& window, sf::Vector2f mapOffset) {
     window.draw(sprite);
 }
 
+// Получение урона
 void Enemy::takeDamage(int damage) {
     health -= damage;
     if (health <= 0) {
@@ -83,19 +90,18 @@ void Enemy::takeDamage(int damage) {
     }
 }
 
+// Получение вектора текущего направления движения
 sf::Vector2f Enemy::getVelocity() const {
-    // если враг уже прошел путь или путей нет
     if (path->empty() || pathIndex >= (int)path->size()) return { 0.f, 0.f };
 
-    // определяем следующую точку
-    // Если мы стоим в path[pathIndex], берем следующую
+    // расчёт направления к следующей точке
     int nextIdx = pathIndex;
     sf::Vector2f targetPos = sf::Vector2f((*path)[nextIdx] * 64);
 
     sf::Vector2f dir = targetPos - pos;
     float len = std::sqrt(dir.x * dir.x + dir.y * dir.y);
 
-    // Если мы уже очень близко к текущей точке, смотрим на следующую
+    // переход к следующей точке при близком расстоянии
     if (len < 1.0f && nextIdx + 1 < (int)path->size()) {
         nextIdx++;
         targetPos = sf::Vector2f((*path)[nextIdx] * 64);
@@ -107,15 +113,33 @@ sf::Vector2f Enemy::getVelocity() const {
     return (dir / len) * (float)speed;
 }
 
-bool Enemy::isAlive() const { return alive; }
+// Проверка жизни
+bool Enemy::isAlive() const {
+    return alive;
+}
 
-bool Enemy::hasReachedBase() const { return reachedBase; }
+// Проверка достижения базы
+bool Enemy::hasReachedBase() const {
+    return reachedBase;
+}
 
-EnemyType Enemy::getType() const { return type; }
+// Получение типа врага
+EnemyType Enemy::getType() const {
+    return type;
+}
 
-sf::Vector2f Enemy::getPos() const { return pos; }
+// Получение текущей позиции
+sf::Vector2f Enemy::getPos() const {
+    return pos;
+}
 
-bool Enemy::isKilled() const { return !alive && !reachedBase; }
+// Проверка гибели от урона
+bool Enemy::isKilled() const {
+    return !alive && !reachedBase;
+}
 
-int Enemy::getPathIndex() const { return pathIndex; }
+// Получение индекса текущего узла пути
+int Enemy::getPathIndex() const {
+    return pathIndex;
+}
 

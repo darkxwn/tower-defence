@@ -1,0 +1,356 @@
+* {
+    font-family: Cambria, Cochin, Georgia, Times, 'Times New Roman', serif;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background: #1a1a1a;
+    color: #ddd;
+    overflow: hidden;
+}
+
+.window {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* === ЭКРАНЫ === */
+.screen {
+    display: none;
+    width: 100%;
+    height: 100%;
+    align-items: center;
+    justify-content: center;
+}
+.screen.active {
+    display: flex;
+}
+
+/* ========================================
+   КОНТЕЙНЕР — базовый стиль
+   По умолчанию: row, start, start, gap=0
+   ======================================== */
+.container {
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: flex-start;
+    gap: 0;
+}
+
+/* ========================================
+   ГЛАВНОЕ МЕНЮ
+   direction=column, contentAlign=center, itemAlign=center
+   ======================================== */
+.main-menu {
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    width: 80%;
+    height: 90%;
+    outline: 2px solid red;
+    outline-offset: 2px;
+    padding: 5px;
+}
+
+.header {
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 10px;
+    height: 40%;
+    width: 100%;
+    outline: 2px solid green;
+    outline-offset: 2px;
+    padding: 5px;
+}
+
+.title {
+    font-size: 80px;
+    font-weight: 700;
+    color: #fff;
+    text-align: center;
+    max-width: 100%;
+    outline: 2px solid purple;
+    outline-offset: 2px;
+    padding: 5px;
+}
+
+.version {
+    font-size: 20px;
+    color: #888;
+    text-align: center;
+    max-width: 100%;
+    outline: 2px solid purple;
+    outline-offset: 2px;
+    padding: 5px;
+}
+
+.subtitle {
+    font-size: 48px;
+    font-weight: 700;
+    color: #fff;
+    max-width: 100%;
+    outline: 2px solid purple;
+    outline-offset: 2px;
+    padding: 0;
+}
+
+.menu-buttons {
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 16px;
+    height: 60%;
+    width: 100%;
+    outline: 2px solid green;
+    outline-offset: 2px;
+    padding: 5px;
+}
+
+/* ========================================
+   ПОДМЕНЮ (единый стиль для всех экранов)
+   sub-header:  7.5% высоты, заголовок
+   sub-content: оставшееся, контент по центру
+   nav-buttons: 7.5% высоты, кнопки внизу
+   ======================================== */
+.sub-menu {
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    width: 80%;
+    height: 90%;
+    outline: 2px solid red;
+    outline-offset: 2px;
+    padding: 5px;
+}
+
+.sub-header {
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 10%;
+    width: 100%;
+    flex-shrink: 0;
+    outline: 2px solid green;
+    outline-offset: 2px;
+    padding: 5px;
+}
+
+.subtitle {
+    font-size: 64px;
+    font-weight: 700;
+    color: #fff;
+    outline: 2px solid purple;
+    outline-offset: 2px;
+    padding: 0;
+}
+
+.sub-content {
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    flex: 1;
+    width: 100%;
+    overflow-y: auto;
+    min-height: 0;
+    outline: 2px solid green;
+    outline-offset: 2px;
+    padding: 5px;
+}
+
+.stub-text {
+    font-size: 72px;
+    color: #666;
+    text-align: center;
+}
+
+/* === КАРТОЧКИ УРОВНЕЙ === */
+.cards {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 24px;
+    width: 100%;
+    padding: 5px 15px 5px 5px;
+    overflow-y: auto;
+    outline: 2px solid #00bfff;
+    outline-offset: 2px;
+}
+
+/* кастомный скроллбар */
+.cards::-webkit-scrollbar {
+    width: 8px;
+}
+.cards::-webkit-scrollbar-track {
+    background: #1a1a1a;
+    border-radius: 4px;
+}
+.cards::-webkit-scrollbar-thumb {
+    background: #555;
+    border-radius: 4px;
+}
+.cards::-webkit-scrollbar-thumb:hover {
+    background: #777;
+}
+
+.card {
+    width: 200px;
+    height: 125px;
+    background: #2a2a2a;
+    border: 1px solid #444;
+    border-radius: 4px;
+    padding: 5px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    outline: 2px solid #00bfff;
+    outline-offset: 2px;
+}
+.card:hover {
+    background: #333;
+}
+.card.selected {
+    border-color: #cc0;
+    background: #3a3a1a;
+}
+
+.card-num {
+    font-size: 14px;
+    color: #999;
+    text-align: center;
+}
+.card-name {
+    font-size: 16px;
+    color: #fff;
+    text-align: center;
+}
+
+/* === НАСТРОЙКИ === */
+.settings-list {
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 5px;
+    overflow-y: auto;
+    outline: 2px solid #00bfff;
+    outline-offset: 2px;
+}
+
+.parameter {
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 20px;
+    width: 100%;
+    max-width: 600px;
+    padding: 5px;
+    outline: 2px solid #00bfff;
+    outline-offset: 2px;
+}
+
+.parameter label {
+    width: 200px;
+    text-align: right;
+    font-size: 20px;
+    color: #ccc;
+    flex-shrink: 0;
+}
+
+.slider-widget {
+    width: 300px;
+    accent-color: #cc0;
+}
+
+.stepper {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.stepper-btn {
+    width: 55px;
+    height: 55px;
+    font-size: 24px;
+    font-family: Consolas, monospace;
+    background: #2a2a2a;
+    color: #fff;
+    border: 1px solid #444;
+    border-radius: 4px;
+    cursor: pointer;
+}
+.stepper-btn:hover {
+    background: #3a3a3a;
+}
+.stepper-val {
+    width: 60px;
+    text-align: center;
+    font-size: 20px;
+    color: #cc0;
+}
+
+.toggle-track {
+    width: 200px;
+    height: 56px;
+    background: #2a2a2a;
+    border: 1px solid #444;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+.toggle-label {
+    font-size: 18px;
+    color: #cc0;
+}
+
+/* === КНОПКИ НАВИГАЦИИ (общие для всех подменю) === */
+.nav-buttons {
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    height: 7.5%;
+    width: 100%;
+    flex-shrink: 0;
+    outline: 2px solid orange;
+    outline-offset: 2px;
+    padding: 5px;
+}
+
+.btn {
+    width: 200px;
+    height: 50px;
+    font-size: 24px;
+    font-family: Consolas, monospace;
+    background: #2a2a2a;
+    color: #fff;
+    border: 1px solid #444;
+    border-radius: 4px;
+    cursor: pointer;
+    outline: 2px solid purple;
+    outline-offset: 2px;
+}
+.btn:hover {
+    background: #3a3a3a;
+}
+.btn.btn-primary {
+    background: #2a4a2a;
+    border-color: #4a4;
+}
+.btn.btn-primary:hover {
+    background: #3a5a3a;
+}

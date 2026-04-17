@@ -1,4 +1,4 @@
-#include "utils/SettingsManager.hpp"
+#include "SettingsManager.hpp"
 #include <fstream>
 #include <sstream>
 #include <iostream>
@@ -8,24 +8,26 @@
 #include <android/native_activity.h>
 #endif
 
+// Конструктор менеджера настроек
 SettingsManager::SettingsManager() {
     settingsPath = getSavePath();
     setDefaults();
     load();
 }
 
+// Получение пути сохранения
 std::string SettingsManager::getSavePath() {
 #ifdef ANDROID
-    // На Android пишем во внутреннюю память приложения (sandbox)
-    // Обычно это /data/data/com.package.name/files/
+    // на android пишем во внутреннюю память приложения
     ANativeActivity* activity = sf::getNativeActivity();
     return std::string(activity->internalDataPath) + "/settings.cfg";
 #else
-    // На ПК для простоты пишем в папку с игрой
+    // на ПК пишем в папку с игрой
     return "data/config/settings.cfg";
 #endif
 }
 
+// Установка настроек по умолчанию
 void SettingsManager::setDefaults() {
     settings["music_volume"] = "100";
     settings["sfx_volume"] = "100";
@@ -39,6 +41,7 @@ void SettingsManager::setDefaults() {
     settings["fullscreen"] = "0";
 }
 
+// Загрузка настроек из файла
 void SettingsManager::load() {
     std::ifstream file(settingsPath);
     if (!file.is_open()) return;
@@ -54,6 +57,7 @@ void SettingsManager::load() {
     }
 }
 
+// Сохранение настроек в файл
 void SettingsManager::save() {
     std::ofstream file(settingsPath);
     if (!file.is_open()) {
@@ -66,34 +70,37 @@ void SettingsManager::save() {
     }
 }
 
-// Хелперы для типов
+// Получение целого значения
 int SettingsManager::getInt(const std::string& key) {
-    //if (settings.find(key) == settings.end()) return defaultVal;
     return std::stoi(settings[key]);
 }
 
+// Получение числового значения
 float SettingsManager::getFloat(const std::string& key) {
-    //if (settings.find(key) == settings.end()) return defaultVal;
     return std::stof(settings[key]);
 }
 
+// Получение логического значения
 bool SettingsManager::getBool(const std::string& key) {
-    //if (settings.find(key) == settings.end()) return defaultVal;
     return (settings[key] == "true" || settings[key] == "1");
 }
 
+// Изменение строкового значения
 void SettingsManager::set(const std::string& key, const std::string& value) {
     settings[key] = value;
 }
 
+// Изменение числового значения
 void SettingsManager::set(const std::string& key, float value) {
     settings[key] = std::to_string(value);
 }
 
+// Изменение целого значения
 void SettingsManager::set(const std::string& key, int value) {
     settings[key] = std::to_string(value);
 }
 
+// Изменение логического значения
 void SettingsManager::set(const std::string& key, bool value) {
     settings[key] = std::to_string(value);
 }

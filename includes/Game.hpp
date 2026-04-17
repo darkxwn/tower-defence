@@ -1,17 +1,17 @@
 #pragma once
 #include "Base.hpp"
-#include "utils/SettingsManager.hpp"
-#include "Button.hpp"
 #include "Enemy.hpp"
-#include "Label.hpp"
 #include "HUD.hpp"
 #include "Map.hpp"
+#include "SettingsManager.hpp"
 #include "Tower.hpp"
 #include "WaveSystem.hpp"
+#include "ui/Button.hpp"
+#include "ui/Text.hpp"
 #include <SFML/Graphics.hpp>
+#include <memory>
 #include <string>
 #include <vector>
-#include <list>
 
 ///////////////////////////////////////////////////////////////////////////
 //
@@ -23,89 +23,104 @@
 enum class GameState {
     Playing,
     Paused,
-    GameOver,  // поражение — база уничтожена
-    Victory    // победа — все волны пройдены
+    GameOver,
+    Victory
 };
 
-// Причина завершения сессии (возвращается в main)
+// Причина завершения сессии
 enum class GameEndReason {
-    None,          // сессия ещё идёт
-    ReturnToMenu,  // игрок нажал "Главное меню"
-    Restart,       // игрок нажал "Заново"
-    Win,           // победа
-    Lose           // поражение
+    None,
+    ReturnToMenu,
+    Restart,
+    Win,
+    Lose
 };
 
-// Игровая сессия одного уровня
 class Game {
 private:
-    sf::RenderWindow& window;
-    SettingsManager& settings;
-    sf::Clock clock;
+    sf::RenderWindow& window;                // ссылка на окно отрисовки
+    SettingsManager& settings;               // ссылка на настройки
+    sf::Clock clock;                         // часы для расчета дельты времени
 
-    sf::View worldView;
-    sf::View uiView;
-    sf::Vector2i lastInputPos;          // Позиция в пикселях в прошлом кадре
-    bool isPanning = false;             // Флаг того, что мы сейчас двигаем карту
-    bool isPinching = false;            // Флаг, что мы раздвигаем пальцы
-    float initialPinchDistance = 0.f;   // Растояния раздвига пальцев
-    float currentZoom = 1.0f;
-    float uiScale = 1.0f;               // Масштабирование для UI
-    bool hasMoved = 0;
-    sf::Vector2i startTouchPos;
+    sf::View worldView;                      // камера игрового мира
+    sf::View uiView;                         // камера интерфейса
+    sf::Vector2i lastInputPos;               // позиция ввода в прошлом кадре
+    bool isPanning = false;                  // флаг перемещения камеры
+    bool isPinching = false;                 // флаг зума пальцами
+    float initialPinchDistance = 0.f;        // исходное расстояние при зуме
+    float currentZoom = 1.0f;                // текущий масштаб мира
+    float uiScale = 1.0f;                    // масштаб интерфейса
+    bool hasMoved = false;                   // флаг того, что курсор двигался
+    sf::Vector2i startTouchPos;              // начальная точка касания
 
-    // Текст
-    Label lblPause;
-    Label lblEndScreen;
-    Label subLblEndScreen;
+    UI::Text lblPause;                       // текст паузы
+    UI::Text lblEndScreen;                   // заголовок конца игры
+    UI::Text subLblEndScreen;                // подзаголовок конца игры
 
-    GameState state = GameState::Playing;
-    GameEndReason endReason = GameEndReason::None;
+    GameState state = GameState::Playing;    // текущее состояние игры
+    GameEndReason endReason = GameEndReason::None; // причина выхода
 
-    HUD hud;
-    Map map;
-    int money = 0;
-    Base base;
+    HUD hud;                                 // объект интерфейса
+    Map map;                                 // объект карты
+    int money = 0;                           // текущее количество денег
+    Base base;                               // объект базы
 
-    std::list<std::shared_ptr<Enemy>> enemies;
+    std::vector<std::unique_ptr<Enemy>> enemies; // список активных врагов
+    std::vector<Tower> towers;                   // список построенных башен
+    std::vector<Projectile> projectiles;         // список летящих снарядов
 
-    std::vector<Tower> towers;
-    std::vector<Projectile> projectiles;
+    WaveSystem waveSystem;                   // система управления волнами
 
-    WaveSystem waveSystem;
+    std::vector<UI::Button> pauseButtons;      // кнопки оверлея паузы
+    std::vector<UI::Button> endScreenButtons;  // кнопки финального экрана
 
-    // Layout'ы для оверлеев
+    // Геометрия оверлея паузы
     struct PauseLayout {
-        std::vector<Button> buttons; // 0=Завершить, 1=Заново, 2=Продолжить
+        std::vector<UI::Button> buttons; // кнопки Завершить/Заново/Продолжить
     };
 
+    // Геометрия финального экрана
     struct EndScreenLayout {
-        std::vector<Button> buttons; // 0=Вернуться, 1=Заново
+        std::vector<UI::Button> buttons; // кнопки Вернуться/Заново
     };
 
-    PauseLayout computePauseBtnLayout() const;
-    EndScreenLayout computeEndScreenLayout() const;
+    // Вычисляет расположение кнопок паузы
+    PauseLayout computePauseBtnLayout();
 
+    // Вычисляет расположение кнопок финала
+    EndScreenLayout computeEndScreenLayout();
+
+    // Основной цикл обновления логики
     void update(float deltaTime);
+
+    // Основной цикл отрисовки
     void render();
+
+    // Обработка всех событий сессии
     void handleEvents();
 
-    // Вспомогательный метод для обновления размера камер при ресайзе
+    // Настройка размеров камер
     void updateViewSizes(sf::Vector2u windowSize);
-    // Вспомогательный метод для обработки кликов/тапов
+
+    // Логика взаимодействия с миром
     void processInput(sf::Vector2i pixelPos);
 
+    // Отрисовка экрана паузы
     void renderPauseOverlay();
-    void renderEndScreen();   // общий экран для Victory и GameOver
+
+    // Отрисовка финального экрана
+    void renderEndScreen();
 
 public:
+    // Конструктор загружает уровень и инициализирует игру
     Game(sf::RenderWindow& window, SettingsManager& settings, const std::string& levelPath);
 
-    // Запускает цикл уровня; возвращает управление когда сессия завершена
+    // Запускает выполнение игровой сессии
     void run();
 
+    // Возвращает причину завершения игры
     GameEndReason getEndReason() const;
 
-    // Метод ограничения камеры
+    // Ограничивает перемещение камеры границами карты
     void clampView();
 };

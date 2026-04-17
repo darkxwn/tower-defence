@@ -5,6 +5,7 @@
 #include <fstream>
 #include <sstream>
 
+// Интервал спавна по типу врага
 float WaveSystem::getSpawnInterval(EnemyType type) const {
     switch (type) {
         case EnemyType::Fast:   return 0.7f;
@@ -13,6 +14,7 @@ float WaveSystem::getSpawnInterval(EnemyType type) const {
     }
 }
 
+// Загрузка волн из файла
 void WaveSystem::loadWaves(const std::string& path) {
     waves.clear();
     currentWave = 0;
@@ -28,13 +30,11 @@ void WaveSystem::loadWaves(const std::string& path) {
         if (!line.empty() && line.back() == '\r') line.pop_back();
         if (line.empty()) continue;
 
-        // Ищем начало секции волн
         if (line.find("waves=") != std::string::npos) {
             parsingWaves = true;
             continue;
         }
 
-        // Если нашли секцию — читаем данные волн
         if (parsingWaves) {
             size_t colon = line.find(':');
             if (colon != std::string::npos) {
@@ -51,12 +51,13 @@ void WaveSystem::loadWaves(const std::string& path) {
     }
 }
 
-void WaveSystem::update(float deltaTime, std::list<std::shared_ptr<Enemy>>& enemies, const std::vector<sf::Vector2i>& path) {
+// Обновление системы волн
+void WaveSystem::update(float deltaTime, std::vector<std::unique_ptr<Enemy>>& enemies, const std::vector<sf::Vector2i>& path) {
     if (currentWave >= (int)waves.size()) return;
 
     if (state == WaveState::Idle) return;
 
-    // таймер между волнами
+    // пауза между волнами
     if (state == WaveState::Waiting) {
         waitTimer -= deltaTime;
         if (waitTimer <= 0.f)
@@ -64,7 +65,7 @@ void WaveSystem::update(float deltaTime, std::list<std::shared_ptr<Enemy>>& enem
         return;
     }
 
-    // ждём пока все враги убиты или дошли до базы
+    // ожидание завершения текущей волны
     if (state == WaveState::Fighting) {
         if (enemies.empty()) {
             currentWave++;
@@ -75,7 +76,7 @@ void WaveSystem::update(float deltaTime, std::list<std::shared_ptr<Enemy>>& enem
         return;
     }
 
-    // спавним врагов текущей волны по одному
+    // спавн врагов текущей волны
     if (state == WaveState::Spawning) {
         Wave& wave = waves[currentWave];
 
@@ -84,12 +85,11 @@ void WaveSystem::update(float deltaTime, std::list<std::shared_ptr<Enemy>>& enem
         spawnTimer = 0.f;
 
         auto stats = GameData::getEnemy(wave.type);
-        enemies.push_back(std::make_shared<Enemy>(wave.type, stats.health, stats.speed, path));
-
+        enemies.push_back(std::make_unique<Enemy>(wave.type, stats.health, stats.speed, path));
 
         spawned++;
 
-        // все заспавнены — переходим в Fighting
+        // переход в ожидание завершения при полном спавне
         if (spawned >= wave.count) {
             spawned = 0;
             state = WaveState::Fighting;
@@ -97,22 +97,36 @@ void WaveSystem::update(float deltaTime, std::list<std::shared_ptr<Enemy>>& enem
     }
 }
 
+// Запуск волны
 void WaveSystem::startWave() {
     if (state != WaveState::Idle && state != WaveState::Waiting) return;
     state = WaveState::Spawning;
     spawnTimer = 0.f;
 }
 
+// Проверка завершения всех волн
 bool WaveSystem::isFinished() const {
     return currentWave >= (int)waves.size();
 }
 
-WaveState WaveSystem::getState() const { return state; }
-float WaveSystem::getWaitTimer() const { return waitTimer; }
-int WaveSystem::getCurrentWave() const { return currentWave; }
+// Получение текущего состояния
+WaveState WaveSystem::getState() const {
+    return state;
+}
 
-Wave WaveSystem::getWave(int waveIndex) const { 
-    if (waveIndex < 0 || waveIndex >= waves.size())
+// Получение таймера паузы
+float WaveSystem::getWaitTimer() const {
+    return waitTimer;
+}
+
+// Получение индекса текущей волны
+int WaveSystem::getCurrentWave() const {
+    return currentWave;
+}
+
+// Получение данных волны по индексу
+Wave WaveSystem::getWave(int waveIndex) const {
+    if (waveIndex < 0 || waveIndex >= (int)waves.size())
         throw std::runtime_error("[Ошибка]: Неверный индекс волны ");
     return waves[waveIndex];
 }

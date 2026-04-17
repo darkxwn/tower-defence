@@ -27,6 +27,7 @@ set(SFML_BUILD_DOC OFF CACHE BOOL "" FORCE)
 
 FetchContent_MakeAvailable(sfml)
 
+
 # СПИСОК ИСХОДНЫХ ФАЙЛОВ
 set(SOURCES
     main.cpp
@@ -41,9 +42,11 @@ set(SOURCES
     src/Tower.cpp
     src/WaveSystem.cpp
     src/Projectile.cpp
-    src/Label.cpp
-    src/Button.cpp
-    src/utils/SettingsManager.cpp
+    src/ui/Text.cpp
+    src/ui/Button.cpp
+    src/ui/Widget.cpp
+    src/ui/Container.cpp
+    src/SettingsManager.cpp
     src/utils/FileReader.cpp
 )
 

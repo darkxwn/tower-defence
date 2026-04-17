@@ -1,10 +1,12 @@
 #pragma once
-#include "utils/SettingsManager.hpp"
-#include "Label.hpp"
-#include "Button.hpp"
+#include "SettingsManager.hpp"
+#include "ui/Container.hpp"
+#include "ui/Text.hpp"
+#include "ui/Button.hpp"
 #include <SFML/Graphics.hpp>
 #include <string>
 #include <vector>
+#include <memory>
 
 ///////////////////////////////////////////////////////////////////////////
 //
@@ -12,134 +14,102 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 
-enum class MenuState { Main, LevelSelect, Upgrades, Settings };
-
-// Результат завершённой игровой сессии
-enum class SessionResult { None, Win, Lose };
-
-// Информация об уровне из .map файла
-struct LevelInfo {
-    std::string filePath;
-    std::string name;
-    int index; // 0-based порядковый номер
+// Состояния экранов меню
+enum class MenuState {
+    Main,
+    LevelSelect,
+    Upgrades,
+    Settings
 };
 
+// Результат завершённой игровой сессии
+enum class SessionResult {
+    None,
+    Win,
+    Lose
+};
 
-// Класс главного меню.
-// Ключевой принцип надёжности кликов: вся геометрия кнопок/карточек
-// вычисляется один раз через compute*Layout() и передаётся ОДНОВРЕМЕННО
-// в render и handleClick — позиции всегда совпадают.
+// Информация об уровне из файла карты
+struct LevelInfo {
+    std::string filePath; // путь к файлу .map
+    std::string name; // название уровня
+    int index; // порядковый номер
+};
+
 class Menu {
-public:
-    struct MainLayout {
-        static constexpr int BTN_COUNT = 4;
-        sf::FloatRect btns[BTN_COUNT]; // 0=Играть 1=Улучшения 2=Настройки 3=Выход
-    };
-
-    struct CardLayout {
-        sf::FloatRect bounds;
-        int levelIndex; // индекс в levels[]
-    };
-
-    struct LevelSelectLayout {
-        std::vector<CardLayout> cards;
-        std::vector<Button> buttons; // 0=Играть, 1=Назад
-        int rowSize;     // карточек в строке
-        int rowCount;    // строк
-    };
-
-    struct SettingsLayout {
-        sf::FloatRect musicSlider;
-        sf::FloatRect sfxSlider;
-        sf::FloatRect uiScaleMinus, uiScalePlus;
-        sf::FloatRect sensMinus, sensPlus;
-        sf::FloatRect fullscreenToggle;
-        std::vector<Button> buttons; // 0=Сохранить, 1=Назад (+ Fullscreen на ПК)
-
-        float rowHeight = 80.f;
-    };
-
-    struct ResultOverlayLayout {
-        std::vector<Button> buttons; // 0=Играть снова, 1=Выбрать уровень
-    };
-
 private:
-    sf::RenderWindow& window;
-    SettingsManager& settings;
-    MenuState state = MenuState::Main;
+    sf::RenderWindow& window; // ссылка на окно отрисовки
+    SettingsManager& settings; // ссылка на менеджер настроек
+    MenuState state = MenuState::Main; // текущее состояние меню
 
-    std::vector<LevelInfo> levels;
-    std::string selectedLevel; // путь к выбранному .map, пустой = нет выбора
-    bool levelChosen = false;
+    std::vector<LevelInfo> levels; // список доступных уровней
+    std::string selectedLevel; // путь к выбранной карте
+    bool levelChosen = false; // уровень выбран
 
-    sf::View worldView; // Камера для игровых объектов
-    sf::View uiView;    // Камера для кнопок и текста
-    float currentZoom = 1.0f;
-    float uiScale = 1.0f;
-    bool windowRecreationRequired = false;
+    sf::View worldView; // камера заднего плана
+    sf::View uiView; // камера интерфейса
+    float uiScale = 1.0f; // масштаб интерфейса
+    bool windowRecreationRequired = false; // запрос пересоздания окна
 
-    // Заголовки
-    Label titleLabel;
-    Label subTitleVersion;
-    Label titleLevelSelect;
-    Label titleSettings;
-    Label lblWinScreen;
+    std::unique_ptr<UI::Container> mainContainer; // контейнер главного меню
+    std::unique_ptr<UI::Container> levelContainer; // контейнер выбора уровня
+    std::unique_ptr<UI::Container> settingsContainer; // контейнер настроек
+    std::unique_ptr<UI::Container> upgradesContainer; // контейнер улучшений
+    std::unique_ptr<UI::Container> resultOverlay; // оверлей результата игры
 
-    enum MainBtnIdx { Play, Upgrades, Settings, Exit, COUNT };
+    // Указатели для управления динамическим ресайзом
+    UI::Container* cardsArea = nullptr; // область карточек уровней
+    UI::Button* playBtnPtr = nullptr; // кнопка старта игры
+    UI::Container* headerContPtr = nullptr; // блок заголовка главного меню
+    UI::Container* btnsContPtr = nullptr; // блок кнопок главного меню
+    UI::Text* titleTextPtr = nullptr; // текст названия игры
 
-    std::vector<Button> mainButtons;
-    
-    SessionResult lastResult = SessionResult::None;
-    std::string   lastLevelPath; // путь к последнему сыгранному уровню
+    SessionResult lastResult = SessionResult::None; // итог последней игры
+    std::string lastLevelPath; // путь к последней сыгранной карте
 
-    // Геометрия — вычисляется один раз за кадр
-    MainLayout        computeMainLayout()        const;
-    LevelSelectLayout computeLevelSelectLayout() const;
-    SettingsLayout computeSettingsLayout() const;
-    ResultOverlayLayout computeResultOverlayLayout() const;
+    // Инициализация всех контейнеров и их содержимого
+    void initUI();
 
-    // Отрисовка
-    void renderMain(const MainLayout& L);
-    void renderLevelSelect(const LevelSelectLayout& L);
-    void renderSettings(const SettingsLayout& L);
-    void renderResultOverlay(); // баннер победы/поражения поверх LevelSelect
-    void renderStub(const std::string& title);
-    void drawSlider(const std::string& label, sf::FloatRect r, float value);
-    void drawStepper(const std::string& label, sf::FloatRect rMinus, sf::FloatRect rPlus, std::string value);
+    // Создание типового подменю с заголовком и навигацией
+    std::unique_ptr<UI::Container> createSubMenu(const std::string& title, UI::Container** outContent, UI::Container** outNav = nullptr);
 
-    // Обработка кликов
-    void handleMainClick(sf::Vector2f pos, const MainLayout& L);
-    void handleSettingsClick(sf::Vector2f pos, const SettingsLayout& L);
-    void handleLevelSelectClick(sf::Vector2f pos, const LevelSelectLayout& L);
-    void handleResultOverlayClick(sf::Vector2f pos, const ResultOverlayLayout& L);
+    // Обновление внешнего вида карточек при изменении выбора
+    void updateCardsSelection();
 
-    // Утилиты
-    void        scanLevels();
+    // Сканирование папки с файлами уровней
+    void scanLevels();
+
+    // Чтение названия уровня из метаданных файла
     std::string readLevelName(const std::string& path) const;
-    void        drawBtn(const std::string& label, sf::FloatRect r,
-        bool hovered, bool enabled = true,
-        sf::Color customFill = sf::Color::Transparent) const;
 
 public:
+    // Конструктор инициализирует ресурсы и интерфейс
     explicit Menu(sf::RenderWindow& window, SettingsManager& settings);
 
+    // Обработка системных событий меню и кликов
     void handleEvents();
+
+    // Главный метод отрисовки текущего состояния
     void render();
 
-    bool        isLevelChosen()  const;
+    // Получение факта выбора уровня
+    bool isLevelChosen() const;
+
+    // Получение пути к выбранному файлу карты
     std::string getChosenLevel() const;
-    void        resetChoice();   // вызывать ПОСЛЕ getChosenLevel()
 
-    bool consumesWindowRecreationRequest() {
-        if (windowRecreationRequired) {
-            windowRecreationRequired = false; // сбрасываем флаг после прочтения
-            return true;
-        }
-        return false;
-    }
+    // Сброс состояния выбора уровня
+    void resetChoice();
 
+    // Проверка необходимости пересоздания окна
+    bool consumesWindowRecreationRequest();
+
+    // Обновление параметров камер и размеров контейнеров
     void updateViewSizes(sf::Vector2u windowSize);
 
-    // Вызывается из main после завершения игровой сессии
+    // Принятие результата игры для отображения баннера
     void notifyResult(SessionResult result, const std::string& levelPath);
+
+    // Очистка всех ресурсов перед закрытием окна
+    void cleanup();
 };
