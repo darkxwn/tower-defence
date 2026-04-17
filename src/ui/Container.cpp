@@ -141,7 +141,6 @@ namespace UI {
     void Container::recalculateLayout() {
         maxContentHeight = 0.f;
         
-        // сбор элементов, участвующих в автоматической расстановке
         std::vector<Widget*> layoutChildren;
         for (auto& child : children) {
             if (child->isVisible() && child->getFollowsLayout()) {
@@ -151,7 +150,6 @@ namespace UI {
 
         if (layoutChildren.empty()) return;
 
-        // структура для управления линиями при переносе (Wrap)
         struct Line {
             std::vector<Widget*> items; 
             float mainSize = 0.f; 
@@ -163,7 +161,6 @@ namespace UI {
 
         float maxMainSize = (direction == Direction::Row) ? (size.x - padding.x * 2.f) : (size.y - padding.y * 2.f);
 
-        // распределение элементов по линиям
         for (auto* item : layoutChildren) {
             sf::Vector2f itemSize = item->getSize();
             float itemMain = (direction == Direction::Row) ? itemSize.x : itemSize.y;
@@ -186,30 +183,27 @@ namespace UI {
             }
         }
 
-        // расчет общего размера всех линий по поперечной оси
         float totalLinesCrossSize = (lines.size() - 1) * gap;
         for (const auto& line : lines) totalLinesCrossSize += line.crossSize;
 
-        // определение начальной позиции по поперечной оси
         float currentCrossPos = 0.f;
         float containerCrossSize = (direction == Direction::Row) ? (size.y - padding.y * 2.f) : (size.x - padding.x * 2.f);
 
         if (contentAlign == ContentAlign::Center) {
-            currentCrossPos = (containerCrossSize - totalLinesCrossSize) / 2.f;
+            currentCrossPos = std::max(0.f, (containerCrossSize - totalLinesCrossSize) / 2.f);
         }
         else if (contentAlign == ContentAlign::End) {
-            currentCrossPos = containerCrossSize - totalLinesCrossSize;
+            currentCrossPos = std::max(0.f, containerCrossSize - totalLinesCrossSize);
         }
 
-        // позиционирование каждой линии и элементов внутри нее
         for (const auto& line : lines) {
             float currentMainPos = 0.f;
 
             if (contentAlign == ContentAlign::Center) {
-                currentMainPos = (maxMainSize - line.mainSize) / 2.f;
+                currentMainPos = std::max(0.f, (maxMainSize - line.mainSize) / 2.f);
             }
             else if (contentAlign == ContentAlign::End) {
-                currentMainPos = maxMainSize - line.mainSize;
+                currentMainPos = std::max(0.f, maxMainSize - line.mainSize);
             }
 
             for (auto* item : line.items) {
@@ -246,7 +240,6 @@ namespace UI {
             currentCrossPos += line.crossSize + gap;
         }
         
-        // ВАЖНО: Виджеты, которые не участвуют в раскладке, принудительно ставятся в начало контейнера
         for (auto& child : children) {
             if (child->isVisible() && !child->getFollowsLayout()) {
                 child->setPosition(position);

@@ -9,7 +9,7 @@ Text::Text(const sf::Font& font, const std::string& utf8Text, unsigned int fontS
     text = std::make_unique<sf::Text>(font);
     text->setCharacterSize(fontSize);
     text->setFillColor(Colors::Theme::TextMain);
-    alignment = Align::Left; // по умолчанию выравнивание по левому краю
+    alignment = Align::Left;
     setText(utf8Text);
 }
 
@@ -25,26 +25,29 @@ void Text::setText(const std::string& utf8Text) {
     applyWrapping();
 }
 
-// Изменение лимита ширины для автоматического переноса
+// Изменение лимита ширины
 void Text::setMaxWidth(float width) {
     maxWidth = width;
     applyWrapping();
 }
 
-// Изменение внутреннего выравнивания
+// Изменение режима выравнивания
 void Text::setAlignment(Align align) {
     alignment = align;
     applyAlignment();
 }
 
-// Применение смещения в зависимости от выбранного выравнивания
+// Применение смещения для выравнивания и коррекции Origin
 void Text::applyAlignment() const {
     if (!text) return;
     
     sf::FloatRect bounds = text->getLocalBounds();
-    float offsetX = 0.f;
+    
+    // ВАЖНО: устанавливаем Origin в позицию bounds, чтобы (0,0) текста 
+    // совпадал с реальным началом отрисовки букв. Это убирает "сползание" вниз.
+    text->setOrigin(bounds.position);
 
-    // если выбрано центрирование, смещаем позицию на половину ширины влево
+    float offsetX = 0.f;
     if (alignment == Align::Center) {
         offsetX = -bounds.size.x / 2.f;
     }
@@ -55,14 +58,14 @@ void Text::applyAlignment() const {
     text->setPosition({ position.x + offsetX, position.y });
 }
 
-// Расчет переносов текста по словам
+// Расчет переносов и обновление размеров виджета
 void Text::applyWrapping() {
     if (!text) return;
 
     if (maxWidth <= 0.f || rawString.empty()) {
         text->setString(sf::String::fromUtf8(rawString.begin(), rawString.end()));
         sf::FloatRect bounds = text->getLocalBounds();
-        this->size = { bounds.size.x, bounds.size.y };
+        this->size = bounds.size;
         applyAlignment();
         return;
     }
@@ -98,11 +101,11 @@ void Text::applyWrapping() {
     text->setString(result);
     
     sf::FloatRect bounds = text->getLocalBounds();
-    this->size = { bounds.size.x, bounds.size.y };
+    this->size = bounds.size;
     applyAlignment();
 }
 
-// Изменение цвета текста
+// Изменение цвета
 void Text::setColor(sf::Color color) {
     if (text) text->setFillColor(color);
 }
@@ -113,29 +116,29 @@ void Text::setFontSize(unsigned int fontSize) {
     applyWrapping();
 }
 
-// Изменение интервала между строками
+// Изменение межстрочного интервала
 void Text::setLineSpacing(float spacing) {
     if (text) text->setLineSpacing(spacing);
 }
 
-// Получение локальных границ текстового объекта
+// Получение локальных границ
 sf::FloatRect Text::getLocalBounds() const {
     if (text) return text->getLocalBounds();
     return {};
 }
 
-// Обработка системных событий
+// Обработка событий
 void Text::handleEvent(const sf::Event&, const sf::RenderWindow&, const sf::View&) {
 }
 
-// Отрисовка текста
+// Отрисовка
 void Text::render(sf::RenderWindow& window) const {
     if (!visible || !text) return;
     applyAlignment();
     window.draw(*text);
 }
 
-// Получение границ в глобальных координатах
+// Получение глобальных границ
 sf::FloatRect Text::getGlobalBounds() const {
     if (text) return text->getGlobalBounds();
     return {};

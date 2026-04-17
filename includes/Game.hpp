@@ -6,6 +6,7 @@
 #include "SettingsManager.hpp"
 #include "Tower.hpp"
 #include "WaveSystem.hpp"
+#include "ui/Container.hpp"
 #include "ui/Button.hpp"
 #include "ui/Text.hpp"
 #include <SFML/Graphics.hpp>
@@ -53,10 +54,6 @@ private:
     bool hasMoved = false;                   // флаг того, что курсор двигался
     sf::Vector2i startTouchPos;              // начальная точка касания
 
-    UI::Text lblPause;                       // текст паузы
-    UI::Text lblEndScreen;                   // заголовок конца игры
-    UI::Text subLblEndScreen;                // подзаголовок конца игры
-
     GameState state = GameState::Playing;    // текущее состояние игры
     GameEndReason endReason = GameEndReason::None; // причина выхода
 
@@ -71,24 +68,14 @@ private:
 
     WaveSystem waveSystem;                   // система управления волнами
 
-    std::vector<UI::Button> pauseButtons;      // кнопки оверлея паузы
-    std::vector<UI::Button> endScreenButtons;  // кнопки финального экрана
+    std::unique_ptr<UI::Container> pauseOverlay; // корневой контейнер паузы
+    std::unique_ptr<UI::Container> endOverlay;   // корневой контейнер финала
 
-    // Геометрия оверлея паузы
-    struct PauseLayout {
-        std::vector<UI::Button> buttons; // кнопки Завершить/Заново/Продолжить
-    };
+    UI::Container* pauseModalPtr = nullptr;      // указатель на центральную плашку паузы
+    UI::Container* endModalPtr = nullptr;        // указатель на центральную плашку финала
 
-    // Геометрия финального экрана
-    struct EndScreenLayout {
-        std::vector<UI::Button> buttons; // кнопки Вернуться/Заново
-    };
-
-    // Вычисляет расположение кнопок паузы
-    PauseLayout computePauseBtnLayout();
-
-    // Вычисляет расположение кнопок финала
-    EndScreenLayout computeEndScreenLayout();
+    UI::Text* endTitlePtr = nullptr;             // указатель на заголовок финала
+    UI::Text* endSubTitlePtr = nullptr;          // указатель на подзаголовок финала
 
     // Основной цикл обновления логики
     void update(float deltaTime);
@@ -105,11 +92,8 @@ private:
     // Логика взаимодействия с миром
     void processInput(sf::Vector2i pixelPos);
 
-    // Отрисовка экрана паузы
-    void renderPauseOverlay();
-
-    // Отрисовка финального экрана
-    void renderEndScreen();
+    // Инициализация интерфейса оверлеев
+    void initOverlays();
 
 public:
     // Конструктор загружает уровень и инициализирует игру
@@ -123,4 +107,7 @@ public:
 
     // Ограничивает перемещение камеры границами карты
     void clampView();
+
+    // Очистка ресурсов перед выходом
+    void cleanup();
 };

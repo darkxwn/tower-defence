@@ -101,6 +101,9 @@ public:
     // Сброс состояния выбора уровня
     void resetChoice();
 
+    // Сброс результата последней игры
+    void resetLastResult();
+
     // Проверка необходимости пересоздания окна
     bool consumesWindowRecreationRequest();
 

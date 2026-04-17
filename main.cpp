@@ -105,7 +105,8 @@ int main() {
     
     sf::RenderWindow window(sf::VideoMode({1280, 720}), "Tower Defence");
     window.setFramerateLimit(60);
-    
+    window.setMinimumSize(sf::Vector2u(1280, 720));
+
     loadResources();
 
     auto menu = std::make_unique<Menu>(window, settings);
@@ -129,6 +130,7 @@ int main() {
 
         std::string levelPath = menu->getChosenLevel();
         menu->resetChoice();
+        menu->resetLastResult();
 
         bool keepPlaying = true;
         while (keepPlaying && window.isOpen()) {
@@ -136,6 +138,8 @@ int main() {
             game.run();
 
             GameEndReason reason = game.getEndReason();
+            game.cleanup(); // Очищаем контейнеры перед уничтожением объекта
+
             if (reason == GameEndReason::ReturnToMenu) {
                 keepPlaying = false;
             } else if (reason == GameEndReason::Restart) {

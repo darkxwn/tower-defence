@@ -1,5 +1,6 @@
 #include "Menu.hpp"
 #include "ResourceManager.hpp"
+#include "GeneratedLevels.hpp"
 #include "utils/FileReader.hpp"
 #include "Colors.hpp"
 #include <filesystem>
@@ -25,7 +26,7 @@ void Menu::initUI() {
     mainContainer->setContentAlign(UI::Container::ContentAlign::Center);
     mainContainer->setItemAlign(UI::Container::ItemAlign::Center);
     mainContainer->setPadding({ 20.f, 20.f });
-    mainContainer->setGap(60.f);
+    mainContainer->setGap(30.f);
     mainContainer->setDrawOutline(true);
 
     auto headerCont = std::make_unique<UI::Container>(sf::Vector2f(winSize.x * 0.8f, 200.f));
@@ -88,7 +89,7 @@ void Menu::initUI() {
             sf::Vector2f cardSize(260.f, 140.f);
             auto card = std::make_unique<UI::Container>(cardSize);
             card->setDirection(UI::Container::Direction::Column);
-            card->setContentAlign(UI::Container::ContentAlign::Start);
+            card->setContentAlign(UI::Container::ContentAlign::Center);
             card->setItemAlign(UI::Container::ItemAlign::Center);
             card->setDrawBackground(true);
             card->setBackgroundColor(sf::Color(45, 45, 45));
@@ -156,7 +157,7 @@ std::unique_ptr<UI::Container> Menu::createSubMenu(const std::string& title, UI:
     root->setContentAlign(UI::Container::ContentAlign::Start); 
     root->setItemAlign(UI::Container::ItemAlign::Center);
     root->setPadding({ 20.f, 20.f }); // Уменьшен верхний/нижний отступ до 5 пикселей
-    root->setGap(20.f);
+    root->setGap(10.f);
     root->setDrawOutline(true);
 
     auto header = std::make_unique<UI::Container>(sf::Vector2f(winSize.x * 0.9f, 80.f)); 
@@ -290,19 +291,34 @@ void Menu::updateViewSizes(sf::Vector2u windowSize) {
     }
 }
 
+//void Menu::scanLevels() {
+//    levels.clear();
+//    std::string path = "data/levels";
+//    if (!fs::exists(path)) return;
+//    int idx = 0;
+//    for (const auto& entry : fs::directory_iterator(path)) {
+//        if (entry.path().extension() == ".map") {
+//            LevelInfo info;
+//            info.filePath = entry.path().string();
+//            info.name = readLevelName(info.filePath);
+//            info.index = idx++;
+//            levels.push_back(info);
+//        }
+//    }
+//}
+
 void Menu::scanLevels() {
     levels.clear();
-    std::string path = "data/levels";
-    if (!fs::exists(path)) return;
-    int idx = 0;
-    for (const auto& entry : fs::directory_iterator(path)) {
-        if (entry.path().extension() == ".map") {
-            LevelInfo info;
-            info.filePath = entry.path().string();
-            info.name = readLevelName(info.filePath);
-            info.index = idx++;
-            levels.push_back(info);
-        }
+#ifdef ANDROID
+    std::string dir = "levels/";
+#else
+    std::string dir = "data/levels/";
+#endif
+    std::vector<std::string> mapNames = getLevelList();
+
+    for (int i = 0; i < (int)mapNames.size(); ++i) {
+        std::string fullPath = dir + mapNames[i];
+        levels.push_back({ fullPath, readLevelName(fullPath), i });
     }
 }
 
@@ -323,6 +339,7 @@ std::string Menu::readLevelName(const std::string& path) const {
 bool Menu::isLevelChosen() const { return levelChosen; }
 std::string Menu::getChosenLevel() const { return selectedLevel; }
 void Menu::resetChoice() { levelChosen = false; selectedLevel = ""; updateCardsSelection(); }
+void Menu::resetLastResult() { lastResult = SessionResult::None; }
 bool Menu::consumesWindowRecreationRequest() { bool req = windowRecreationRequired; windowRecreationRequired = false; return req; }
 
 void Menu::notifyResult(SessionResult result, const std::string& levelPath) {
