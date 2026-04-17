@@ -1,9 +1,15 @@
 #include "Menu.hpp"
 #include "ResourceManager.hpp"
-#include "GeneratedLevels.hpp"
 #include "utils/FileReader.hpp"
+#include "utils/Logger.hpp"
 #include "Colors.hpp"
 #include <filesystem>
+#ifdef ANDROID
+#include <android/native_activity.h>
+#include <android/asset_manager.h>
+#include <SFML/System/NativeActivity.hpp>
+#endif // ANDROID
+
 
 namespace fs = std::filesystem;
 
@@ -297,17 +303,54 @@ void Menu::updateViewSizes(sf::Vector2u windowSize) {
 
 void Menu::scanLevels() {
     levels.clear();
-#ifdef ANDROID
-    std::string dir = "levels/";
-#else
-    std::string dir = "data/levels/";
-#endif
-    std::vector<std::string> mapNames = getLevelList();
 
-    for (int i = 0; i < (int)mapNames.size(); ++i) {
-        std::string fullPath = dir + mapNames[i];
-        levels.push_back({ fullPath, readLevelName(fullPath), i });
+#ifdef __ANDROID__
+    // --- ЛОГИКА ДЛЯ ANDROID (через NDK Asset Manager) ---
+    ANativeActivity* activity = sf::getNativeActivity();
+    AAssetDir* assetDir = AAssetManager_openDir(activity->assetManager, "levels");
+    const char* fileName = nullptr;
+
+    while ((fileName = AAssetDir_getNextFileName(assetDir)) != nullptr) {
+        std::string sName = fileName;
+        if (sName.size() > 4 && sName.substr(sName.size() - 4) == ".map") {
+            std::string fullPath = "levels/" + sName;
+            levels.push_back({ fullPath, readLevelName(fullPath), (int)levels.size() });
+        }
     }
+    AAssetDir_close(assetDir);
+
+    // Сортируем, так как AssetManager не гарантирует порядок
+    std::sort(levels.begin(), levels.end(), [](const LevelInfo& a, const LevelInfo& b) {
+        return a.filePath < b.filePath;
+        });
+
+#else
+    // --- ЛОГИКА ДЛЯ ПК (Windows, Linux, macOS) ---
+    const std::string dirPath = "data/levels/";
+
+    if (!fs::exists(dirPath) || !fs::is_directory(dirPath)) {
+        LOGE("[Menu]: Папка уровней не найдена: %s", dirPath.c_str());
+        return;
+    }
+
+    std::vector<fs::path> mapFiles;
+
+    for (const auto& entry : fs::directory_iterator(dirPath)) {
+        if (entry.is_regular_file() && entry.path().extension() == ".map") {
+            mapFiles.push_back(entry.path());
+        }
+    }
+    std::sort(mapFiles.begin(), mapFiles.end());
+
+    for (int i = 0; i < (int)mapFiles.size(); ++i) {
+        std::string fullPath = mapFiles[i].string();
+        levels.push_back({
+            fullPath,
+            readLevelName(fullPath), // Читаем name= из файла
+            i
+            });
+    }
+#endif
 }
 
 std::string Menu::readLevelName(const std::string& path) const {

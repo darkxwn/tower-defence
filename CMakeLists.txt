@@ -59,15 +59,6 @@ endif()
 
 set(MACOS_ICON "${CMAKE_CURRENT_SOURCE_DIR}/game_macos.icns")
 
-# 4. ГЕНЕРАЦИЯ СПИСКА УРОВНЕЙ (ДЛЯ ANDROID)
-file(GLOB MAP_FILES RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}/data/levels" "data/levels/*.map")
-list(JOIN MAP_FILES "\", \"" MAP_STR)
-set(MAP_STR "\"${MAP_STR}\"")
-file(WRITE "${CMAKE_BINARY_DIR}/GeneratedLevels.hpp"
-     "#pragma once\n#include <vector>\n#include <string>\n"
-     "inline std::vector<std::string> getLevelList() { return { ${MAP_STR} }; }")
-include_directories("${CMAKE_BINARY_DIR}")
-
 # СОЗДАНИЕ ЦЕЛИ (Target)
 if(ANDROID)
     # Android требует библиотеку .so
