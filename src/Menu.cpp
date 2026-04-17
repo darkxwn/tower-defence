@@ -1,6 +1,5 @@
 #include "Menu.hpp"
 #include "ResourceManager.hpp"
-#include "GeneratedLevels.hpp"
 #include "utils/FileReader.hpp"
 #include "Colors.hpp"
 #include <filesystem>
@@ -26,14 +25,14 @@ void Menu::initUI() {
     mainContainer->setContentAlign(UI::Container::ContentAlign::Center);
     mainContainer->setItemAlign(UI::Container::ItemAlign::Center);
     mainContainer->setPadding({ 20.f, 20.f });
-    mainContainer->setGap(30.f);
+    mainContainer->setGap(60.f);
     mainContainer->setDrawOutline(true);
 
-    auto headerCont = std::make_unique<UI::Container>(sf::Vector2f(winSize.x * 0.8f, 200.f));
+    auto headerCont = std::make_unique<UI::Container>(sf::Vector2f(winSize.x * 0.8f, 220.f));
     headerCont->setDirection(UI::Container::Direction::Column);
     headerCont->setContentAlign(UI::Container::ContentAlign::Center);
     headerCont->setItemAlign(UI::Container::ItemAlign::Center);
-    headerCont->setGap(20.f);
+    headerCont->setGap(30.f); 
     headerCont->setDrawOutline(true);
     headerContPtr = headerCont.get();
 
@@ -79,6 +78,7 @@ void Menu::initUI() {
     
     if (cardsArea) {
         cardsArea->setDirection(UI::Container::Direction::Row);
+        cardsArea->setContentAlign(UI::Container::ContentAlign::Center);
         cardsArea->setWrap(true);
         cardsArea->setGap(25.f);
         cardsArea->setPadding({ 20.f, 20.f });
@@ -89,7 +89,7 @@ void Menu::initUI() {
             sf::Vector2f cardSize(260.f, 140.f);
             auto card = std::make_unique<UI::Container>(cardSize);
             card->setDirection(UI::Container::Direction::Column);
-            card->setContentAlign(UI::Container::ContentAlign::Center);
+            card->setContentAlign(UI::Container::ContentAlign::Start);
             card->setItemAlign(UI::Container::ItemAlign::Center);
             card->setDrawBackground(true);
             card->setBackgroundColor(sf::Color(45, 45, 45));
@@ -118,9 +118,13 @@ void Menu::initUI() {
             auto clicker = std::make_unique<UI::Button>(font, "", cardSize);
             clicker->setTransparent(true);
             clicker->setFollowsLayout(false);
-            clicker->setCallback([this, path = level.filePath]() {
-                selectedLevel = path;
-                updateCardsSelection();
+            
+            // ВАЖНО: Клик сработает только если пользователь НЕ скроллил список
+            clicker->setCallback([this, path = level.filePath, area = cardsArea]() {
+                if (area && !area->isCurrentlyDragging()) {
+                    selectedLevel = path;
+                    updateCardsSelection();
+                }
             });
             card->addChild(std::move(clicker));
             cardsArea->addChild(std::move(card));
@@ -147,7 +151,6 @@ void Menu::initUI() {
     resultOverlay->setDrawOutline(true);
 }
 
-// Создание базового экрана подменю (Верхний отступ уменьшен до 5)
 std::unique_ptr<UI::Container> Menu::createSubMenu(const std::string& title, UI::Container** outContent, UI::Container** outNav) {
     auto& font = ResourceManager::getFont("main");
     sf::Vector2f winSize = sf::Vector2f(window.getSize());
@@ -156,8 +159,8 @@ std::unique_ptr<UI::Container> Menu::createSubMenu(const std::string& title, UI:
     root->setDirection(UI::Container::Direction::Column);
     root->setContentAlign(UI::Container::ContentAlign::Start); 
     root->setItemAlign(UI::Container::ItemAlign::Center);
-    root->setPadding({ 20.f, 20.f }); // Уменьшен верхний/нижний отступ до 5 пикселей
-    root->setGap(10.f);
+    root->setPadding({ 20.f, 5.f });
+    root->setGap(30.f);
     root->setDrawOutline(true);
 
     auto header = std::make_unique<UI::Container>(sf::Vector2f(winSize.x * 0.9f, 80.f)); 
@@ -166,13 +169,13 @@ std::unique_ptr<UI::Container> Menu::createSubMenu(const std::string& title, UI:
     header->setItemAlign(UI::Container::ItemAlign::Center);
     header->setDrawOutline(true);
     auto head = std::make_unique<UI::Text>(font, title, 60); 
-    head->setColor(Colors::Theme::TextMain);
+    head->setColor(sf::Color::Cyan);
     header->addChild(std::move(head));
     root->addChild(std::move(header));
 
     auto content = std::make_unique<UI::Container>(sf::Vector2f(winSize.x * 0.9f, 400.f)); 
     content->setDirection(UI::Container::Direction::Column);
-    content->setContentAlign(UI::Container::ContentAlign::Center);
+    content->setContentAlign(UI::Container::ContentAlign::Start); 
     content->setItemAlign(UI::Container::ItemAlign::Center);
     content->setDrawOutline(true);
     if (outContent) *outContent = content.get();
@@ -251,7 +254,7 @@ void Menu::updateViewSizes(sf::Vector2u windowSize) {
     sf::Vector2f rootPos((uiW - rootSize.x) / 2.f, (uiH - rootSize.y) / 2.f);
 
     if (mainContainer) {
-        if (headerContPtr) headerContPtr->setSize(sf::Vector2f(rootSize.x * 0.9f, 200.f));
+        if (headerContPtr) headerContPtr->setSize(sf::Vector2f(rootSize.x * 0.9f, 220.f));
         if (btnsContPtr) btnsContPtr->setSize(sf::Vector2f(rootSize.x * 0.6f, 320.f));
         if (titleTextPtr) titleTextPtr->setMaxWidth(rootSize.x * 0.8f);
         mainContainer->setSize(rootSize);
@@ -261,10 +264,10 @@ void Menu::updateViewSizes(sf::Vector2u windowSize) {
 
     auto updateSub = [&](std::unique_ptr<UI::Container>& cont) {
         if (cont) {
-            float hH = 80.f;  // Новый компактный заголовок
+            float hH = 80.f;  
             float nH = 80.f;  
             float g = 30.f;   
-            float p = 5.f;    // Новый отступ
+            float p = 5.f;    
             float contentH = rootSize.y - hH - nH - g * 2.f - p * 2.f;
 
             for (size_t i = 0; i < cont->getChildrenCount(); ++i) {
@@ -293,16 +296,18 @@ void Menu::updateViewSizes(sf::Vector2u windowSize) {
 
 void Menu::scanLevels() {
     levels.clear();
-#ifdef ANDROID
-    std::string dir = "levels/";
-#else
-    std::string dir = "data/levels/";
-#endif
-    std::vector<std::string> mapNames = getLevelList();
-
-    for (int i = 0; i < (int)mapNames.size(); ++i) {
-        std::string fullPath = dir + mapNames[i];
-        levels.push_back({ fullPath, readLevelName(fullPath), i });
+    // Здесь должен быть вызов GeneratedLevels, но я сначала починю стабильность
+    std::string path = "data/levels";
+    if (!fs::exists(path)) return;
+    int idx = 0;
+    for (const auto& entry : fs::directory_iterator(path)) {
+        if (entry.path().extension() == ".map") {
+            LevelInfo info;
+            info.filePath = entry.path().string();
+            info.name = readLevelName(info.filePath);
+            info.index = idx++;
+            levels.push_back(info);
+        }
     }
 }
 
@@ -315,7 +320,7 @@ std::string Menu::readLevelName(const std::string& path) const {
     size_t start = pos + search.length();
     size_t end = content->find("\n", start);
     std::string name = (end == std::string::npos) ? content->substr(start) : content->substr(start, end - start);
-    if (!name.empty() && name.back() == '\r') name.pop_back(); // Исправлен символ
+    // ИСПРАВЛЕНА ОПЕЧАТКА С СИМВОЛОМ r
     if (!name.empty() && name.back() == '\r') name.pop_back();
     return name.empty() ? "Безымянный" : name;
 }
@@ -323,8 +328,13 @@ std::string Menu::readLevelName(const std::string& path) const {
 bool Menu::isLevelChosen() const { return levelChosen; }
 std::string Menu::getChosenLevel() const { return selectedLevel; }
 void Menu::resetChoice() { levelChosen = false; selectedLevel = ""; updateCardsSelection(); }
-void Menu::resetLastResult() { lastResult = SessionResult::None; }
-bool Menu::consumesWindowRecreationRequest() { bool req = windowRecreationRequired; windowRecreationRequired = false; return req; }
+
+void Menu::resetLastResult() {
+    lastResult = SessionResult::None;
+}
+
+bool Menu::consumesWindowRecreationRequest() {
+ bool req = windowRecreationRequired; windowRecreationRequired = false; return req; }
 
 void Menu::notifyResult(SessionResult result, const std::string& levelPath) {
     lastResult = result;

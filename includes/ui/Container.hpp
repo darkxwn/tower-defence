@@ -88,6 +88,9 @@ namespace UI {
         // Изменение активности прокрутки
         void setScrollEnabled(bool enabled);
 
+        // Проверка, находится ли контейнер в процессе перетаскивания
+        bool isCurrentlyDragging() const;
+
         // Добавление виджета в контейнер
         void addChild(std::unique_ptr<Widget> child);
 

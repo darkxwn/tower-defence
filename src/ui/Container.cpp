@@ -98,6 +98,11 @@ namespace UI {
         recalculateLayout();
     }
 
+    // Проверка текущего состояния перетаскивания
+    bool Container::isCurrentlyDragging() const {
+        return isDragging;
+    }
+
     // Добавление виджета в контейнер
     void Container::addChild(std::unique_ptr<Widget> child) {
         children.push_back(std::move(child));
