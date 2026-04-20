@@ -3,6 +3,7 @@
 #include "ui/Container.hpp"
 #include "ui/Text.hpp"
 #include "ui/Button.hpp"
+#include "ui/Slider.hpp"
 #include <SFML/Graphics.hpp>
 #include <string>
 #include <vector>
@@ -64,8 +65,25 @@ private:
     UI::Container* btnsContPtr = nullptr; // блок кнопок главного меню
     UI::Text* titleTextPtr = nullptr; // текст названия игры
 
+    // Указатели на виджеты настроек для синхронизации
+    UI::Slider* musicSliderPtr = nullptr;
+    UI::Slider* sfxSliderPtr = nullptr;
+    UI::Slider* sensSliderPtr = nullptr;
+    UI::Slider* uiScaleSliderPtr = nullptr;
+    UI::Button* fsBtnPtr = nullptr;
+
     SessionResult lastResult = SessionResult::None; // итог последней игры
     std::string lastLevelPath; // путь к последней сыгранной карте
+
+    // Временные значения настроек до сохранения
+    int tmpMusicVol = 100;
+    int tmpSfxVol = 100;
+    float tmpSensitivity = 1.0f;
+    float tmpUiScale = 1.0f;
+    bool tmpFullscreen = false;
+
+    // Синхронизация временных значений с текущими настройками
+    void syncSettingsToTmp();
 
     // Инициализация всех контейнеров и их содержимого
     void initUI();

@@ -46,6 +46,7 @@ set(SOURCES
     src/ui/Button.cpp
     src/ui/Widget.cpp
     src/ui/Container.cpp
+    src/ui/Slider.cpp
     src/SettingsManager.cpp
     src/utils/FileReader.cpp
 )

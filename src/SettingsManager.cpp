@@ -8,7 +8,7 @@
 #include <android/native_activity.h>
 #endif
 
-// Конструктор менеджера настроек
+// Инициализация менеджера настроек
 SettingsManager::SettingsManager() {
     settingsPath = getSavePath();
     setDefaults();
@@ -18,11 +18,11 @@ SettingsManager::SettingsManager() {
 // Получение пути сохранения
 std::string SettingsManager::getSavePath() {
 #ifdef ANDROID
-    // на android пишем во внутреннюю память приложения
+    // внутренняя память приложения для android
     ANativeActivity* activity = sf::getNativeActivity();
     return std::string(activity->internalDataPath) + "/settings.cfg";
 #else
-    // на ПК пишем в папку с игрой
+    // папка с игрой для ПК
     return "data/config/settings.cfg";
 #endif
 }
@@ -70,37 +70,88 @@ void SettingsManager::save() {
     }
 }
 
-// Получение целого значения
-int SettingsManager::getInt(const std::string& key) {
-    return std::stoi(settings[key]);
+// Получение значения для типа int
+template<>
+int SettingsManager::get<int>(const std::string& key) const {
+    if (settings.find(key) == settings.end()) return 0;
+    try { 
+        return std::stoi(settings.at(key)); 
+    } catch (...) { 
+        return 0; 
+    }
 }
 
-// Получение числового значения
-float SettingsManager::getFloat(const std::string& key) {
-    return std::stof(settings[key]);
+// Получение значения для типа float
+template<>
+float SettingsManager::get<float>(const std::string& key) const {
+    if (settings.find(key) == settings.end()) return 0.0f;
+    try { return std::stof(settings.at(key)); } catch (...) { return 0.0f; }
 }
 
-// Получение логического значения
-bool SettingsManager::getBool(const std::string& key) {
-    return (settings[key] == "true" || settings[key] == "1");
+// Получение значения для типа bool
+template<>
+bool SettingsManager::get<bool>(const std::string& key) const {
+    if (settings.find(key) == settings.end()) return false;
+    const std::string& val = settings.at(key);
+    return (val == "true" || val == "1");
 }
 
-// Изменение строкового значения
-void SettingsManager::set(const std::string& key, const std::string& value) {
+// Получение значения для типа string
+template<>
+std::string SettingsManager::get<std::string>(const std::string& key) const {
+    if (settings.find(key) == settings.end()) return "";
+    return settings.at(key);
+}
+
+// Получение значения с возвратом значения по умолчанию для типа int
+template<>
+int SettingsManager::get<int>(const std::string& key, const int& defaultValue) const {
+    if (settings.find(key) == settings.end()) return defaultValue;
+    try { return std::stoi(settings.at(key)); } catch (...) { return defaultValue; }
+}
+
+// Получение значения с возвратом значения по умолчанию для типа float
+template<>
+float SettingsManager::get<float>(const std::string& key, const float& defaultValue) const {
+    if (settings.find(key) == settings.end()) return defaultValue;
+    try { return std::stof(settings.at(key)); } catch (...) { return defaultValue; }
+}
+
+// Получение значения с возвратом значения по умолчанию для типа bool
+template<>
+bool SettingsManager::get<bool>(const std::string& key, const bool& defaultValue) const {
+    if (settings.find(key) == settings.end()) return defaultValue;
+    const std::string& val = settings.at(key);
+    return (val == "true" || val == "1");
+}
+
+// Получение значения с возвратом значения по умолчанию для типа string
+template<>
+std::string SettingsManager::get<std::string>(const std::string& key, const std::string& defaultValue) const {
+    if (settings.find(key) == settings.end()) return defaultValue;
+    return settings.at(key);
+}
+
+// Изменение значения для типа int
+template<>
+void SettingsManager::set<int>(const std::string& key, const int& value) {
+    settings[key] = std::to_string(value);
+}
+
+// Изменение значения для типа float
+template<>
+void SettingsManager::set<float>(const std::string& key, const float& value) {
+    settings[key] = std::to_string(value);
+}
+
+// Изменение значения для типа bool
+template<>
+void SettingsManager::set<bool>(const std::string& key, const bool& value) {
+    settings[key] = value ? "1" : "0";
+}
+
+// Изменение значения для типа string
+template<>
+void SettingsManager::set<std::string>(const std::string& key, const std::string& value) {
     settings[key] = value;
-}
-
-// Изменение числового значения
-void SettingsManager::set(const std::string& key, float value) {
-    settings[key] = std::to_string(value);
-}
-
-// Изменение целого значения
-void SettingsManager::set(const std::string& key, int value) {
-    settings[key] = std::to_string(value);
-}
-
-// Изменение логического значения
-void SettingsManager::set(const std::string& key, bool value) {
-    settings[key] = std::to_string(value);
 }

@@ -2,6 +2,12 @@
 #include <string>
 #include <map>
 
+///////////////////////////////////////////////////////////////////////////
+//
+// КЛАСС SETTINGSMANAGER
+//
+///////////////////////////////////////////////////////////////////////////
+
 class SettingsManager {
 private:
     std::map<std::string, std::string> settings; // хранилище настроек
@@ -14,32 +20,24 @@ private:
     std::string getSavePath();
 
 public:
+    // Инициализация менеджера
     SettingsManager();
 
+    // Загрузка настроек из файла
     void load();
+
+    // Сохранение настроек в файл
     void save();
 
-    // Получение числового значения
-    float getFloat(const std::string& key);
+    // Получение значения настройки по ключу
+    template<typename T>
+    T get(const std::string& key) const;
 
-    // Получение целого значения
-    int   getInt(const std::string& key);
+    // Получение значения настройки с возвратом значения по умолчанию при отсутствии ключа
+    template<typename T>
+    T get(const std::string& key, const T& defaultValue) const;
 
-    // Получение логического значения
-    bool  getBool(const std::string& key);
-
-    // Получение строкового значения
-    std::string getString(const std::string& key, const std::string& defaultVal);
-
-    // Изменение строкового значения
-    void set(const std::string& key, const std::string& value);
-
-    // Изменение числового значения
-    void set(const std::string& key, float value);
-
-    // Изменение целого значения
-    void set(const std::string& key, int value);
-
-    // Изменение логического значения
-    void set(const std::string& key, bool value);
+    // Изменение значения настройки
+    template<typename T>
+    void set(const std::string& key, const T& value);
 };

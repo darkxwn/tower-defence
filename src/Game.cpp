@@ -131,7 +131,7 @@ void Game::initOverlays() {
 void Game::updateViewSizes(sf::Vector2u windowSize) {
     float sw = static_cast<float>(windowSize.x);
     float sh = static_cast<float>(windowSize.y);
-    uiScale = settings.getFloat("ui_scale");
+    uiScale = settings.get<float>("ui_scale");
 
     float uiH = 1080.f / uiScale;
     float uiW = uiH * (sw / sh);
@@ -240,7 +240,7 @@ void Game::handleEvents() {
                     if (d > 10.f) hasMoved = true;
                     if (!isPinching) {
                         sf::Vector2f delta = sf::Vector2f(lastInputPos - currentPos);
-                        worldView.move(delta * (currentZoom * settings.getFloat("sensitivity")));
+                        worldView.move(delta * (currentZoom * settings.get<float>("sensitivity")));
                         lastInputPos = currentPos;
                         clampView();
                     }
@@ -270,7 +270,7 @@ void Game::handleEvents() {
         if (const auto* m = event->getIf<sf::Event::MouseMoved>()) {
             if (isPanning) {
                 sf::Vector2f delta = sf::Vector2f(lastInputPos - m->position);
-                worldView.move(delta * (currentZoom * settings.getFloat("sensitivity")));
+                worldView.move(delta * (currentZoom * settings.get<float>("sensitivity")));
                 lastInputPos = m->position;
                 clampView();
             }
@@ -311,7 +311,7 @@ void Game::update(float deltaTime) {
         state = GameState::Victory;
         if (endTitlePtr) {
             endTitlePtr->setText("ПОБЕДА!");
-            endTitlePtr->setColor(sf::Color::Green);
+            endTitlePtr->setColor(Colors::Theme::TextMain);
         }
         if (endSubTitlePtr) endSubTitlePtr->setText("Все волны отражены");
     }

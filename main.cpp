@@ -117,7 +117,7 @@ int main() {
             if (!window.isOpen()) { menu.reset(); return 0; }
 
             if (menu->consumesWindowRecreationRequest()) {
-                bool fs = settings.getBool("fullscreen");
+                bool fs = settings.get<bool>("fullscreen");
                 window.create(sf::VideoMode({1280, 720}), "Tower Defence", fs ? sf::State::Fullscreen : sf::State::Windowed);
                 window.setFramerateLimit(60);
                 menu->updateViewSizes(window.getSize());

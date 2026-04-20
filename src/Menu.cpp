@@ -4,6 +4,7 @@
 #include "utils/Logger.hpp"
 #include "Colors.hpp"
 #include <filesystem>
+#include <algorithm>
 #ifdef ANDROID
 #include <android/native_activity.h>
 #include <android/asset_manager.h>
@@ -13,12 +14,29 @@
 
 namespace fs = std::filesystem;
 
-// Конструктор инициализирует системы и строит интерфейс
+// Инициализирует системы и строит интерфейс
 Menu::Menu(sf::RenderWindow& window, SettingsManager& settings) 
     : window(window), settings(settings) {
+    syncSettingsToTmp();
     scanLevels();
     initUI();
     updateViewSizes(window.getSize());
+}
+
+// Синхронизация временных значений с текущими настройками
+void Menu::syncSettingsToTmp() {
+    tmpMusicVol = settings.get<int>("music_volume", 100);
+    tmpSfxVol = settings.get<int>("sfx_volume", 100);
+    tmpSensitivity = settings.get<float>("sensitivity", 1.0f);
+    tmpUiScale = settings.get<float>("ui_scale", 1.0f);
+    tmpFullscreen = settings.get<bool>("fullscreen", false);
+
+    // актуализация виджетов если они уже созданы
+    if (musicSliderPtr) musicSliderPtr->setValue((float)tmpMusicVol);
+    if (sfxSliderPtr) sfxSliderPtr->setValue((float)tmpSfxVol);
+    if (sensSliderPtr) sensSliderPtr->setValue(tmpSensitivity);
+    if (uiScaleSliderPtr) uiScaleSliderPtr->setValue(tmpUiScale);
+    if (fsBtnPtr) fsBtnPtr->setText(tmpFullscreen ? "ВКЛ" : "ВЫКЛ");
 }
 
 // Построение иерархии контейнеров для каждого экрана
@@ -26,7 +44,7 @@ void Menu::initUI() {
     auto& font = ResourceManager::getFont("main");
     sf::Vector2f winSize = sf::Vector2f(window.getSize());
 
-    // ГЛАВНОЕ МЕНЮ
+    // главное меню
     mainContainer = std::make_unique<UI::Container>(winSize);
     mainContainer->setDirection(UI::Container::Direction::Column);
     mainContainer->setContentAlign(UI::Container::ContentAlign::Center);
@@ -71,7 +89,7 @@ void Menu::initUI() {
     btnsCont->addChild(std::move(upgBtn));
 
     auto setBtn = std::make_unique<UI::Button>(font, "НАСТРОЙКИ", btnSize);
-    setBtn->setCallback([this]() { state = MenuState::Settings; });
+    setBtn->setCallback([this]() { syncSettingsToTmp(); state = MenuState::Settings; });
     btnsCont->addChild(std::move(setBtn));
 
     auto exitBtn = std::make_unique<UI::Button>(font, "ВЫХОД", btnSize);
@@ -79,7 +97,7 @@ void Menu::initUI() {
     btnsCont->addChild(std::move(exitBtn));
     mainContainer->addChild(std::move(btnsCont));
 
-    // ЭКРАН ВЫБОРА УРОВНЯ
+    // экран выбора уровня
     UI::Container* navArea = nullptr;
     levelContainer = createSubMenu("ВЫБОР УРОВНЯ", &cardsArea, &navArea);
     
@@ -108,7 +126,7 @@ void Menu::initUI() {
             numBlock->setContentAlign(UI::Container::ContentAlign::Center);
             numBlock->setItemAlign(UI::Container::ItemAlign::Center);
             auto numText = std::make_unique<UI::Text>(font, "УРОВЕНЬ " + std::to_string(level.index + 1), 26);
-            numText->setColor(sf::Color(160, 160, 160));
+            numText->setColor(Colors::Theme::TextMain);
             numBlock->addChild(std::move(numText));
             card->addChild(std::move(numBlock));
 
@@ -118,7 +136,7 @@ void Menu::initUI() {
             nameBlock->setItemAlign(UI::Container::ItemAlign::Center);
             nameBlock->setDrawOutline(true);
             auto nameText = std::make_unique<UI::Text>(font, level.name, 20);
-            nameText->setColor(sf::Color::White);
+            nameText->setColor(Colors::Theme::TextMain);
             nameBlock->addChild(std::move(nameText));
             card->addChild(std::move(nameBlock));
 
@@ -126,7 +144,7 @@ void Menu::initUI() {
             clicker->setTransparent(true);
             clicker->setFollowsLayout(false);
             
-            // ВАЖНО: Клик сработает только если пользователь НЕ скроллил список
+            // обработка нажатия при отсутствии прокрутки
             clicker->setCallback([this, path = level.filePath, area = cardsArea]() {
                 if (area && !area->isCurrentlyDragging()) {
                     selectedLevel = path;
@@ -146,7 +164,92 @@ void Menu::initUI() {
         navArea->addChild(std::move(startGameBtn));
     }
 
-    settingsContainer = createSubMenu("НАСТРОЙКИ", nullptr);
+    // экран настроек
+    UI::Container* settingsContent = nullptr;
+    UI::Container* settingsNav = nullptr;
+    settingsContainer = createSubMenu("НАСТРОЙКИ", &settingsContent, &settingsNav);
+    
+    if (settingsContent) {
+        settingsContent->setGap(20.f);
+        settingsContent->setPadding({ 20.f, 20.f });
+        settingsContent->setItemAlign(UI::Container::ItemAlign::Center);
+        settingsContent->setContentAlign(UI::Container::ContentAlign::Center);
+
+        auto createRow = [&](const std::string& label, std::unique_ptr<UI::Widget> control, std::unique_ptr<UI::Text> valueText = nullptr) {
+            auto row = std::make_unique<UI::Container>(sf::Vector2f(800.f, 60.f));
+            row->setDirection(UI::Container::Direction::Row);
+            row->setContentAlign(UI::Container::ContentAlign::Center);
+            row->setItemAlign(UI::Container::ItemAlign::Center);
+            row->setGap(50.f);
+
+            auto text = std::make_unique<UI::Text>(font, label, 24);
+            text->setColor(sf::Color::White);
+            row->addChild(std::move(text));
+            row->addChild(std::move(control));
+            if (valueText) {
+                row->addChild(std::move(valueText));
+            }
+            return row;
+        };
+
+        // громкость музыки
+        auto musicSlider = std::make_unique<UI::Slider>(font, 0.f, 100.f, (float)tmpMusicVol, sf::Vector2f(350.f, 30.f));
+        musicSliderPtr = musicSlider.get();
+        musicSlider->setCallback([this](float value) { tmpMusicVol = (int)value; });
+        settingsContent->addChild(createRow("ГРОМКОСТЬ МУЗЫКИ", std::move(musicSlider)));
+
+        // громкость звуков
+        auto sfxSlider = std::make_unique<UI::Slider>(font, 0.f, 100.f, (float)tmpSfxVol, sf::Vector2f(350.f, 30.f));
+        sfxSliderPtr = sfxSlider.get();
+        sfxSlider->setCallback([this](float value) { tmpSfxVol = (int)value; });
+        settingsContent->addChild(createRow("ГРОМКОСТЬ ЗВУКОВ", std::move(sfxSlider)));
+
+        // чувствительность
+        auto sensSlider = std::make_unique<UI::Slider>(font, 0.5f, 3.0f, tmpSensitivity, sf::Vector2f(350.f, 30.f));
+        sensSliderPtr = sensSlider.get();
+        sensSlider->setCallback([this](float value) {
+            tmpSensitivity = value;
+        });
+        settingsContent->addChild(createRow("ЧУВСТВИТЕЛЬНОСТЬ", std::move(sensSlider)));
+
+        // масштаб интерфейса
+        auto uiScaleSlider = std::make_unique<UI::Slider>(font, 0.5f, 3.0f, tmpUiScale, sf::Vector2f(350.f, 30.f));
+        uiScaleSliderPtr = uiScaleSlider.get();
+        uiScaleSlider->setCallback([this](float value) {
+            tmpUiScale = value;
+        });
+        settingsContent->addChild(createRow("МАСШТАБ ИНТЕРФЕЙСА", std::move(uiScaleSlider)));
+
+        // полноэкранный режим
+        std::string fsLabel = tmpFullscreen ? "ВКЛ" : "ВЫКЛ";
+        auto fsBtn = std::make_unique<UI::Button>(font, fsLabel, sf::Vector2f(120.f, 45.f));
+        fsBtnPtr = fsBtn.get();
+        fsBtn->setCallback([this]() {
+            tmpFullscreen = !tmpFullscreen;
+            if (fsBtnPtr) fsBtnPtr->setText(tmpFullscreen ? "ВКЛ" : "ВЫКЛ");
+        });
+        settingsContent->addChild(createRow("ПОЛНОЭКРАННЫЙ РЕЖИМ", std::move(fsBtn)));
+    }
+
+    if (settingsNav) {
+        auto saveBtn = std::make_unique<UI::Button>(font, "СОХРАНИТЬ", sf::Vector2f(220.f, 60.f));
+        saveBtn->setCallback([this]() {
+            bool oldFs = settings.get<bool>("fullscreen", false);
+            settings.set<int>("music_volume", tmpMusicVol);
+            settings.set<int>("sfx_volume", tmpSfxVol);
+            settings.set<float>("sensitivity", tmpSensitivity);
+            settings.set<float>("ui_scale", tmpUiScale);
+            settings.set<bool>("fullscreen", tmpFullscreen);
+            settings.save();
+            
+            if (oldFs != tmpFullscreen) {
+                windowRecreationRequired = true;
+            }
+            state = MenuState::Main;
+        });
+        settingsNav->addChild(std::move(saveBtn));
+    }
+
     upgradesContainer = createSubMenu("УЛУЧШЕНИЯ", nullptr);
 
     resultOverlay = std::make_unique<UI::Container>(winSize);
@@ -158,6 +261,7 @@ void Menu::initUI() {
     resultOverlay->setDrawOutline(true);
 }
 
+// Создание вложенного меню
 std::unique_ptr<UI::Container> Menu::createSubMenu(const std::string& title, UI::Container** outContent, UI::Container** outNav) {
     auto& font = ResourceManager::getFont("main");
     sf::Vector2f winSize = sf::Vector2f(window.getSize());
@@ -176,7 +280,7 @@ std::unique_ptr<UI::Container> Menu::createSubMenu(const std::string& title, UI:
     header->setItemAlign(UI::Container::ItemAlign::Center);
     header->setDrawOutline(true);
     auto head = std::make_unique<UI::Text>(font, title, 60); 
-    head->setColor(sf::Color::Cyan);
+    head->setColor(Colors::Theme::TextMain);
     header->addChild(std::move(head));
     root->addChild(std::move(header));
 
@@ -202,10 +306,12 @@ std::unique_ptr<UI::Container> Menu::createSubMenu(const std::string& title, UI:
     return root;
 }
 
+// Обновление состояния выбора карточек уровней
 void Menu::updateCardsSelection() {
     if (!cardsArea) return;
     for (size_t i = 0; i < cardsArea->getChildrenCount(); ++i) {
         auto* card = static_cast<UI::Container*>(cardsArea->getChild(i));
+        if (i >= levels.size()) continue;
         const auto& level = levels[i];
         if (level.filePath == selectedLevel) {
             card->setBackgroundColor(sf::Color(80, 80, 80));
@@ -217,6 +323,7 @@ void Menu::updateCardsSelection() {
     if (playBtnPtr) playBtnPtr->setEnabled(!selectedLevel.empty());
 }
 
+// Обработка событий окна
 void Menu::handleEvents() {
     while (const std::optional event = window.pollEvent()) {
         if (event->is<sf::Event::Closed>()) window.close();
@@ -232,6 +339,7 @@ void Menu::handleEvents() {
     }
 }
 
+// Отрисовка интерфейса меню
 void Menu::render() {
     window.clear(sf::Color(25, 25, 30));
     window.setView(uiView);
@@ -247,10 +355,11 @@ void Menu::render() {
     window.display();
 }
 
+// Обновление размеров элементов интерфейса при изменении окна
 void Menu::updateViewSizes(sf::Vector2u windowSize) {
     float sw = static_cast<float>(windowSize.x);
     float sh = static_cast<float>(windowSize.y);
-    try { uiScale = settings.getFloat("ui_scale"); } catch (...) { uiScale = 1.0f; }
+    try { uiScale = settings.get<float>("ui_scale"); } catch (...) { uiScale = 1.0f; }
     if (uiScale <= 0.1f) uiScale = 1.0f;
 
     float uiH = sh / uiScale;
@@ -301,11 +410,12 @@ void Menu::updateViewSizes(sf::Vector2u windowSize) {
     }
 }
 
+// Поиск файлов уровней в директориях
 void Menu::scanLevels() {
     levels.clear();
 
 #ifdef __ANDROID__
-    // --- ЛОГИКА ДЛЯ ANDROID (через NDK Asset Manager) ---
+    // логика для android через ndk asset manager
     ANativeActivity* activity = sf::getNativeActivity();
     AAssetDir* assetDir = AAssetManager_openDir(activity->assetManager, "levels");
     const char* fileName = nullptr;
@@ -319,13 +429,13 @@ void Menu::scanLevels() {
     }
     AAssetDir_close(assetDir);
 
-    // Сортируем, так как AssetManager не гарантирует порядок
+    // сортировка списка уровней по пути
     std::sort(levels.begin(), levels.end(), [](const LevelInfo& a, const LevelInfo& b) {
         return a.filePath < b.filePath;
-        });
+    });
 
 #else
-    // --- ЛОГИКА ДЛЯ ПК (Windows, Linux, macOS) ---
+    // логика для персональных компьютеров
     const std::string dirPath = "data/levels/";
 
     if (!fs::exists(dirPath) || !fs::is_directory(dirPath)) {
@@ -344,15 +454,12 @@ void Menu::scanLevels() {
 
     for (int i = 0; i < (int)mapFiles.size(); ++i) {
         std::string fullPath = mapFiles[i].string();
-        levels.push_back({
-            fullPath,
-            readLevelName(fullPath), // Читаем name= из файла
-            i
-            });
+        levels.push_back({ fullPath, readLevelName(fullPath), i });
     }
 #endif
 }
 
+// Чтение названия уровня из файла
 std::string Menu::readLevelName(const std::string& path) const {
     auto content = readFile(path);
     if (!content || content->empty()) return "Безымянный";
@@ -362,22 +469,33 @@ std::string Menu::readLevelName(const std::string& path) const {
     size_t start = pos + search.length();
     size_t end = content->find("\n", start);
     std::string name = (end == std::string::npos) ? content->substr(start) : content->substr(start, end - start);
-    // ИСПРАВЛЕНА ОПЕЧАТКА С СИМВОЛОМ r
+    // удаление символа возврата каретки
     if (!name.empty() && name.back() == '\r') name.pop_back();
     return name.empty() ? "Безымянный" : name;
 }
 
+// Получение состояния выбора уровня
 bool Menu::isLevelChosen() const { return levelChosen; }
+
+// Получение пути выбранного уровня
 std::string Menu::getChosenLevel() const { return selectedLevel; }
+
+// Сброс выбора уровня
 void Menu::resetChoice() { levelChosen = false; selectedLevel = ""; updateCardsSelection(); }
 
+// Сброс последнего результата
 void Menu::resetLastResult() {
     lastResult = SessionResult::None;
 }
 
+// Проверка необходимости пересоздания окна
 bool Menu::consumesWindowRecreationRequest() {
- bool req = windowRecreationRequired; windowRecreationRequired = false; return req; }
+    bool req = windowRecreationRequired; 
+    windowRecreationRequired = false; 
+    return req; 
+}
 
+// Уведомление о результате сессии
 void Menu::notifyResult(SessionResult result, const std::string& levelPath) {
     lastResult = result;
     lastLevelPath = levelPath;
@@ -392,6 +510,7 @@ void Menu::notifyResult(SessionResult result, const std::string& levelPath) {
     resultOverlay->addChild(std::move(back));
 }
 
+// Очистка ресурсов интерфейса
 void Menu::cleanup() {
     if (mainContainer) mainContainer->clearChildren();
     if (levelContainer) levelContainer->clearChildren();
