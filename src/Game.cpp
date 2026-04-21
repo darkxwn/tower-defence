@@ -8,9 +8,7 @@
 
 // Конструктор инициализирует игру и системы
 Game::Game(sf::RenderWindow& window, SettingsManager& settings, const std::string& levelPath) :
-    window(window),
-    settings(settings),
-    base({ 0, 0 }) {
+    window(window), settings(settings), base({ 0, 0 }) {
 
     map.load(levelPath);
     map.centerOnScreen(window.getSize(), 75.f, 120.f);
@@ -131,9 +129,9 @@ void Game::initOverlays() {
 void Game::updateViewSizes(sf::Vector2u windowSize) {
     float sw = static_cast<float>(windowSize.x);
     float sh = static_cast<float>(windowSize.y);
-    uiScale = settings.get<float>("ui_scale");
+    uiScale = sh / 1080.f;
 
-    float uiH = 1080.f / uiScale;
+    float uiH = sh / uiScale;
     float uiW = uiH * (sw / sh);
     sf::Vector2f logicalSize(uiW, uiH);
 
@@ -243,6 +241,26 @@ void Game::handleEvents() {
                         worldView.move(delta * (currentZoom * settings.get<float>("sensitivity")));
                         lastInputPos = currentPos;
                         clampView();
+                    }
+                }
+
+                // Pinch-Zoom обработка (два пальца)
+                if (isPinching && sf::Touch::isDown(0) && sf::Touch::isDown(1)) {
+                    sf::Vector2i p0 = sf::Touch::getPosition(0, window);
+                    sf::Vector2i p1 = sf::Touch::getPosition(1, window);
+                    sf::Vector2i mid((p0.x + p1.x) / 2, (p0.y + p1.y) / 2);
+                    sf::Vector2f worldBefore = window.mapPixelToCoords(mid, worldView);
+
+                    float newDist = std::sqrt(std::pow((float)p0.x - p1.x, 2) + std::pow((float)p0.y - p1.y, 2));
+                    if (std::abs(newDist - initialPinchDistance) > 2.f) {
+                        float f = initialPinchDistance / newDist;
+                        if (currentZoom * f >= 0.5f && currentZoom * f <= 1.6f) {
+                            worldView.zoom(f);
+                            currentZoom *= f;
+                            worldView.move(worldBefore - window.mapPixelToCoords(mid, worldView));
+                            clampView();
+                        }
+                        initialPinchDistance = newDist;
                     }
                 }
             }

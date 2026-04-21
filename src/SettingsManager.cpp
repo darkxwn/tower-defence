@@ -32,7 +32,7 @@ void SettingsManager::setDefaults() {
     settings["music_volume"] = "100";
     settings["sfx_volume"] = "100";
 #ifdef ANDROID
-    settings["ui_scale"] = "2.0";
+    settings["ui_scale"] = "1.0";
     settings["sensitivity"] = "1.45";
 #else
     settings["ui_scale"] = "1.0";

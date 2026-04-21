@@ -27,6 +27,8 @@ namespace UI {
         bool isDragging = false; // состояние перетаскивания
         std::function<void(float)> onValueChange; // обратный вызов при изменении
 
+        int precision = 0; // количество дробных знаков у текста
+
         // Обновление положения ручки и текста
         void updateInternalLayout();
 
@@ -63,5 +65,8 @@ namespace UI {
 
         // Изменение цвета ручки
         void setHandleColor(sf::Color color);
+
+        // Изменение количества дробных знаков у текста
+        void setPrecision(unsigned int value);
     };
 }

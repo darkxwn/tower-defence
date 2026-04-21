@@ -33,22 +33,22 @@ set(SOURCES
     main.cpp
     src/Base.cpp
     src/Enemy.cpp
+    src/Tower.cpp
+    src/Projectile.cpp
     src/Game.cpp
-    src/GameData.cpp
     src/HUD.cpp
     src/Map.cpp
     src/Menu.cpp
+    src/GameData.cpp
     src/ResourceManager.cpp
-    src/Tower.cpp
+    src/SettingsManager.cpp
     src/WaveSystem.cpp
-    src/Projectile.cpp
+    src/utils/FileReader.cpp
     src/ui/Text.cpp
     src/ui/Button.cpp
     src/ui/Widget.cpp
     src/ui/Container.cpp
     src/ui/Slider.cpp
-    src/SettingsManager.cpp
-    src/utils/FileReader.cpp
 )
 
 # Ресурсы для Windows и macOS

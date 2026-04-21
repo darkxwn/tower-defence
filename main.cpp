@@ -103,7 +103,7 @@ int main() {
     SettingsManager settings;
     settings.load();
     
-    sf::RenderWindow window(sf::VideoMode({1280, 720}), "Tower Defence");
+    sf::RenderWindow window(sf::VideoMode({1280, 720}), "Tower Defence", settings.get<bool>("fullscreen", false) ? sf::State::Fullscreen : sf::State::Windowed);
     window.setFramerateLimit(60);
     window.setMinimumSize(sf::Vector2u(1280, 720));
 
@@ -111,16 +111,34 @@ int main() {
 
     auto menu = std::make_unique<Menu>(window, settings);
 
+    sf::Vector2u lastWindowSize = { 1280, 720 };
+
     while (window.isOpen()) {
         while (window.isOpen() && !menu->isLevelChosen()) {
             menu->handleEvents();
             if (!window.isOpen()) { menu.reset(); return 0; }
 
             if (menu->consumesWindowRecreationRequest()) {
-                bool fs = settings.get<bool>("fullscreen");
-                window.create(sf::VideoMode({1280, 720}), "Tower Defence", fs ? sf::State::Fullscreen : sf::State::Windowed);
+                menu->cleanup();
+                menu.reset();
+
+                bool fs = settings.get<bool>("fullscreen", false);
+                // При полноэкранном режиме используем текущее разрешение экрана
+                sf::VideoMode videoMode;                                                                               
+                if (fs) {
+                    videoMode = sf::VideoMode::getFullscreenModes()[0]; // берём первое доступное
+                } else {
+                    videoMode = sf::VideoMode({ 1280, 720 });
+                }
+                window.create(videoMode, "Tower Defence", fs ? sf::State::Fullscreen : sf::State::Windowed); 
                 window.setFramerateLimit(60);
-                menu->updateViewSizes(window.getSize());
+                window.setMinimumSize(sf::Vector2u(1280, 720));
+
+                // Сохраняем фактический размер окна
+                lastWindowSize = window.getSize();
+
+                menu = std::make_unique<Menu>(window, settings);
+                menu->updateViewSizes(lastWindowSize);
             }
 
             menu->render();
@@ -131,7 +149,7 @@ int main() {
         std::string levelPath = menu->getChosenLevel();
         menu->resetChoice();
         menu->resetLastResult();
-
+        
         bool keepPlaying = true;
         while (keepPlaying && window.isOpen()) {
             Game game(window, settings, levelPath);

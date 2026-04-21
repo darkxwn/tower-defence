@@ -2,14 +2,18 @@
 #include "ResourceManager.hpp"
 #include "utils/FileReader.hpp"
 #include "utils/Logger.hpp"
+#include "ui/Slider.hpp"
+#include "ui/Container.hpp"
+#include "ui/Button.hpp"
 #include "Colors.hpp"
 #include <filesystem>
 #include <algorithm>
-#ifdef ANDROID
+
+#ifdef __ANDROID__
 #include <android/native_activity.h>
 #include <android/asset_manager.h>
 #include <SFML/System/NativeActivity.hpp>
-#endif // ANDROID
+#endif 
 
 
 namespace fs = std::filesystem;
@@ -50,14 +54,14 @@ void Menu::initUI() {
     mainContainer->setContentAlign(UI::Container::ContentAlign::Center);
     mainContainer->setItemAlign(UI::Container::ItemAlign::Center);
     mainContainer->setPadding({ 20.f, 20.f });
-    mainContainer->setGap(60.f);
+    mainContainer->setGap(30.f);
     mainContainer->setDrawOutline(true);
 
-    auto headerCont = std::make_unique<UI::Container>(sf::Vector2f(winSize.x * 0.8f, 220.f));
+    auto headerCont = std::make_unique<UI::Container>(sf::Vector2f(winSize.x * 0.8f, 125.f));
     headerCont->setDirection(UI::Container::Direction::Column);
     headerCont->setContentAlign(UI::Container::ContentAlign::Center);
     headerCont->setItemAlign(UI::Container::ItemAlign::Center);
-    headerCont->setGap(30.f); 
+    headerCont->setGap(20.f); 
     headerCont->setDrawOutline(true);
     headerContPtr = headerCont.get();
 
@@ -176,15 +180,21 @@ void Menu::initUI() {
         settingsContent->setContentAlign(UI::Container::ContentAlign::Center);
 
         auto createRow = [&](const std::string& label, std::unique_ptr<UI::Widget> control, std::unique_ptr<UI::Text> valueText = nullptr) {
-            auto row = std::make_unique<UI::Container>(sf::Vector2f(800.f, 60.f));
+            auto row = std::make_unique<UI::Container>(sf::Vector2f(900.f, 60.f));
             row->setDirection(UI::Container::Direction::Row);
             row->setContentAlign(UI::Container::ContentAlign::Center);
             row->setItemAlign(UI::Container::ItemAlign::Center);
             row->setGap(50.f);
 
+            auto textCont = std::make_unique<UI::Container>(sf::Vector2f(350.f, 60.f));
+            textCont->setContentAlign(UI::Container::ContentAlign::Center);
+            textCont->setItemAlign(UI::Container::ItemAlign::Center);
             auto text = std::make_unique<UI::Text>(font, label, 24);
             text->setColor(sf::Color::White);
-            row->addChild(std::move(text));
+            text->setAlignment(UI::Text::Align::Left);
+            textCont->addChild(std::move(text));
+
+            row->addChild(std::move(textCont));
             row->addChild(std::move(control));
             if (valueText) {
                 row->addChild(std::move(valueText));
@@ -206,31 +216,44 @@ void Menu::initUI() {
 
         // чувствительность
         auto sensSlider = std::make_unique<UI::Slider>(font, 0.5f, 3.0f, tmpSensitivity, sf::Vector2f(350.f, 30.f));
+        sensSlider->setPrecision(1);
         sensSliderPtr = sensSlider.get();
         sensSlider->setCallback([this](float value) {
             tmpSensitivity = value;
         });
         settingsContent->addChild(createRow("ЧУВСТВИТЕЛЬНОСТЬ", std::move(sensSlider)));
 
+    #ifdef __ANDROID__
+        float minScale = 0.8f;
+        float maxScale = 1.2f;
+    #else
+        float minScale = 0.7f;
+        float maxScale = 1.5f;
+    #endif
+
         // масштаб интерфейса
-        auto uiScaleSlider = std::make_unique<UI::Slider>(font, 0.5f, 3.0f, tmpUiScale, sf::Vector2f(350.f, 30.f));
+        auto uiScaleSlider = std::make_unique<UI::Slider>(font, minScale, maxScale, tmpUiScale, sf::Vector2f(350.f, 30.f));
+        uiScaleSlider->setPrecision(1);
         uiScaleSliderPtr = uiScaleSlider.get();
         uiScaleSlider->setCallback([this](float value) {
             tmpUiScale = value;
         });
         settingsContent->addChild(createRow("МАСШТАБ ИНТЕРФЕЙСА", std::move(uiScaleSlider)));
 
+    #ifndef __ANDROID__ // не рисуем для андроида
         // полноэкранный режим
         std::string fsLabel = tmpFullscreen ? "ВКЛ" : "ВЫКЛ";
-        auto fsBtn = std::make_unique<UI::Button>(font, fsLabel, sf::Vector2f(120.f, 45.f));
+        auto fsBtn = std::make_unique<UI::Button>(font, fsLabel, sf::Vector2f(350.f, 45.f));
         fsBtnPtr = fsBtn.get();
         fsBtn->setCallback([this]() {
             tmpFullscreen = !tmpFullscreen;
             if (fsBtnPtr) fsBtnPtr->setText(tmpFullscreen ? "ВКЛ" : "ВЫКЛ");
         });
+        
         settingsContent->addChild(createRow("ПОЛНОЭКРАННЫЙ РЕЖИМ", std::move(fsBtn)));
+    #endif
     }
-
+    
     if (settingsNav) {
         auto saveBtn = std::make_unique<UI::Button>(font, "СОХРАНИТЬ", sf::Vector2f(220.f, 60.f));
         saveBtn->setCallback([this]() {
@@ -242,6 +265,9 @@ void Menu::initUI() {
             settings.set<bool>("fullscreen", tmpFullscreen);
             settings.save();
             
+            updateViewSizes(window.getSize());
+            window.setView(uiView);
+
             if (oldFs != tmpFullscreen) {
                 windowRecreationRequired = true;
             }
@@ -359,7 +385,14 @@ void Menu::render() {
 void Menu::updateViewSizes(sf::Vector2u windowSize) {
     float sw = static_cast<float>(windowSize.x);
     float sh = static_cast<float>(windowSize.y);
-    try { uiScale = settings.get<float>("ui_scale"); } catch (...) { uiScale = 1.0f; }
+    //try { 
+    //    uiScale = sh / 720.f; 
+    //} catch (...) { 
+    //    uiScale = 1.0f; 
+    //}
+    float baseScale = sh / 1080.f;
+
+    uiScale = baseScale * tmpUiScale;
     if (uiScale <= 0.1f) uiScale = 1.0f;
 
     float uiH = sh / uiScale;
