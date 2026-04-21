@@ -149,6 +149,13 @@ void Game::updateViewSizes(sf::Vector2u windowSize) {
             auto* child = dynamic_cast<UI::Container*>(overlay->getChild(i));
             if (child) {
                 child->setSize(sf::Vector2f(rootW, child->getSize().y));
+                // Обновляем размеры внутрянки (Header, Nav и т.д.)
+                for (size_t j = 0; j < child->getChildrenCount(); ++j) {
+                    auto* subChild = dynamic_cast<UI::Container*>(child->getChild(j));
+                    if (subChild) {
+                        subChild->setSize(sf::Vector2f(rootW, subChild->getSize().y));
+                    }
+                }
             }
         }
         overlay->rebuild();
