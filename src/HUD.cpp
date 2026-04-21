@@ -104,7 +104,7 @@ void HUD::render(sf::RenderWindow& window, int money, int lives, int wave, WaveS
 
     // Ресурсы
     sf::Sprite coins(ResourceManager::get("icon-coins"));
-    coins.setScale({ 1.25f, 1.25f });
+    coins.setScale({ 0.625f, 0.625f });
     coins.setPosition({ startX + 15.f, ws.y - 105.f });
     window.draw(coins);
 
@@ -131,7 +131,7 @@ void HUD::render(sf::RenderWindow& window, int money, int lives, int wave, WaveS
 
     // Состояние базы
     sf::Sprite heart(ResourceManager::get("icon-heart"));
-    heart.setScale({ 1.25f, 1.25f });
+    heart.setScale({ 0.625f, 0.625f });
     heart.setPosition({ startX + (slotsCount + 1) * 100.f + 15.f, ws.y - 105.f });
     window.draw(heart);
 

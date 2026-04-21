@@ -65,8 +65,8 @@ void Menu::initUI() {
     headerCont->setDrawOutline(true);
     headerContPtr = headerCont.get();
 
-    auto title = std::make_unique<UI::Text>(font, "TOWER DEFENCE", 100);
-    title->setColor(sf::Color::White);
+    auto title = std::make_unique<UI::Text>(font, "TOWER DEFENCE", 96);
+    title->setColor(Colors::Theme::TextMain);
     titleTextPtr = title.get();
     headerCont->addChild(std::move(title));
 
@@ -122,7 +122,7 @@ void Menu::initUI() {
             card->setItemAlign(UI::Container::ItemAlign::Center);
             card->setDrawBackground(true);
             card->setBackgroundColor(sf::Color(45, 45, 45));
-            card->setPadding({ 10.f, 10.f });
+            card->setPadding({ 5.f, 5.f });
             card->setDrawOutline(true);
 
             auto numBlock = std::make_unique<UI::Container>(sf::Vector2f(cardSize.x, 45.f));
@@ -179,18 +179,20 @@ void Menu::initUI() {
         settingsContent->setItemAlign(UI::Container::ItemAlign::Center);
         settingsContent->setContentAlign(UI::Container::ContentAlign::Center);
 
+        // лямбда для создания строки меню
         auto createRow = [&](const std::string& label, std::unique_ptr<UI::Widget> control, std::unique_ptr<UI::Text> valueText = nullptr) {
+            // строка 
             auto row = std::make_unique<UI::Container>(sf::Vector2f(900.f, 60.f));
             row->setDirection(UI::Container::Direction::Row);
             row->setContentAlign(UI::Container::ContentAlign::Center);
             row->setItemAlign(UI::Container::ItemAlign::Center);
             row->setGap(50.f);
-
+            // текст
             auto textCont = std::make_unique<UI::Container>(sf::Vector2f(350.f, 60.f));
             textCont->setContentAlign(UI::Container::ContentAlign::Center);
             textCont->setItemAlign(UI::Container::ItemAlign::Center);
             auto text = std::make_unique<UI::Text>(font, label, 24);
-            text->setColor(sf::Color::White);
+            text->setColor(Colors::Theme::TextMain);
             text->setAlignment(UI::Text::Align::Left);
             textCont->addChild(std::move(text));
 
@@ -224,11 +226,11 @@ void Menu::initUI() {
         settingsContent->addChild(createRow("ЧУВСТВИТЕЛЬНОСТЬ", std::move(sensSlider)));
 
     #ifdef __ANDROID__
-        float minScale = 0.8f;
-        float maxScale = 1.2f;
-    #else
         float minScale = 0.7f;
         float maxScale = 1.5f;
+    #else
+        float minScale = 0.6f;
+        float maxScale = 1.6f;
     #endif
 
         // масштаб интерфейса
@@ -297,7 +299,7 @@ std::unique_ptr<UI::Container> Menu::createSubMenu(const std::string& title, UI:
     root->setContentAlign(UI::Container::ContentAlign::Start); 
     root->setItemAlign(UI::Container::ItemAlign::Center);
     root->setPadding({ 20.f, 5.f });
-    root->setGap(30.f);
+    root->setGap(20.f);
     root->setDrawOutline(true);
 
     auto header = std::make_unique<UI::Container>(sf::Vector2f(winSize.x * 0.9f, 80.f)); 
@@ -312,7 +314,7 @@ std::unique_ptr<UI::Container> Menu::createSubMenu(const std::string& title, UI:
 
     auto content = std::make_unique<UI::Container>(sf::Vector2f(winSize.x * 0.9f, 400.f)); 
     content->setDirection(UI::Container::Direction::Column);
-    content->setContentAlign(UI::Container::ContentAlign::Start); 
+    content->setContentAlign(UI::Container::ContentAlign::Center); 
     content->setItemAlign(UI::Container::ItemAlign::Center);
     content->setDrawOutline(true);
     if (outContent) *outContent = content.get();
@@ -385,11 +387,7 @@ void Menu::render() {
 void Menu::updateViewSizes(sf::Vector2u windowSize) {
     float sw = static_cast<float>(windowSize.x);
     float sh = static_cast<float>(windowSize.y);
-    //try { 
-    //    uiScale = sh / 720.f; 
-    //} catch (...) { 
-    //    uiScale = 1.0f; 
-    //}
+
     float baseScale = sh / 1080.f;
 
     uiScale = baseScale * tmpUiScale;
@@ -413,11 +411,11 @@ void Menu::updateViewSizes(sf::Vector2u windowSize) {
 
     auto updateSub = [&](std::unique_ptr<UI::Container>& cont) {
         if (cont) {
-            float hH = 80.f;  
-            float nH = 80.f;  
-            float g = 30.f;   
+            float headerH = 80.f;  
+            float navH = 80.f;  
+            float gap = 20.f;   
             float p = 5.f;    
-            float contentH = rootSize.y - hH - nH - g * 2.f - p * 2.f;
+            float contentH = rootSize.y - headerH - navH - gap * 2.f - p * 2.f;
 
             for (size_t i = 0; i < cont->getChildrenCount(); ++i) {
                 auto* child = dynamic_cast<UI::Container*>(cont->getChild(i));

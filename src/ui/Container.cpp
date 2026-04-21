@@ -192,8 +192,14 @@ namespace UI {
         }
 
         // расчет общего размера всех линий по поперечной оси
-        float totalLinesCrossSize = (lines.size() - 1) * gap;
-        for (const auto& line : lines) totalLinesCrossSize += line.crossSize;
+        float totalLinesCrossSize = 0.f;
+        for (const auto& line : lines) {
+            totalLinesCrossSize += line.crossSize;
+        }
+        // Добавляем отступы между линиями
+        if (lines.size() > 1) {
+            totalLinesCrossSize += (lines.size() - 1) * gap;
+        }
 
         // определение начальной позиции по поперечной оси
         float currentCrossPos = 0.f;
@@ -267,7 +273,7 @@ namespace UI {
         sf::Vector2f mousePos = window.mapPixelToCoords(pixelPos, uiView);
         bool mouseInside = getGlobalBounds().contains(mousePos);
 
-        // ОБРАБОТКА ПРОКРУТКИ (Колесико мыши + Сенсорное перетаскивание)
+        // Колесико мыши + сенсорное перетаскивание
         if (scrollEnabled) {
             // Колесико мыши
             if (mouseInside) {
