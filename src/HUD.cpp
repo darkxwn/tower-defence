@@ -205,33 +205,42 @@ bool HUD::handleEvent(const sf::Event& event, const sf::RenderWindow& window, co
 // Позиционирует кнопки улучшения и продажи под выбранной платформой
 void HUD::showTowerControls(sf::Vector2f screenPos, int sellPrice, float worldZoom) {
     showTowerMenu = true;
-    // Сбрасываем флаги при открытии нового меню, чтобы старые клики не влияли
     sellRequested = false;
     upgradeRequested = false;
     
-    // Инвертируем масштаб: если worldZoom = 0.5 (приближение), то масштаб объектов = 2.0
+    // Инвертированный зум мира (0.5 -> 2.0)
     float invZoom = 1.f / worldZoom;
 
-    // Базовый масштаб иконки 0.5f (для 96x96 -> 48x48) умножаем на инвертированный зум
-    float targetIconScale = 0.5f * invZoom;
+    // Демпфирование: кнопки меняются только на 30% от зума мира.
+    // Это сохраняет визуальную связь с башней, но не дает кнопкам "раздуваться".
+    float dampedScale = 1.f + (invZoom - 1.f) * 0.3f;
+
+    // Ограничиваем итоговый масштаб, чтобы кнопки были удобными для пальца (на мобилках)
+    // и не перекрывали пол-экрана на планшетах.
+#ifdef __ANDROID__
+    dampedScale = std::clamp(dampedScale, 0.8f, 1.1f);
+#else
+    dampedScale = std::clamp(dampedScale, 0.7f, 1.3f);
+#endif
+
+    // Базовый размер 48px, масштабируем иконку и саму кнопку
+    float targetIconScale = 0.5f * dampedScale;
     upgradeBtn.setIconScale({ targetIconScale, targetIconScale });
     sellBtn.setIconScale({ targetIconScale, targetIconScale });
 
-    // Масштабируем физический размер кнопки (область клика)
-    float btnSize = 48.f * invZoom;
+    float btnSize = 48.f * dampedScale;
     upgradeBtn.setSize({ btnSize, btnSize });
     sellBtn.setSize({ btnSize, btnSize });
 
-    // Рассчитываем вертикальный отступ от центра башни:
-    // Половина высоты башни (32px * invZoom) + Половина высоты кнопки (btnSize / 2) + зазор
+    // Позиционирование: 
+    // Башня всегда скейлится 1-к-1 (towerHalfSize зависит от чистого invZoom)
     float towerHalfSize = 32.f * invZoom;
-    float gap = 10.f * invZoom;
+    float gap = 8.f * dampedScale;
     float totalOffsetY = towerHalfSize + (btnSize / 2.f) + gap;
 
-    // Горизонтальный зазор между кнопками
-    float horizontalGap = 6.f * invZoom;
+    float horizontalGap = 6.f * dampedScale;
 
-    // Установка итоговых позиций (screenPos — это центр башни на экране)
+    // Центрирование относительно точки screenPos (центр башни)
     upgradeBtn.setPosition({ screenPos.x - btnSize - horizontalGap / 2.f, screenPos.y + totalOffsetY - (btnSize / 2.f) });
     sellBtn.setPosition({ screenPos.x + horizontalGap / 2.f, screenPos.y + totalOffsetY - (btnSize / 2.f) });
 }
