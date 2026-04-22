@@ -49,6 +49,7 @@ set(SOURCES
     src/ui/Widget.cpp
     src/ui/Container.cpp
     src/ui/Slider.cpp
+    src/ui/Image.cpp
 )
 
 # Ресурсы для Windows и macOS

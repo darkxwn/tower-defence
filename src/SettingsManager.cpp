@@ -39,6 +39,7 @@ void SettingsManager::setDefaults() {
     settings["sensitivity"] = "1.0";
 #endif  
     settings["fullscreen"] = "0";
+    settings["vsync"] = "1";
 }
 
 // Загрузка настроек из файла

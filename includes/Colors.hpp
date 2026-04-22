@@ -26,7 +26,8 @@ namespace Colors {
         inline const sf::Color Red{ 255, 0, 0 };        // ярко-красный
 
         inline const sf::Color Gold{ 255, 212, 42 };    // золото для денег
-        inline const sf::Color Crimson{ 234, 42, 42 };  // малиновый для жизней
+        inline const sf::Color Crimson{ 255, 42, 42 };  // малиновый для жизней
+        inline const sf::Color WashedGreen{ 42, 255, 42};
     }
 
     namespace Theme {

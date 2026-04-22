@@ -71,6 +71,7 @@ private:
     UI::Slider* sensSliderPtr = nullptr;
     UI::Slider* uiScaleSliderPtr = nullptr;
     UI::Button* fsBtnPtr = nullptr;
+    UI::Button* vsyncBtnPtr = nullptr;
 
     SessionResult lastResult = SessionResult::None; // итог последней игры
     std::string lastLevelPath; // путь к последней сыгранной карте
@@ -81,6 +82,7 @@ private:
     float tmpSensitivity = 1.0f;
     float tmpUiScale = 1.0f;
     bool tmpFullscreen = false;
+    bool tmpVsync = true;
 
     // Синхронизация временных значений с текущими настройками
     void syncSettingsToTmp();

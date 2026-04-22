@@ -27,8 +27,8 @@ Button::Button(const sf::Texture& texture, sf::Vector2f size, bool useHover)
 }
 
 // Конструктор комбинированной кнопки
-Button::Button(const sf::Texture& texture, const sf::Font& font, const std::string& label, sf::Vector2f size, bool useHover)
-    : type(ContentType::ImageAndText), useHover(useHover) {
+Button::Button(const sf::Texture& texture, const sf::Font& font, const std::string& label, sf::Vector2f size, IconPlacement placement, bool useHover)
+    : type(ContentType::ImageAndText), placement(placement), useHover(useHover) {
     this->size = size;
     shape.setSize(size);
     shape.setFillColor(sf::Color::Transparent);
@@ -43,6 +43,18 @@ Button::Button(Button&&) noexcept = default;
 Button& Button::operator=(Button&&) noexcept = default;
 Button::~Button() = default;
 
+// Изменение расположения иконки
+void Button::setIconPlacement(IconPlacement placement) {
+    this->placement = placement;
+    updateLayout();
+}
+
+// Изменение отступа между контентом
+void Button::setContentGap(float gap) {
+    this->contentGap = gap;
+    updateLayout();
+}
+
 // Изменение масштаба иконки
 void Button::setIconScale(sf::Vector2f scale) {
     if (sprite) {
@@ -55,6 +67,7 @@ void Button::setIconScale(sf::Vector2f scale) {
 // Вычисление позиций элементов внутри кнопки
 void Button::updateLayout() {
     sf::Vector2f center(size.x / 2.f, size.y / 2.f);
+    float padding = size.x * 0.05f; // отступ от краев для иконок 
 
     if (type == ContentType::TextOnly && text) {
         sf::FloatRect bounds = text->getLocalBounds();
@@ -64,23 +77,45 @@ void Button::updateLayout() {
     else if (type == ContentType::ImageOnly && sprite) {
         sf::FloatRect bounds = sprite->getLocalBounds();
         if (!hasCustomScale && bounds.size.x > 0.f && bounds.size.y > 0.f) {
-            float scaleX = size.x / bounds.size.x;
-            float scaleY = size.y / bounds.size.y;
+            float scaleX = (size.x * 0.8f) / bounds.size.x;
+            float scaleY = (size.y * 0.8f) / bounds.size.y;
             float scale = std::min(scaleX, scaleY);
             sprite->setScale({ scale, scale });
-            bounds = sprite->getLocalBounds();
+            bounds = sprite->getGlobalBounds();
         }
-        sprite->setOrigin({ bounds.position.x + bounds.size.x / 2.f, bounds.position.y + bounds.size.y / 2.f });
+        sf::FloatRect sLocal = sprite->getLocalBounds();
+        sprite->setOrigin({ sLocal.position.x + sLocal.size.x / 2.f, sLocal.position.y + sLocal.size.y / 2.f });
         sprite->setPosition(center);
     }
     else if (type == ContentType::ImageAndText && sprite && text) {
-        sf::FloatRect sBounds = sprite->getLocalBounds();
-        sprite->setOrigin({ sBounds.position.x + sBounds.size.x / 2.f, sBounds.position.y + sBounds.size.y / 2.f });
-        sprite->setPosition({ center.x, size.y * 0.40f });
+        sf::FloatRect sBounds = sprite->getGlobalBounds();
+        sf::FloatRect sLocal = sprite->getLocalBounds();
+        sprite->setOrigin({ sLocal.position.x + sLocal.size.x / 2.f, sLocal.position.y + sLocal.size.y / 2.f });
 
         sf::FloatRect tBounds = text->getLocalBounds();
         text->setOrigin({ tBounds.position.x + tBounds.size.x / 2.f, tBounds.position.y + tBounds.size.y / 2.f });
-        text->setPosition({ center.x, size.y * 0.875f });
+
+        if (placement == IconPlacement::Top) {
+            // Центрируем как единый блок (кластер)
+            float totalH = sBounds.size.y + contentGap + tBounds.size.y;
+            float startY = (size.y - totalH) / 2.f;
+            sprite->setPosition({ center.x, startY + sBounds.size.y / 2.f + 2.5f });
+            text->setPosition({ center.x, startY + sBounds.size.y + contentGap + tBounds.size.y / 2.f - 2.5f });
+        }
+        else if (placement == IconPlacement::Left) {
+            // Иконка слева у края, текст в оставшейся части
+            sprite->setPosition({ padding + sBounds.size.x / 2.f, center.y });
+            
+            float remainingSpaceX = size.x - (padding + sBounds.size.x + contentGap);
+            text->setPosition({ (padding + sBounds.size.x + contentGap) + remainingSpaceX / 2.f, center.y });
+        }
+        else if (placement == IconPlacement::Right) {
+            // Текст слева, иконка справа у края
+            sprite->setPosition({ size.x - padding - sBounds.size.x / 2.f, center.y });
+
+            float remainingSpaceX = size.x - (padding + sBounds.size.x + contentGap);
+            text->setPosition({ remainingSpaceX / 2.f, center.y });
+        }
     }
 }
 
@@ -139,17 +174,18 @@ void Button::render(sf::RenderWindow& window) const {
         window.draw(drawShape);
     }
 
-    // отрисовка контента
-    sf::Vector2f pos = position;
+    // отрисовка контента с учетом позиции кнопки
     if (sprite) {
-        sf::Sprite s = *sprite;
-        s.setPosition(pos + sprite->getPosition());
-        window.draw(s);
+        sf::Vector2f originalPos = sprite->getPosition();
+        sprite->setPosition(position + originalPos);
+        window.draw(*sprite);
+        sprite->setPosition(originalPos); // восстанавливаем локальную позицию
     }
     if (text) {
-        sf::Text t = *text;
-        t.setPosition(pos + text->getPosition());
-        window.draw(t);
+        sf::Vector2f originalPos = text->getPosition();
+        text->setPosition(position + originalPos);
+        window.draw(*text);
+        text->setPosition(originalPos);
     }
 
     // отрисовка отладочной рамки (ярко-зеленая для кнопок)
@@ -176,6 +212,13 @@ void Button::setCallback(std::function<void()> callback) {
 void Button::setEnabled(bool enabled) {
     this->enabled = enabled;
     if (!enabled) isHovered = false;
+}
+
+// Изменение размеров
+void Button::setSize(sf::Vector2f size) {
+    this->size = size;
+    shape.setSize(size);
+    updateLayout();
 }
 
 // Изменение текстуры

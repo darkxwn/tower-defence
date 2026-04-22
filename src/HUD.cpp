@@ -10,10 +10,12 @@ HUD::HUD() {
 
     // Инициализация управляющих кнопок
     pauseBtn = UI::Button(ResourceManager::get("icon-pause"), sf::Vector2f(48.f, 48.f));
+    pauseBtn.setIconScale({ 0.5f, 0.5f });
     pauseBtn.setTransparent(true);
     pauseBtn.setCallback([this]() { pauseRequested = true; });
 
-    skipBtn = UI::Button(ResourceManager::get("icon-skip"), sf::Vector2f(48.f, 48.f));
+    skipBtn = UI::Button(ResourceManager::get("icon-start"), sf::Vector2f(48.f, 48.f));
+    skipBtn.setIconScale({ 0.5f, 0.5f });
     skipBtn.setTransparent(true);
     skipBtn.setCallback([this]() { skipRequested = true; });
 
@@ -25,12 +27,21 @@ HUD::HUD() {
         speedBtn.setTexture(ResourceManager::get("icon-speed" + std::to_string(speedMode + 1)));
     });
 
+    // Инициализация кнопок управления башней (улучшение и продажа)
+    upgradeBtn = UI::Button(ResourceManager::get("icon-upgrade"), sf::Vector2f(48.f, 48.f));
+    upgradeBtn.setIconScale({ 0.5f, 0.5f });
+    upgradeBtn.setCallback([this]() { upgradeRequested = true; });
+
+    sellBtn = UI::Button(ResourceManager::get("icon-sell"), sf::Vector2f(48.f, 48.f));
+    sellBtn.setIconScale({ 0.5f, 0.5f });
+    sellBtn.setCallback([this]() { sellRequested = true; });
+
     // Создание слотов для башен
     auto towerNames = GameData::getTowerNames();
     towerSlots.reserve((int)towerNames.size());
     for (int i = 0; i < (int)towerNames.size(); i++) {
         int cost = GameData::getTower(towerNames[i]).cost;
-        UI::Button slot(ResourceManager::get("tower-" + towerNames[i] + "-preview"), font, std::to_string(cost) + "$", sf::Vector2f(90.f, 100.f));
+        UI::Button slot(ResourceManager::get("tower-" + towerNames[i] + "-preview"), font, std::to_string(cost) + "$", sf::Vector2f(90.f, 100.f), UI::IconPlacement::Top);
         slot.setIconScale(sf::Vector2f(0.15625f, 0.15625f));
         slot.setTextSize(16);
         slot.setTextColor(Colors::Theme::TextMoney);
@@ -141,19 +152,103 @@ void HUD::render(sf::RenderWindow& window, int money, int lives, int wave, WaveS
     window.draw(lText);
 
     speedBtn.render(window);
+
+    // Отрисовка меню управления башней (улучшение/продажа)
+    if (showTowerMenu) {
+        upgradeBtn.render(window);
+        sellBtn.render(window);
+    }
 }
 
-// Пробрасывает события во все кнопки HUD
-void HUD::handleEvent(const sf::Event& event, const sf::RenderWindow& window, const sf::View& uiView) {
+// Пробрасывает события во все кнопки HUD. Возвращает true, если клик попал в UI.
+bool HUD::handleEvent(const sf::Event& event, const sf::RenderWindow& window, const sf::View& uiView) {
     pauseRequested = false;
     skipRequested = false;
 
+    // Получаем текущую позицию мыши/тача для проверки пересечения с кнопками
+    sf::Vector2f mousePos;
+    if (const auto* m = event.getIf<sf::Event::MouseButtonPressed>()) mousePos = window.mapPixelToCoords(m->position, uiView);
+    else if (const auto* r = event.getIf<sf::Event::MouseButtonReleased>()) mousePos = window.mapPixelToCoords(r->position, uiView);
+    else if (const auto* mm = event.getIf<sf::Event::MouseMoved>()) mousePos = window.mapPixelToCoords(mm->position, uiView);
+    else if (const auto* tb = event.getIf<sf::Event::TouchBegan>()) mousePos = window.mapPixelToCoords(tb->position, uiView);
+    else if (const auto* te = event.getIf<sf::Event::TouchEnded>()) mousePos = window.mapPixelToCoords(te->position, uiView);
+
+    // Лямбда для проверки: попал ли клик в конкретную кнопку
+    auto hit = [&](const UI::Button& btn) {
+        return btn.isVisible() && btn.getGlobalBounds().contains(mousePos);
+    };
+
+    // Проверяем все активные элементы интерфейса
+    bool hitUI = false;
+    if (hit(pauseBtn)) hitUI = true;
+    if (hit(skipBtn)) hitUI = true;
+    if (hit(speedBtn)) hitUI = true;
+    if (showTowerMenu) {
+        if (hit(upgradeBtn)) hitUI = true;
+        if (hit(sellBtn)) hitUI = true;
+    }
+    for (auto& slot : towerSlots) if (hit(slot)) hitUI = true;
+
+    // Передаем события кнопкам для их внутренней логики (hover, callback)
     pauseBtn.handleEvent(event, window, uiView);
     skipBtn.handleEvent(event, window, uiView);
     speedBtn.handleEvent(event, window, uiView);
-    for (auto& slot : towerSlots) {
-        slot.handleEvent(event, window, uiView);
+    if (showTowerMenu) {
+        upgradeBtn.handleEvent(event, window, uiView);
+        sellBtn.handleEvent(event, window, uiView);
     }
+    for (auto& slot : towerSlots) slot.handleEvent(event, window, uiView);
+
+    return hitUI;
+}
+
+// Позиционирует кнопки улучшения и продажи под выбранной платформой
+void HUD::showTowerControls(sf::Vector2f screenPos, int sellPrice, float worldZoom) {
+    showTowerMenu = true;
+    // Сбрасываем флаги при открытии нового меню, чтобы старые клики не влияли
+    sellRequested = false;
+    upgradeRequested = false;
+    
+    // Инвертируем масштаб: если worldZoom = 0.5 (приближение), то масштаб объектов = 2.0
+    float invZoom = 1.f / worldZoom;
+
+    // Базовый масштаб иконки 0.5f (для 96x96 -> 48x48) умножаем на инвертированный зум
+    float targetIconScale = 0.5f * invZoom;
+    upgradeBtn.setIconScale({ targetIconScale, targetIconScale });
+    sellBtn.setIconScale({ targetIconScale, targetIconScale });
+
+    // Масштабируем физический размер кнопки (область клика)
+    float btnSize = 48.f * invZoom;
+    upgradeBtn.setSize({ btnSize, btnSize });
+    sellBtn.setSize({ btnSize, btnSize });
+
+    // Рассчитываем вертикальный отступ от центра башни:
+    // Половина высоты башни (32px * invZoom) + Половина высоты кнопки (btnSize / 2) + зазор
+    float towerHalfSize = 32.f * invZoom;
+    float gap = 10.f * invZoom;
+    float totalOffsetY = towerHalfSize + (btnSize / 2.f) + gap;
+
+    // Горизонтальный зазор между кнопками
+    float horizontalGap = 6.f * invZoom;
+
+    // Установка итоговых позиций (screenPos — это центр башни на экране)
+    upgradeBtn.setPosition({ screenPos.x - btnSize - horizontalGap / 2.f, screenPos.y + totalOffsetY - (btnSize / 2.f) });
+    sellBtn.setPosition({ screenPos.x + horizontalGap / 2.f, screenPos.y + totalOffsetY - (btnSize / 2.f) });
+}
+
+// Скрывает кнопки управления башней
+void HUD::hideTowerControls() {
+    showTowerMenu = false;
+}
+
+// Проверка запроса на продажу (вызывается из Game)
+bool HUD::isSellRequested() const {
+    return sellRequested;
+}
+
+// Проверка запроса на улучшение (заглушка)
+bool HUD::isUpgradeRequested() const {
+    return upgradeRequested;
 }
 
 // Получение множителя скорости игры

@@ -120,3 +120,13 @@ void Tower::render(sf::RenderWindow& window, sf::Vector2f mapOffset, bool showRa
 sf::Vector2i Tower::getGridPos() const {
     return gridPos;
 }
+
+// Возвращает строковый идентификатор типа башни
+std::string Tower::getTypeSlug() const {
+    return typeSlug;
+}
+
+// Возвращает исходную стоимость постройки башни
+int Tower::getCost() const {
+    return stats.cost;
+}

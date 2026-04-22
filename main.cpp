@@ -61,17 +61,35 @@ static void loadResources() {
     ResourceManager::loadFont("main", assetsPath + "fonts/web_ibm_mda.ttf");
 
     // ИКОНКИ
-    ResourceManager::load("icon-pause", assetsPath + "icons/pause.png");
-    ResourceManager::load("icon-skip", assetsPath + "icons/play.png");
     ResourceManager::load("icon-coins", assetsPath + "icons/coins.png");
     ResourceManager::load("icon-heart", assetsPath + "icons/heart.png");
+    ResourceManager::load("icon-speed1", assetsPath + "icons/icon-speed1.png");
+    ResourceManager::load("icon-speed2", assetsPath + "icons/icon-speed2.png");
+    ResourceManager::load("icon-speed3", assetsPath + "icons/icon-speed3.png");
+    ResourceManager::load("icon-start", assetsPath + "icons/start.png");
+    ResourceManager::load("icon-pause", assetsPath + "icons/pause.png");
     ResourceManager::load("icon-play", assetsPath + "icons/play.png");
     ResourceManager::load("icon-upgrades", assetsPath + "icons/upgrades.png");
     ResourceManager::load("icon-settings", assetsPath + "icons/settings.png");
     ResourceManager::load("icon-exit", assetsPath + "icons/exit.png");
-    ResourceManager::load("icon-speed1", assetsPath + "icons/icon-speed1.png");
-    ResourceManager::load("icon-speed2", assetsPath + "icons/icon-speed2.png");
-    ResourceManager::load("icon-speed3", assetsPath + "icons/icon-speed3.png");
+    ResourceManager::load("icon-save", assetsPath + "icons/save.png");
+    ResourceManager::load("icon-back", assetsPath + "icons/back.png");
+    ResourceManager::load("icon-save", assetsPath + "icons/save.png");
+    ResourceManager::load("icon-back", assetsPath + "icons/back.png");
+    ResourceManager::load("icon-audio", assetsPath + "icons/audio.png");
+    ResourceManager::load("icon-music", assetsPath + "icons/music.png");
+    ResourceManager::load("icon-level", assetsPath + "icons/level.png");
+    ResourceManager::load("icon-sell", assetsPath + "icons/sell.png");
+    ResourceManager::load("icon-upgrade", assetsPath + "icons/upgrade.png");
+#ifdef __ANDROID__
+    ResourceManager::load("icon-sensivity", assetsPath + "icons/sensivity-mobile.png");
+    ResourceManager::load("icon-display", assetsPath + "icons/display-mobile.png");
+#else
+    ResourceManager::load("icon-sensivity", assetsPath + "icons/sensivity-desktop.png");
+    ResourceManager::load("icon-display", assetsPath + "icons/display-desktop.png");
+    ResourceManager::load("icon-vsync", assetsPath + "icons/vsync.png");
+    ResourceManager::load("icon-fullscreen", assetsPath + "icons/fullscreen.png");
+#endif
 
     // ТАЙЛЫ
     ResourceManager::load("road", assetsPath + "sprites/tile-road.png");
@@ -124,14 +142,14 @@ int main() {
 
                 bool fs = settings.get<bool>("fullscreen", false);
                 // При полноэкранном режиме используем текущее разрешение экрана
-                sf::VideoMode videoMode;                                                                               
+                sf::VideoMode videoMode; 
                 if (fs) {
                     videoMode = sf::VideoMode::getFullscreenModes()[0]; // берём первое доступное
                 } else {
                     videoMode = sf::VideoMode({ 1280, 720 });
                 }
                 window.create(videoMode, "Tower Defence", fs ? sf::State::Fullscreen : sf::State::Windowed); 
-                window.setFramerateLimit(60);
+                window.setVerticalSyncEnabled(true);
                 window.setMinimumSize(sf::Vector2u(1280, 720));
 
                 // Сохраняем фактический размер окна

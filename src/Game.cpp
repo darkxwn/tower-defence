@@ -2,6 +2,7 @@
 #include "Colors.hpp"
 #include "GameData.hpp"
 #include "ResourceManager.hpp"
+#include "utils/Math.hpp"
 #include <SFML/Graphics.hpp>
 #include <algorithm>
 #include <cmath>
@@ -199,9 +200,29 @@ void Game::handleEvents() {
             }
         }
 
-        hud.handleEvent(*event, window, uiView);
+        // Обрабатываем события HUD и проверяем, поглотил ли он клик
+        bool uiConsumed = hud.handleEvent(*event, window, uiView);
         if (hud.isPauseRequested()) state = GameState::Paused;
         if (hud.isSkipRequested()) waveSystem.startWave();
+
+        // Обработка продажи выбранной башни (сразу после события клика)
+        if (hud.isSellRequested()) {
+            Tile* selected = map.getSelectedTile();
+            if (selected) {
+                auto it = std::find_if(towers.begin(), towers.end(), [&](const Tower& t) {
+                    return t.getGridPos() == selected->gridPos;
+                });
+
+                if (it != towers.end()) {
+                    // Возврат случайного процента стоимости (50-75%)
+                    float refundPercent = Math::Random::getInt(50, 75) / 100.f;
+                    money += static_cast<int>(it->getCost() * refundPercent);
+                    towers.erase(it);
+                    map.setSelectedTile({ -1000.f, -1000.f }); // сброс выделения
+                    hud.hideTowerControls();
+                }
+            }
+        }
 
         if (state == GameState::Paused && pauseOverlay) {
             pauseOverlay->handleEvent(*event, window, uiView);
@@ -209,8 +230,8 @@ void Game::handleEvents() {
         else if ((state == GameState::GameOver || state == GameState::Victory) && endOverlay) {
             endOverlay->handleEvent(*event, window, uiView);
         }
-        else if (state == GameState::Playing) {
-            // Навигация по карте
+        else if (state == GameState::Playing && !uiConsumed) {
+            // Навигация по карте (только если клик не попал в UI)
             if (const auto* scroll = event->getIf<sf::Event::MouseWheelScrolled>()) {
                 float factor = (scroll->delta > 0) ? 0.9f : 1.1f;
                 if ((currentZoom * factor >= 0.5f) && (currentZoom * factor <= 1.6f)) {
@@ -357,6 +378,30 @@ void Game::render() {
     for (auto& e : enemies) e->render(window, map.getMapOffset());
     for (auto& p : projectiles) p.render(window, map.getMapOffset());
 
+    // Обновление позиции меню управления башней (если есть выделенная платформа с башней)
+    if (selected && selected->type == TileType::Platform && hud.getSelectedSlot() == -1) {
+        auto it = std::find_if(towers.begin(), towers.end(), [&](const Tower& t) {
+            return t.getGridPos() == selected->gridPos;
+        });
+
+        if (it != towers.end()) {
+            // Центр плитки в мировых координатах
+            sf::Vector2f worldCenter = sf::Vector2f(selected->gridPos * 64) + map.getMapOffset() + sf::Vector2f(32.f, 32.f);
+            
+            // Перевод центра башни в пиксели экрана
+            sf::Vector2i pixelPos = window.mapCoordsToPixel(worldCenter, worldView);
+            // Перевод в координаты UI-камеры
+            sf::Vector2f uiPos = window.mapPixelToCoords(pixelPos, uiView);
+            
+            // Передаем позицию центра и текущий масштаб мира
+            hud.showTowerControls(uiPos, it->getCost(), currentZoom);
+        } else {
+            hud.hideTowerControls();
+        }
+    } else {
+        hud.hideTowerControls();
+    }
+
     window.setView(uiView);
     hud.render(window, money, base.getLives(), waveSystem.getCurrentWave(), waveSystem.getState());
 
@@ -396,8 +441,14 @@ void Game::processInput(sf::Vector2i pixelPos) {
 
     if (state == GameState::Playing) {
         Tile* tile = map.getTileAtScreen(worldPos);
+        
+        // Скрываем меню управления башней по умолчанию при новом клике
+        hud.hideTowerControls();
+
         if (tile && tile->type == TileType::Platform) {
             int slot = hud.getSelectedSlot();
+            
+            // Если выбран слот в магазине — строим башню
             if (slot != -1) {
                 auto names = GameData::getTowerNames();
                 if (slot < (int)names.size()) {
@@ -412,8 +463,31 @@ void Game::processInput(sf::Vector2i pixelPos) {
                         hud.resetSelectedSlot();
                     }
                 }
-            } else map.setSelectedTile(worldPos);
-        } else map.setSelectedTile(worldPos);
+            } 
+            else {
+                // Если слот не выбран — выделяем платформу
+                map.setSelectedTile(worldPos);
+                
+                // Проверяем, есть ли на этой платформе башня
+                auto it = std::find_if(towers.begin(), towers.end(), [&](const Tower& t) {
+                    return t.getGridPos() == tile->gridPos;
+                });
+
+                if (it != towers.end()) {
+                    // Переводим мировые координаты центра плитки в координаты экрана
+                    sf::Vector2f tileWorldCenter = sf::Vector2f(tile->gridPos * 64) + map.getMapOffset() + sf::Vector2f(32.f, 32.f);
+                    sf::Vector2i pixelCoords = window.mapCoordsToPixel(tileWorldCenter, worldView);
+                    
+                    // Переводим пиксели экрана в координаты UI-камеры
+                    sf::Vector2f uiPos = window.mapPixelToCoords(pixelCoords, uiView);
+                    
+                    hud.showTowerControls(uiPos, it->getCost());
+                }
+            }
+        } else {
+            // Клик по неигровой области — сброс выделения
+            map.setSelectedTile(worldPos);
+        }
     }
 }
 

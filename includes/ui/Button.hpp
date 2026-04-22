@@ -12,12 +12,20 @@
 ///////////////////////////////////////////////////////////////////////////
 
 namespace UI {
+    // Варианты расположения иконки относительно текста
+    enum class IconPlacement {
+        Left, // иконка слева, текст справа
+        Right, // текст слева, иконка справа
+        Top // иконка сверху, текст снизу
+    };
+
     class Button : public Widget {
     public:
         enum class ContentType { TextOnly, ImageOnly, ImageAndText };
 
     private:
         ContentType type; // тип содержимого кнопки
+        IconPlacement placement = IconPlacement::Left; // расположение иконки
         sf::RectangleShape shape; // фоновая фигура
         std::unique_ptr<sf::Sprite> sprite; // иконка
         std::unique_ptr<sf::Text> text; // текст
@@ -27,6 +35,7 @@ namespace UI {
         bool transparent = false; // прозрачный фон
         bool hasCustomScale = false; // ручной масштаб иконки
         bool drawOutline = false; // отрисовка отладочной рамки
+        float contentGap = 5.f; // отступ между иконкой и текстом
 
         std::function<void()> callback; // обратный вызов
 
@@ -44,7 +53,7 @@ namespace UI {
         Button(const sf::Texture& texture, sf::Vector2f size, bool useHover = true);
 
         // Конструктор комбинированной кнопки
-        Button(const sf::Texture& texture, const sf::Font& font, const std::string& label, sf::Vector2f size, bool useHover = true);
+        Button(const sf::Texture& texture, const sf::Font& font, const std::string& label, sf::Vector2f size, IconPlacement placement = IconPlacement::Left, bool useHover = true);
 
         // Конструктор перемещения
         Button(Button&&) noexcept;
@@ -66,6 +75,9 @@ namespace UI {
         // Изменение позиции кнопки
         void setPosition(sf::Vector2f pos) override;
 
+        // Изменение размера кнопки
+        void setSize(sf::Vector2f size) override;
+
         // Изменение активности кнопки
         void setEnabled(bool enabled) override;
 
@@ -74,6 +86,12 @@ namespace UI {
 
         // Изменение текста кнопки
         void setText(const std::string& label);
+
+        // Изменение расположения иконки
+        void setIconPlacement(IconPlacement placement);
+
+        // Изменение отступа между контентом
+        void setContentGap(float gap);
 
         // Изменение масштаба иконки
         void setIconScale(sf::Vector2f scale);

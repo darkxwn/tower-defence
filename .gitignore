@@ -43,6 +43,7 @@ android/app/src/main/jniLibs/
 HISTORY.md
 PLAN.md
 cli
+GEMINI.md
 
 .todo
 /android/app/.cxx/RelWithDebInfo/1k2d3n5a

@@ -33,4 +33,10 @@ public:
 
     // Получение позиции на сетке
     sf::Vector2i getGridPos() const;
+
+    // Получение типа башни
+    std::string getTypeSlug() const;
+
+    // Получение стоимости башни
+    int getCost() const;
 };

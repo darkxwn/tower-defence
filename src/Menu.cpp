@@ -5,6 +5,7 @@
 #include "ui/Slider.hpp"
 #include "ui/Container.hpp"
 #include "ui/Button.hpp"
+#include "ui/Image.hpp"
 #include "Colors.hpp"
 #include <filesystem>
 #include <algorithm>
@@ -34,6 +35,7 @@ void Menu::syncSettingsToTmp() {
     tmpSensitivity = settings.get<float>("sensitivity", 1.0f);
     tmpUiScale = settings.get<float>("ui_scale", 1.0f);
     tmpFullscreen = settings.get<bool>("fullscreen", false);
+    tmpVsync = settings.get<bool>("vsync", true);
 
     // актуализация виджетов если они уже созданы
     if (musicSliderPtr) musicSliderPtr->setValue((float)tmpMusicVol);
@@ -41,6 +43,7 @@ void Menu::syncSettingsToTmp() {
     if (sensSliderPtr) sensSliderPtr->setValue(tmpSensitivity);
     if (uiScaleSliderPtr) uiScaleSliderPtr->setValue(tmpUiScale);
     if (fsBtnPtr) fsBtnPtr->setText(tmpFullscreen ? "ВКЛ" : "ВЫКЛ");
+    if (vsyncBtnPtr) vsyncBtnPtr->setText(tmpVsync ? "ВКЛ" : "ВЫКЛ");
 }
 
 // Построение иерархии контейнеров для каждого экрана
@@ -75,7 +78,7 @@ void Menu::initUI() {
     headerCont->addChild(std::move(version));
     mainContainer->addChild(std::move(headerCont));
 
-    auto btnsCont = std::make_unique<UI::Container>(sf::Vector2f(winSize.x * 0.5f, 320.f));
+    auto btnsCont = std::make_unique<UI::Container>(sf::Vector2f(winSize.x * 0.8f, 320.f));
     btnsCont->setDirection(UI::Container::Direction::Column);
     btnsCont->setContentAlign(UI::Container::ContentAlign::Center);
     btnsCont->setItemAlign(UI::Container::ItemAlign::Center);
@@ -83,21 +86,29 @@ void Menu::initUI() {
     btnsCont->setDrawOutline(true);
     btnsContPtr = btnsCont.get();
 
-    sf::Vector2f btnSize(300.f, 60.f);
-    auto playBtn = std::make_unique<UI::Button>(font, "ИГРАТЬ", btnSize);
+    sf::Vector2f btnSize(275.f, 60.f);
+    auto playBtn = std::make_unique<UI::Button>(ResourceManager::get("icon-play"), font, "ИГРАТЬ", btnSize, UI::IconPlacement::Left);
+    playBtn->setIconScale({ 0.5f, 0.5f });
     playBtn->setCallback([this]() { state = MenuState::LevelSelect; });
+    playBtn->setTextSize(20);
     btnsCont->addChild(std::move(playBtn));
 
-    auto upgBtn = std::make_unique<UI::Button>(font, "УЛУЧШЕНИЯ", btnSize);
+    auto upgBtn = std::make_unique<UI::Button>(ResourceManager::get("icon-upgrades"), font, "УЛУЧШЕНИЯ", btnSize, UI::IconPlacement::Left);
+    upgBtn->setIconScale({ 0.5f, 0.5f });
     upgBtn->setCallback([this]() { state = MenuState::Upgrades; });
+    upgBtn->setTextSize(20);
     btnsCont->addChild(std::move(upgBtn));
 
-    auto setBtn = std::make_unique<UI::Button>(font, "НАСТРОЙКИ", btnSize);
+    auto setBtn = std::make_unique<UI::Button>(ResourceManager::get("icon-settings"), font, "НАСТРОЙКИ", btnSize, UI::IconPlacement::Left);
+    setBtn->setIconScale({ 0.5f, 0.5f });
     setBtn->setCallback([this]() { syncSettingsToTmp(); state = MenuState::Settings; });
+    setBtn->setTextSize(20);
     btnsCont->addChild(std::move(setBtn));
 
-    auto exitBtn = std::make_unique<UI::Button>(font, "ВЫХОД", btnSize);
+    auto exitBtn = std::make_unique<UI::Button>(ResourceManager::get("icon-exit"), font, "ВЫХОД", btnSize, UI::IconPlacement::Left);
+    exitBtn->setIconScale({ 0.5f, 0.5f });
     exitBtn->setCallback([this]() { window.close(); });
+    exitBtn->setTextSize(20);
     btnsCont->addChild(std::move(exitBtn));
     mainContainer->addChild(std::move(btnsCont));
 
@@ -126,9 +137,12 @@ void Menu::initUI() {
             card->setDrawOutline(true);
 
             auto numBlock = std::make_unique<UI::Container>(sf::Vector2f(cardSize.x, 45.f));
-            numBlock->setDirection(UI::Container::Direction::Column);
-            numBlock->setContentAlign(UI::Container::ContentAlign::Center);
+            numBlock->setDirection(UI::Container::Direction::Row);
+            numBlock->setContentAlign(UI::Container::ContentAlign::Start);
+            numBlock->setGap(20);
             numBlock->setItemAlign(UI::Container::ItemAlign::Center);
+            auto icon = std::make_unique<UI::Image>(ResourceManager::get("icon-level"), sf::Vector2f(36.f, 36.f));
+            numBlock->addChild(std::move(icon));
             auto numText = std::make_unique<UI::Text>(font, "УРОВЕНЬ " + std::to_string(level.index + 1), 26);
             numText->setColor(Colors::Theme::TextMain);
             numBlock->addChild(std::move(numText));
@@ -161,7 +175,8 @@ void Menu::initUI() {
     }
 
     if (navArea) {
-        auto startGameBtn = std::make_unique<UI::Button>(font, "ИГРАТЬ", sf::Vector2f(220.f, 60.f));
+        auto startGameBtn = std::make_unique<UI::Button>(ResourceManager::get("icon-play"), font, "ИГРАТЬ", sf::Vector2f(220.f, 60.f),  UI::IconPlacement::Right);
+        startGameBtn->setIconScale({ 0.5f, 0.5f });
         startGameBtn->setCallback([this]() { if (!selectedLevel.empty()) levelChosen = true; });
         startGameBtn->setEnabled(false);
         playBtnPtr = startGameBtn.get();
@@ -179,21 +194,24 @@ void Menu::initUI() {
         settingsContent->setItemAlign(UI::Container::ItemAlign::Center);
         settingsContent->setContentAlign(UI::Container::ContentAlign::Center);
 
-        // лямбда для создания строки меню
-        auto createRow = [&](const std::string& label, std::unique_ptr<UI::Widget> control, std::unique_ptr<UI::Text> valueText = nullptr) {
-            // строка 
-            auto row = std::make_unique<UI::Container>(sf::Vector2f(900.f, 60.f));
+        // лямбда для создания строки меню с иконкой, заголовком и контролом
+        auto createRow = [&](const sf::Texture& iconTex, const std::string& label, std::unique_ptr<UI::Widget> control, std::unique_ptr<UI::Text> valueText = nullptr) {
+            auto row = std::make_unique<UI::Container>(sf::Vector2f(950.f, 60.f));
             row->setDirection(UI::Container::Direction::Row);
             row->setContentAlign(UI::Container::ContentAlign::Center);
             row->setItemAlign(UI::Container::ItemAlign::Center);
-            row->setGap(50.f);
-            // текст
+            row->setGap(30.f);
+
+            // Добавление иконки настройки
+            auto icon = std::make_unique<UI::Image>(iconTex, sf::Vector2f(48.f, 48.f));
+            row->addChild(std::move(icon));
+
+            // Контейнер для текста заголовка (фиксированная ширина для выравнивания)
             auto textCont = std::make_unique<UI::Container>(sf::Vector2f(350.f, 60.f));
             textCont->setContentAlign(UI::Container::ContentAlign::Center);
-            textCont->setItemAlign(UI::Container::ItemAlign::Center);
+            textCont->setItemAlign(UI::Container::ItemAlign::Start);
             auto text = std::make_unique<UI::Text>(font, label, 24);
             text->setColor(Colors::Theme::TextMain);
-            text->setAlignment(UI::Text::Align::Left);
             textCont->addChild(std::move(text));
 
             row->addChild(std::move(textCont));
@@ -204,46 +222,52 @@ void Menu::initUI() {
             return row;
         };
 
-        // громкость музыки
+        // Настройка: Громкость музыки
         auto musicSlider = std::make_unique<UI::Slider>(font, 0.f, 100.f, (float)tmpMusicVol, sf::Vector2f(350.f, 30.f));
         musicSliderPtr = musicSlider.get();
         musicSlider->setCallback([this](float value) { tmpMusicVol = (int)value; });
-        settingsContent->addChild(createRow("ГРОМКОСТЬ МУЗЫКИ", std::move(musicSlider)));
+        settingsContent->addChild(createRow(ResourceManager::get("icon-music"), "ГРОМКОСТЬ МУЗЫКИ", std::move(musicSlider)));
 
-        // громкость звуков
+        // Настройка: Громкость звуков
         auto sfxSlider = std::make_unique<UI::Slider>(font, 0.f, 100.f, (float)tmpSfxVol, sf::Vector2f(350.f, 30.f));
         sfxSliderPtr = sfxSlider.get();
         sfxSlider->setCallback([this](float value) { tmpSfxVol = (int)value; });
-        settingsContent->addChild(createRow("ГРОМКОСТЬ ЗВУКОВ", std::move(sfxSlider)));
+        settingsContent->addChild(createRow(ResourceManager::get("icon-audio"), "ГРОМКОСТЬ ЗВУКОВ", std::move(sfxSlider)));
 
-        // чувствительность
+        // Настройка: Чувствительность
+        const sf::Texture& sensIcon = ResourceManager::get("icon-sensivity");
         auto sensSlider = std::make_unique<UI::Slider>(font, 0.5f, 3.0f, tmpSensitivity, sf::Vector2f(350.f, 30.f));
         sensSlider->setPrecision(1);
         sensSliderPtr = sensSlider.get();
-        sensSlider->setCallback([this](float value) {
-            tmpSensitivity = value;
-        });
-        settingsContent->addChild(createRow("ЧУВСТВИТЕЛЬНОСТЬ", std::move(sensSlider)));
+        sensSlider->setCallback([this](float value) { tmpSensitivity = value; });
+        settingsContent->addChild(createRow(sensIcon, "ЧУВСТВИТЕЛЬНОСТЬ", std::move(sensSlider)));
 
-    #ifdef __ANDROID__
+        // Настройка: Масштаб интерфейса (выбор иконки и границ в зависимости от платформы)
+#ifdef __ANDROID__
         float minScale = 0.7f;
         float maxScale = 1.5f;
-    #else
+#else
         float minScale = 0.6f;
         float maxScale = 1.6f;
-    #endif
-
-        // масштаб интерфейса
+#endif
         auto uiScaleSlider = std::make_unique<UI::Slider>(font, minScale, maxScale, tmpUiScale, sf::Vector2f(350.f, 30.f));
         uiScaleSlider->setPrecision(1);
         uiScaleSliderPtr = uiScaleSlider.get();
-        uiScaleSlider->setCallback([this](float value) {
-            tmpUiScale = value;
-        });
-        settingsContent->addChild(createRow("МАСШТАБ ИНТЕРФЕЙСА", std::move(uiScaleSlider)));
+        uiScaleSlider->setCallback([this](float value) { tmpUiScale = value; });
+        settingsContent->addChild(createRow(ResourceManager::get("icon-display"), "МАСШТАБ ИНТЕРФЕЙСА", std::move(uiScaleSlider)));
 
-    #ifndef __ANDROID__ // не рисуем для андроида
-        // полноэкранный режим
+#ifndef __ANDROID__ 
+        // Настройка: Вертикальная синхронизация
+        std::string vsLabel = tmpVsync ? "ВКЛ" : "ВЫКЛ";
+        auto vsyncBtn = std::make_unique<UI::Button>(font, vsLabel, sf::Vector2f(350.f, 45.f));
+        vsyncBtnPtr = vsyncBtn.get();
+        vsyncBtn->setCallback([this]() {
+            tmpVsync = !tmpVsync;
+            if (vsyncBtnPtr) vsyncBtnPtr->setText(tmpVsync ? "ВКЛ" : "ВЫКЛ");
+        });
+        settingsContent->addChild(createRow(ResourceManager::get("icon-vsync"), "ВЕРТИКАЛЬНАЯ СИНХР.", std::move(vsyncBtn)));
+
+        // Настройка: Полноэкранный режим
         std::string fsLabel = tmpFullscreen ? "ВКЛ" : "ВЫКЛ";
         auto fsBtn = std::make_unique<UI::Button>(font, fsLabel, sf::Vector2f(350.f, 45.f));
         fsBtnPtr = fsBtn.get();
@@ -252,12 +276,14 @@ void Menu::initUI() {
             if (fsBtnPtr) fsBtnPtr->setText(tmpFullscreen ? "ВКЛ" : "ВЫКЛ");
         });
         
-        settingsContent->addChild(createRow("ПОЛНОЭКРАННЫЙ РЕЖИМ", std::move(fsBtn)));
-    #endif
+        settingsContent->addChild(createRow(ResourceManager::get("icon-fullscreen"), "ПОЛНОЭКРАННЫЙ РЕЖИМ", std::move(fsBtn)));
+#endif
     }
     
     if (settingsNav) {
-        auto saveBtn = std::make_unique<UI::Button>(font, "СОХРАНИТЬ", sf::Vector2f(220.f, 60.f));
+        auto saveBtn = std::make_unique<UI::Button>(ResourceManager::get("icon-save"), font, "СОХРАНИТЬ", sf::Vector2f(220.f, 60.f), UI::IconPlacement::Right);
+        saveBtn->setIconScale({ 0.5f, 0.5f });
+        saveBtn->setTextSize(20);
         saveBtn->setCallback([this]() {
             bool oldFs = settings.get<bool>("fullscreen", false);
             settings.set<int>("music_volume", tmpMusicVol);
@@ -265,8 +291,12 @@ void Menu::initUI() {
             settings.set<float>("sensitivity", tmpSensitivity);
             settings.set<float>("ui_scale", tmpUiScale);
             settings.set<bool>("fullscreen", tmpFullscreen);
+            settings.set<bool>("vsync", tmpVsync);
             settings.save();
             
+            // Применение вертикальной синхронизации
+            window.setVerticalSyncEnabled(tmpVsync);
+
             updateViewSizes(window.getSize());
             window.setView(uiView);
 
@@ -325,7 +355,9 @@ std::unique_ptr<UI::Container> Menu::createSubMenu(const std::string& title, UI:
     nav->setContentAlign(UI::Container::ContentAlign::Center);
     nav->setGap(30.f);
     nav->setDrawOutline(true);
-    auto back = std::make_unique<UI::Button>(font, "НАЗАД", sf::Vector2f(220.f, 60.f));
+    auto back = std::make_unique<UI::Button>(ResourceManager::get("icon-back"), font, "НАЗАД", sf::Vector2f(220.f, 60.f), UI::IconPlacement::Left);
+    back->setIconScale({ 0.5f, 0.5f });
+    back->setTextSize(20);
     back->setCallback([this]() { state = MenuState::Main; selectedLevel = ""; updateCardsSelection(); });
     nav->addChild(std::move(back));
     if (outNav) *outNav = nav.get();
