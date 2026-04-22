@@ -165,20 +165,22 @@ bool HUD::handleEvent(const sf::Event& event, const sf::RenderWindow& window, co
     pauseRequested = false;
     skipRequested = false;
 
-    // Получаем текущую позицию мыши/тача для проверки пересечения с кнопками
-    sf::Vector2f mousePos;
-    if (const auto* m = event.getIf<sf::Event::MouseButtonPressed>()) mousePos = window.mapPixelToCoords(m->position, uiView);
-    else if (const auto* r = event.getIf<sf::Event::MouseButtonReleased>()) mousePos = window.mapPixelToCoords(r->position, uiView);
-    else if (const auto* mm = event.getIf<sf::Event::MouseMoved>()) mousePos = window.mapPixelToCoords(mm->position, uiView);
-    else if (const auto* tb = event.getIf<sf::Event::TouchBegan>()) mousePos = window.mapPixelToCoords(tb->position, uiView);
-    else if (const auto* te = event.getIf<sf::Event::TouchEnded>()) mousePos = window.mapPixelToCoords(te->position, uiView);
+    // Инициализация координат "вне экрана"
+    sf::Vector2f mousePos(-10000.f, -10000.f);
+    bool hasCoords = false;
 
-    // Лямбда для проверки: попал ли клик в конкретную кнопку
+    // Извлекаем координаты только из релевантных событий
+    if (const auto* m = event.getIf<sf::Event::MouseButtonPressed>()) { mousePos = window.mapPixelToCoords(m->position, uiView); hasCoords = true; }
+    else if (const auto* r = event.getIf<sf::Event::MouseButtonReleased>()) { mousePos = window.mapPixelToCoords(r->position, uiView); hasCoords = true; }
+    else if (const auto* mm = event.getIf<sf::Event::MouseMoved>()) { mousePos = window.mapPixelToCoords(mm->position, uiView); hasCoords = true; }
+    else if (const auto* tb = event.getIf<sf::Event::TouchBegan>()) { mousePos = window.mapPixelToCoords(tb->position, uiView); hasCoords = true; }
+    else if (const auto* te = event.getIf<sf::Event::TouchEnded>()) { mousePos = window.mapPixelToCoords(te->position, uiView); hasCoords = true; }
+
+    // Лямбда для проверки: попал ли клик в конкретную кнопку (только если есть координаты)
     auto hit = [&](const UI::Button& btn) {
-        return btn.isVisible() && btn.getGlobalBounds().contains(mousePos);
+        return hasCoords && btn.isVisible() && btn.getGlobalBounds().contains(mousePos);
     };
 
-    // Проверяем все активные элементы интерфейса
     bool hitUI = false;
     if (hit(pauseBtn)) hitUI = true;
     if (hit(skipBtn)) hitUI = true;
@@ -189,7 +191,7 @@ bool HUD::handleEvent(const sf::Event& event, const sf::RenderWindow& window, co
     }
     for (auto& slot : towerSlots) if (hit(slot)) hitUI = true;
 
-    // Передаем события кнопкам для их внутренней логики (hover, callback)
+    // Передаем события кнопкам
     pauseBtn.handleEvent(event, window, uiView);
     skipBtn.handleEvent(event, window, uiView);
     speedBtn.handleEvent(event, window, uiView);
@@ -233,12 +235,13 @@ void HUD::showTowerControls(sf::Vector2f screenPos, int sellPrice, float worldZo
     sellBtn.setSize({ btnSize, btnSize });
 
     // Позиционирование: 
-    // Башня всегда скейлится 1-к-1 (towerHalfSize зависит от чистого invZoom)
-    float towerHalfSize = 32.f * invZoom;
-    float gap = 8.f * dampedScale;
-    float totalOffsetY = towerHalfSize + (btnSize / 2.f) + gap;
+    // Башня всегда скейлится 1-к-1. Уменьшаем расчетную высоту башни (26px вместо 32px), 
+    // чтобы кнопки были ближе к основанию.
+    float towerEffectiveHeight = 26.f * invZoom;
+    float gap = 4.f * dampedScale; // уменьшенный зазор
+    float totalOffsetY = towerEffectiveHeight + (btnSize / 2.f) + gap;
 
-    float horizontalGap = 6.f * dampedScale;
+    float horizontalGap = 4.f * dampedScale;
 
     // Центрирование относительно точки screenPos (центр башни)
     upgradeBtn.setPosition({ screenPos.x - btnSize - horizontalGap / 2.f, screenPos.y + totalOffsetY - (btnSize / 2.f) });

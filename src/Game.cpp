@@ -132,14 +132,29 @@ void Game::updateViewSizes(sf::Vector2u windowSize) {
     float sh = static_cast<float>(windowSize.y);
     uiScale = sh / 1080.f;
 
+    // Динамический расчет лимитов зума на основе высоты экрана:
+    // minZoom: хотим видеть минимум ~450 единиц мира (близко).
+    // maxZoom: хотим видеть максимум ~1600 единиц мира (чтобы карта не была слишком мелкой).
+    minZoom = 450.f / sh;
+    maxZoom = 1600.f / sh;
+
+    // Предохранители для очень маленьких или очень больших окон
+    if (minZoom > 0.6f) minZoom = 0.6f;
+    if (maxZoom < 1.1f) maxZoom = 1.1f;
+
     float uiH = sh / uiScale;
     float uiW = uiH * (sw / sh);
     sf::Vector2f logicalSize(uiW, uiH);
 
     uiView = sf::View(sf::Vector2f(uiW / 2.f, uiH / 2.f), logicalSize);
     worldView = sf::View(sf::Vector2f(sw / 2.f, sh / 2.f), sf::Vector2f(sw, sh));
-    worldView.zoom(currentZoom);
+    
+    // Ограничиваем текущий зум новыми лимитами при изменении размера окна
+    if (currentZoom < minZoom) currentZoom = minZoom;
+    if (currentZoom > maxZoom) currentZoom = maxZoom;
 
+    worldView.zoom(currentZoom);
+    
     hud.updateLayout(logicalSize);
 
     auto updateOverlay = [&](std::unique_ptr<UI::Container>& overlay) {
@@ -494,6 +509,14 @@ void Game::processInput(sf::Vector2i pixelPos) {
 GameEndReason Game::getEndReason() const { return endReason; }
 
 void Game::cleanup() {
-    if (pauseOverlay) pauseOverlay->clearChildren();
-    if (endOverlay) endOverlay->clearChildren();
+    // Полностью уничтожаем оверлеи и сбрасываем указатели. 
+    // Это гарантирует, что спрайты внутри кнопок удалятся до завершения работы программы.
+    if (pauseOverlay) pauseOverlay.reset();
+    if (endOverlay) endOverlay.reset();
+
+    // Сбрасываем сырые указатели на элементы внутри оверлеев
+    pauseModalPtr = nullptr;
+    endModalPtr = nullptr;
+    endTitlePtr = nullptr;
+    endSubTitlePtr = nullptr;
 }

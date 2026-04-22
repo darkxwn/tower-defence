@@ -39,6 +39,10 @@ enum class GameEndReason {
 
 class Game {
 private:
+    // Интерфейсные оверлеи (в начале для защиты от порчи памяти и корректного порядка удаления)
+    std::unique_ptr<UI::Container> pauseOverlay;
+    std::unique_ptr<UI::Container> endOverlay;
+
     sf::RenderWindow& window;                // ссылка на окно отрисовки
     SettingsManager& settings;               // ссылка на настройки
     sf::Clock clock;                         // часы для расчета дельты времени
@@ -46,36 +50,38 @@ private:
     sf::View worldView;                      // камера игрового мира
     sf::View uiView;                         // камера интерфейса
     sf::Vector2i lastInputPos;               // позиция ввода в прошлом кадре
-    bool isPanning = false;                  // флаг перемещения камеры
-    bool isPinching = false;                 // флаг зума пальцами
-    float initialPinchDistance = 0.f;        // исходное расстояние при зуме
-    float currentZoom = 1.0f;                // текущий масштаб мира
-    float uiScale = 1.0f;                    // масштаб интерфейса
-    bool hasMoved = false;                   // флаг того, что курсор двигался
     sf::Vector2i startTouchPos;              // начальная точка касания
 
-    GameState state = GameState::Playing;    // текущее состояние игры
-    GameEndReason endReason = GameEndReason::None; // причина выхода
+    // Простые параметры
+    float currentZoom = 1.0f;                // текущий масштаб мира
+    float minZoom = 0.4f;                    // лимит приближения
+    float maxZoom = 1.6f;                    // лимит отдаления
+    float uiScale = 1.0f;                    // масштаб интерфейса
+    float initialPinchDistance = 0.f;        // дистанция зума
+    bool isPanning = false;
+    bool isPinching = false;
+    bool hasMoved = false;
+    int money = 0;
 
-    HUD hud;                                 // объект интерфейса
-    Map map;                                 // объект карты
-    int money = 0;                           // текущее количество денег
-    Base base;                               // объект базы
+    GameState state = GameState::Playing;
+    GameEndReason endReason = GameEndReason::None;
 
-    std::vector<std::unique_ptr<Enemy>> enemies; // список активных врагов
-    std::vector<Tower> towers;                   // список построенных башен
-    std::vector<Projectile> projectiles;         // список летящих снарядов
+    // Объекты систем
+    HUD hud;
+    Map map;
+    Base base;
+    WaveSystem waveSystem;
 
-    WaveSystem waveSystem;                   // система управления волнами
+    // Коллекции объектов
+    std::vector<std::unique_ptr<Enemy>> enemies;
+    std::vector<Tower> towers;
+    std::vector<Projectile> projectiles;
 
-    std::unique_ptr<UI::Container> pauseOverlay; // корневой контейнер паузы
-    std::unique_ptr<UI::Container> endOverlay;   // корневой контейнер финала
-
-    UI::Container* pauseModalPtr = nullptr;      // указатель на центральную плашку паузы
-    UI::Container* endModalPtr = nullptr;        // указатель на центральную плашку финала
-
-    UI::Text* endTitlePtr = nullptr;             // указатель на заголовок финала
-    UI::Text* endSubTitlePtr = nullptr;          // указатель на подзаголовок финала
+    // Указатели на элементы оверлеев
+    UI::Container* pauseModalPtr = nullptr;
+    UI::Container* endModalPtr = nullptr;
+    UI::Text* endTitlePtr = nullptr;
+    UI::Text* endSubTitlePtr = nullptr;
 
     // Основной цикл обновления логики
     void update(float deltaTime);
@@ -98,7 +104,7 @@ private:
 public:
     // Конструктор загружает уровень и инициализирует игру
     Game(sf::RenderWindow& window, SettingsManager& settings, const std::string& levelPath);
-
+    
     // Запускает выполнение игровой сессии
     void run();
 

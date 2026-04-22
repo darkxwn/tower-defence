@@ -575,9 +575,10 @@ void Menu::notifyResult(SessionResult result, const std::string& levelPath) {
 
 // Очистка ресурсов интерфейса
 void Menu::cleanup() {
-    if (mainContainer) mainContainer->clearChildren();
-    if (levelContainer) levelContainer->clearChildren();
-    if (settingsContainer) settingsContainer->clearChildren();
-    if (upgradesContainer) upgradesContainer->clearChildren();
-    if (resultOverlay) resultOverlay->clearChildren();
+    // Полное уничтожение контейнеров для освобождения ресурсов (спрайтов/текстур)
+    if (mainContainer) mainContainer.reset();
+    if (levelContainer) levelContainer.reset();
+    if (settingsContainer) settingsContainer.reset();
+    if (upgradesContainer) upgradesContainer.reset();
+    if (resultOverlay) resultOverlay.reset();
 }
