@@ -260,6 +260,13 @@ void Button::setTextSize(unsigned int size) {
     }
 }
 
+// Изменение цвета иконки (цветовой фильтр)
+void Button::setIconColor(sf::Color color) {
+    if (sprite) {
+        sprite->setColor(color);
+    }
+}
+
 // Изменение видимости отладочной рамки
 void Button::setDrawOutline(bool draw) {
     drawOutline = draw;

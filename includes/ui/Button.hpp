@@ -105,6 +105,9 @@ namespace UI {
         // Изменение размера текста
         void setTextSize(unsigned int size);
 
+        // Изменение цвета иконки (цветовой фильтр)
+        void setIconColor(sf::Color color);
+
         // Изменение видимости отладочной рамки
         void setDrawOutline(bool draw);
     };

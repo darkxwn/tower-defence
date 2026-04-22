@@ -1,47 +1,52 @@
 #pragma once
-#include "Enemy.hpp"
 #include <map>
 #include <vector>
+#include <string>
 
 ///////////////////////////////////////////////////////////////////////////
 //
 // КЛАСС GAMEDATA
+// Хранилище статических данных игры: характеристики врагов и башен.
 //
 ///////////////////////////////////////////////////////////////////////////
 
-// Статы врага
+// Характеристики врага
 struct EnemyStats {
 	int health; // количество жизней
-	int speed; // скорость
+	int speed;  // скорость передвижения
 	int damage; // урон по базе
-	int reward; // награда за убийство
+	int reward; // награда за уничтожение
 };
 
-// Статы башни
+// Характеристики башни
 struct TowerStats {
-	int damage; // урон
-	float range; // радиус атаки
-	float firerate; // скорострельность
-	int cost; // цена постройки
-	int splash; // урон по области
+	int damage;     // урон одного выстрела
+	float range;    // радиус поражения
+	float firerate; // частота стрельбы
+	int cost;       // стоимость постройки
+	int splash;     // радиус взрыва (0 если нет)
 };
 
 class GameData {
 private:
-	static std::map<EnemyType, EnemyStats> enemies; // хранилище статов врагов
-	static std::map<std::string, TowerStats> towers; // хранилище статов башен
-	static std::vector<std::string> towerOrder; // порядок башен
+	static std::map<std::string, EnemyStats> enemies; // хранилище врагов (ключ - имя типа)
+	static std::map<std::string, TowerStats> towers;  // хранилище башен (ключ - имя типа)
+	static std::vector<std::string> towerOrder;       // очередность башен в магазине
+	static std::vector<std::string> enemyTypes;       // список всех доступных типов врагов
 
 public:
-	// Загрузка данных из конфигурационных файлов
+	// Загрузка всех данных из .cfg файлов
 	static void load();
 
-	// Получение статов врага по типу
-	static EnemyStats getEnemy(EnemyType type);
+	// Получение характеристик врага по имени типа
+	static EnemyStats getEnemy(const std::string& type);
 
-	// Получение статов башни по имени
+	// Получение характеристик башни по имени
 	static TowerStats getTower(const std::string& name);
 
-	// Получение имён всех башен
+	// Получение списка всех доступных башен
 	static std::vector<std::string> getTowerNames();
+
+	// Получение списка всех типов врагов, найденных в конфигурации
+	static std::vector<std::string> getEnemyTypes();
 };

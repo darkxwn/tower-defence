@@ -5,22 +5,21 @@
 #include <fstream>
 #include <sstream>
 
-// Интервал спавна по типу врага
-float WaveSystem::getSpawnInterval(EnemyType type) const {
-    switch (type) {
-        case EnemyType::Fast:   return 0.7f;
-        case EnemyType::Strong: return 1.0f;
-        default:                return 0.5f;
-    }
+// Интервал спавна по типу врага (динамический расчет или по идентификатору)
+float WaveSystem::getSpawnInterval(const std::string& type) const {
+    if (type == "fast")   return 0.6f;
+    if (type == "strong") return 1.2f;
+    return 0.8f; // базовый интервал
 }
 
-// Загрузка волн из файла
+// Загрузка волн из файла карты
 void WaveSystem::loadWaves(const std::string& path) {
     waves.clear();
     currentWave = 0;
     state = WaveState::Idle;
 
     auto content = readFile(path);
+    if (!content) return;
 
     std::istringstream file(content.value());
     std::string line;
@@ -28,7 +27,7 @@ void WaveSystem::loadWaves(const std::string& path) {
 
     while (std::getline(file, line)) {
         if (!line.empty() && line.back() == '\r') line.pop_back();
-        if (line.empty()) continue;
+        if (line.empty() || line[0] == '#') continue;
 
         if (line.find("waves=") != std::string::npos) {
             parsingWaves = true;
@@ -40,12 +39,9 @@ void WaveSystem::loadWaves(const std::string& path) {
             if (colon != std::string::npos) {
                 std::string typeStr = line.substr(0, colon);
                 int count = std::stoi(line.substr(colon + 1));
-
-                EnemyType type = EnemyType::Basic;
-                if (typeStr == "fast") type = EnemyType::Fast;
-                else if (typeStr == "strong") type = EnemyType::Strong;
-
-                waves.push_back({ type, count });
+                
+                // Просто сохраняем тип как строку (id должен совпадать с enemies.cfg)
+                waves.push_back({ typeStr, count });
             }
         }
     }
@@ -57,7 +53,7 @@ void WaveSystem::update(float deltaTime, std::vector<std::unique_ptr<Enemy>>& en
 
     if (state == WaveState::Idle) return;
 
-    // пауза между волнами
+    // Пауза между волнами
     if (state == WaveState::Waiting) {
         waitTimer -= deltaTime;
         if (waitTimer <= 0.f)
@@ -65,7 +61,7 @@ void WaveSystem::update(float deltaTime, std::vector<std::unique_ptr<Enemy>>& en
         return;
     }
 
-    // ожидание завершения текущей волны
+    // Ожидание уничтожения всех врагов текущей волны
     if (state == WaveState::Fighting) {
         if (enemies.empty()) {
             currentWave++;
@@ -76,7 +72,7 @@ void WaveSystem::update(float deltaTime, std::vector<std::unique_ptr<Enemy>>& en
         return;
     }
 
-    // спавн врагов текущей волны
+    // Постепенный спавн врагов
     if (state == WaveState::Spawning) {
         Wave& wave = waves[currentWave];
 
@@ -84,12 +80,13 @@ void WaveSystem::update(float deltaTime, std::vector<std::unique_ptr<Enemy>>& en
         if (spawnTimer < getSpawnInterval(wave.type)) return;
         spawnTimer = 0.f;
 
+        // Получаем статы врага из GameData по строковому типу
         auto stats = GameData::getEnemy(wave.type);
         enemies.push_back(std::make_unique<Enemy>(wave.type, stats.health, stats.speed, path));
 
         spawned++;
 
-        // переход в ожидание завершения при полном спавне
+        // Если заспавнили всех, переходим в режим боя
         if (spawned >= wave.count) {
             spawned = 0;
             state = WaveState::Fighting;

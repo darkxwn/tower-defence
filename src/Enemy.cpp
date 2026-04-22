@@ -5,18 +5,20 @@
 #include "Colors.hpp"
 
 // Конструктор врага
-Enemy::Enemy(EnemyType type, int health, int speed, const std::vector<sf::Vector2i>& path)
+Enemy::Enemy(const std::string& type, int health, int speed, const std::vector<sf::Vector2i>& path)
     : type(type), health(health), maxHealth(health), speed(speed), alive(true), path(&path)
 {
+    if (path.empty()) {
+        LOGE("[Enemy]: Путь для врагов пуст!");
+        return;
+    }
+    
+    // Инициализация позиции первой точкой пути (перевод в мировые координаты)
     pos = sf::Vector2f(path[0] * 64);
     offset = {
         Math::Random::getFloat(-15.f, 15.f),
         Math::Random::getFloat(-15.f, 15.f)
     };
-
-    if (path.empty()) {
-        LOGI("[ERROR]: путь для врагов не найден");
-    }
 }
 
 // Обновление состояния врага
@@ -30,7 +32,6 @@ void Enemy::update(float deltaTime) {
 
     // движение к следующей точке
     sf::Vector2f target = sf::Vector2f((*path)[pathIndex] * 64);
-    sf::Vector2f dir = target - pos;
     float distSq = Math::getDistSq(pos, target);
 
     if (distSq < 4.f) {
@@ -43,19 +44,8 @@ void Enemy::update(float deltaTime) {
 
 // Отрисовка врага
 void Enemy::render(sf::RenderWindow& window, sf::Vector2f mapOffset) {
-    // выбор текстуры по типу
-    std::string texName;
-    switch (type) {
-    case EnemyType::Basic:
-        texName = "enemy-basic";
-        break;
-    case EnemyType::Fast:
-        texName = "enemy-fast";
-        break;
-    case EnemyType::Strong:
-        texName = "enemy-strong";
-        break;
-    }
+    // выбор текстуры по имени типа (универсально)
+    std::string texName = "enemy-" + type;
 
     // позиция полоски жизней
     sf::Vector2f barPos = mapOffset + pos + offset + sf::Vector2f(16.0f, 8.f);
@@ -124,7 +114,7 @@ bool Enemy::hasReachedBase() const {
 }
 
 // Получение типа врага
-EnemyType Enemy::getType() const {
+std::string Enemy::getType() const {
     return type;
 }
 

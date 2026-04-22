@@ -6,15 +6,17 @@
 #include <stdexcept>
 
 // Хранилище ресурсов
-std::map<EnemyType, EnemyStats> GameData::enemies;
+std::map<std::string, EnemyStats> GameData::enemies;
 std::map<std::string, TowerStats> GameData::towers;
 std::vector<std::string> GameData::towerOrder;
+std::vector<std::string> GameData::enemyTypes;
 
 // Загрузка данных из конфигурационных файлов
 void GameData::load() {
     enemies.clear();
     towers.clear();
     towerOrder.clear();
+    enemyTypes.clear();
 
 #ifdef ANDROID
     std::string enemyPath = "config/enemies.cfg";
@@ -30,7 +32,7 @@ void GameData::load() {
     std::string line;
     while (std::getline(ssFile, line)) {
         if (!line.empty() && line.back() == '\r') line.pop_back();
-        if (line.empty()) continue;
+        if (line.empty() || line[0] == '#') continue; // игнорируем пустые строки и комментарии
 
         std::istringstream ss(line);
         std::string typeName;
@@ -50,13 +52,9 @@ void GameData::load() {
             else if (key == "reward")  stats.reward = value;
         }
 
-        EnemyType type;
-        if (typeName == "basic")       type = EnemyType::Basic;
-        else if (typeName == "fast")   type = EnemyType::Fast;
-        else if (typeName == "strong") type = EnemyType::Strong;
-        else continue;
-
-        enemies[type] = stats;
+        // Автоматически добавляем новый тип врага в мапу и список имен
+        enemies[typeName] = stats;
+        enemyTypes.push_back(typeName);
     }
 
     // загрузка башен
@@ -65,7 +63,7 @@ void GameData::load() {
     std::string lineTower;
     while (std::getline(ssFileTower, lineTower)) {
         if (!lineTower.empty() && lineTower.back() == '\r') lineTower.pop_back();
-        if (lineTower.empty()) continue;
+        if (lineTower.empty() || lineTower[0] == '#') continue;
 
         std::istringstream ss(lineTower);
         std::string name;
@@ -94,15 +92,15 @@ void GameData::load() {
     }
 }
 
-// Получение статов врага по типу
-EnemyStats GameData::getEnemy(EnemyType type) {
+// Получение характеристик врага по его строковому идентификатору (типу)
+EnemyStats GameData::getEnemy(const std::string& type) {
     auto it = enemies.find(type);
     if (it == enemies.end())
-        throw std::runtime_error("[Ошибка]: Статы врага не найдены");
+        throw std::runtime_error("[Ошибка]: Статы врага не найдены: " + type);
     return it->second;
 }
 
-// Получение статов башни по имени
+// Получение характеристик башни по имени
 TowerStats GameData::getTower(const std::string& name) {
     auto it = towers.find(name);
     if (it == towers.end())
@@ -110,7 +108,12 @@ TowerStats GameData::getTower(const std::string& name) {
     return it->second;
 }
 
-// Получение имён всех башен
+// Получение списка всех доступных башен
 std::vector<std::string> GameData::getTowerNames() {
     return towerOrder;
+}
+
+// Получение списка всех типов врагов для автоматической загрузки ресурсов
+std::vector<std::string> GameData::getEnemyTypes() {
+    return enemyTypes;
 }

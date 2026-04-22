@@ -1,64 +1,61 @@
 #pragma once
 #include <SFML/Graphics.hpp>
 #include <cmath>
+#include <string>
+#include <vector>
 
 ///////////////////////////////////////////////////////////////////////////
 //
 // КЛАСС ENEMY
+// Объект врага, движущийся по заданному пути.
 //
 ///////////////////////////////////////////////////////////////////////////
 
-// Типы врагов
-enum class EnemyType {
-	Basic,
-	Fast,
-	Strong
-};
-
 class Enemy {
 private:
-	EnemyType type; // тип врага
-	int health; // количество жизней
-	int speed; // скорость передвижения
-	bool alive; // состояние жизни
-	bool reachedBase = false; // враг достиг базы
-	int maxHealth; // максимальное количество жизней
+	std::string type; // идентификатор типа врага (строка)
+	int health; // текущее здоровье
+	int speed; // скорость движения
+	bool alive; // флаг жизни
+	bool reachedBase = false; // флаг достижения конца пути
+	int maxHealth; // исходное здоровье для отрисовки HP-бара
 
-	sf::Vector2f pos; // текущая позиция
-	sf::Vector2f offset; // смещение относительно центра пути
-	int pathIndex = 0; // индекс текущего узла пути
-	const std::vector<sf::Vector2i>* path; // указатель на массив точек пути
+	sf::Vector2f pos; // мировые координаты
+	sf::Vector2f offset; // случайное смещение для имитации толпы
+	int pathIndex = 0; // текущая цель на пути
+	const std::vector<sf::Vector2i>* path; // ссылка на узлы пути
 
 public:
-	Enemy(EnemyType type, int health, int speed, const std::vector<sf::Vector2i>& path);
+	// Конструктор инициализирует врага строковым типом и характеристиками
+	Enemy(const std::string& type, int health, int speed, const std::vector<sf::Vector2i>& path);
 
-	// Обновление состояния врага
+	// Обновление логики движения
 	void update(float deltaTime);
 
-	// Отрисовка врага
+	// Отрисовка врага и его здоровья
 	void render(sf::RenderWindow& window, sf::Vector2f mapOffset);
 
-	// Получение вектора текущего направления движения
+	// Получение вектора скорости
 	sf::Vector2f getVelocity() const;
 
-	// Проверка жизни
+	// Статус жизни
 	bool isAlive() const;
 
-	// Проверка достижения базы
+	// Статус проникновения на базу
 	bool hasReachedBase() const;
 
-	// Проверка гибели от урона
+	// Статус гибели от башни
 	bool isKilled() const;
 
-	// Получение текущей позиции
+	// Позиция в мире
 	sf::Vector2f getPos() const;
 
-	// Получение урона
+	// Нанесение урона врагу
 	void takeDamage(int damage);
 
-	// Получение типа врага
-	EnemyType getType() const;
+	// Получение идентификатора типа
+	std::string getType() const;
 
-	// Получение индекса текущего узла пути
+	// Индекс текущей точки пути
 	int getPathIndex() const;
 };

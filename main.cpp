@@ -100,16 +100,15 @@ static void loadResources() {
     ResourceManager::load("portal-layer2", assetsPath + "sprites/tile-portal-layer2.png");
     ResourceManager::load("base", assetsPath + "sprites/tile-base.png");
 
-    // ВРАГИ
-    std::vector<std::string> enemyTypes = { "basic", "fast", "strong" };
-    for (const auto& type : enemyTypes) {
+    // ВРАГИ 
+    for (const auto& type : GameData::getEnemyTypes()) {
         ResourceManager::load("enemy-" + type, assetsPath + "sprites/enemy-" + type + ".png");
     }
 
     // БАШНИ
     auto towerNames = GameData::getTowerNames();
+    std::vector<std::string> parts = { "base", "turret", "proj", "preview" };
     for (const auto& name : towerNames) {
-        std::vector<std::string> parts = { "base", "turret", "proj", "preview" };
         for (const auto& part : parts) {
             std::string resId = "tower-" + name + "-" + part;
             ResourceManager::load(resId, assetsPath + "sprites/" + resId + ".png");
@@ -124,6 +123,10 @@ int main() {
     sf::RenderWindow window(sf::VideoMode({1280, 720}), "Tower Defence", settings.get<bool>("fullscreen", false) ? sf::State::Fullscreen : sf::State::Windowed);
     window.setFramerateLimit(60);
     window.setMinimumSize(sf::Vector2u(1280, 720));
+
+#ifdef __ANDROID__
+    setImmersiveMode(window);
+#endif
 
     loadResources();
 

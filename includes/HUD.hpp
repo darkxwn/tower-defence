@@ -25,6 +25,11 @@ private:
     bool sellRequested = false; // флаг запроса продажи
     bool upgradeRequested = false; // флаг запроса улучшения (заглушка)
 
+    // Логика подтверждения (даблклик)
+    sf::Clock doubleClickClock;
+    int lastClickedBtnId = 0; // 0 - ни одна, 1 - улучшение, 2 - продажа
+    const float doubleClickTime = 0.4f; // время на второй клик (сек)
+
     int speedMode = 0; // режим ускорения
     bool pauseRequested = false; // запрос паузы
     bool skipRequested = false; // запрос старта волны

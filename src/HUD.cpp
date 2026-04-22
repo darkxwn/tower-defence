@@ -28,12 +28,12 @@ HUD::HUD() {
     });
 
     // Инициализация кнопок управления башней (улучшение и продажа)
-    upgradeBtn = UI::Button(ResourceManager::get("icon-upgrade"), sf::Vector2f(48.f, 48.f));
-    upgradeBtn.setIconScale({ 0.5f, 0.5f });
+    upgradeBtn = UI::Button(ResourceManager::get("icon-upgrade"), sf::Vector2f(36.f, 36.f));
+    upgradeBtn.setIconScale({ 0.375f, 0.375f }); 
     upgradeBtn.setCallback([this]() { upgradeRequested = true; });
 
-    sellBtn = UI::Button(ResourceManager::get("icon-sell"), sf::Vector2f(48.f, 48.f));
-    sellBtn.setIconScale({ 0.5f, 0.5f });
+    sellBtn = UI::Button(ResourceManager::get("icon-sell"), sf::Vector2f(36.f, 36.f));
+    sellBtn.setIconScale({ 0.375f, 0.375f });
     sellBtn.setCallback([this]() { sellRequested = true; });
 
     // Создание слотов для башен
@@ -170,11 +170,22 @@ bool HUD::handleEvent(const sf::Event& event, const sf::RenderWindow& window, co
     bool hasCoords = false;
 
     // Извлекаем координаты только из релевантных событий
-    if (const auto* m = event.getIf<sf::Event::MouseButtonPressed>()) { mousePos = window.mapPixelToCoords(m->position, uiView); hasCoords = true; }
-    else if (const auto* r = event.getIf<sf::Event::MouseButtonReleased>()) { mousePos = window.mapPixelToCoords(r->position, uiView); hasCoords = true; }
-    else if (const auto* mm = event.getIf<sf::Event::MouseMoved>()) { mousePos = window.mapPixelToCoords(mm->position, uiView); hasCoords = true; }
-    else if (const auto* tb = event.getIf<sf::Event::TouchBegan>()) { mousePos = window.mapPixelToCoords(tb->position, uiView); hasCoords = true; }
-    else if (const auto* te = event.getIf<sf::Event::TouchEnded>()) { mousePos = window.mapPixelToCoords(te->position, uiView); hasCoords = true; }
+    if (const auto* m = event.getIf<sf::Event::MouseButtonPressed>()) { 
+        mousePos = window.mapPixelToCoords(m->position, uiView); 
+        hasCoords = true; 
+    } else if (const auto* r = event.getIf<sf::Event::MouseButtonReleased>()) { 
+        mousePos = window.mapPixelToCoords(r->position, uiView); 
+        hasCoords = true; 
+    } else if (const auto* mm = event.getIf<sf::Event::MouseMoved>()) { 
+        mousePos = window.mapPixelToCoords(mm->position, uiView); 
+        hasCoords = true; 
+    } else if (const auto* tb = event.getIf<sf::Event::TouchBegan>()) { 
+        mousePos = window.mapPixelToCoords(tb->position, uiView); 
+        hasCoords = true; 
+    } else if (const auto* te = event.getIf<sf::Event::TouchEnded>()) { 
+        mousePos = window.mapPixelToCoords(te->position, uiView); 
+        hasCoords = true; 
+    }
 
     // Лямбда для проверки: попал ли клик в конкретную кнопку (только если есть координаты)
     auto hit = [&](const UI::Button& btn) {
@@ -210,40 +221,37 @@ void HUD::showTowerControls(sf::Vector2f screenPos, int sellPrice, float worldZo
     sellRequested = false;
     upgradeRequested = false;
     
-    // Инвертированный зум мира (0.5 -> 2.0)
+    // Инвертированный зум мира (0.5 при приближении -> 2.0 масштаб объектов)
     float invZoom = 1.f / worldZoom;
 
-    // Демпфирование: кнопки меняются только на 30% от зума мира.
-    // Это сохраняет визуальную связь с башней, но не дает кнопкам "раздуваться".
-    float dampedScale = 1.f + (invZoom - 1.f) * 0.3f;
+    // Масштабирование 1-к-1: теперь кнопки уменьшаются/увеличиваются в точности как башни.
+    float targetScale = invZoom;
 
-    // Ограничиваем итоговый масштаб, чтобы кнопки были удобными для пальца (на мобилках)
-    // и не перекрывали пол-экрана на планшетах.
+    // Лимиты масштаба: расширяем диапазон, чтобы кнопки могли становиться меньше при отдалении.
 #ifdef __ANDROID__
-    dampedScale = std::clamp(dampedScale, 0.8f, 1.1f);
+    targetScale = std::clamp(targetScale, 0.5f, 1.2f);
 #else
-    dampedScale = std::clamp(dampedScale, 0.7f, 1.3f);
+    targetScale = std::clamp(targetScale, 0.4f, 1.4f);
 #endif
 
-    // Базовый размер 48px, масштабируем иконку и саму кнопку
-    float targetIconScale = 0.5f * dampedScale;
+    // Применяем масштаб: базовая иконка 0.375f (для 36px при иконке 96px)
+    float targetIconScale = 0.375f * targetScale;
     upgradeBtn.setIconScale({ targetIconScale, targetIconScale });
     sellBtn.setIconScale({ targetIconScale, targetIconScale });
 
-    float btnSize = 48.f * dampedScale;
+    float btnSize = 36.f * targetScale;
     upgradeBtn.setSize({ btnSize, btnSize });
     sellBtn.setSize({ btnSize, btnSize });
 
-    // Позиционирование: 
-    // Башня всегда скейлится 1-к-1. Уменьшаем расчетную высоту башни (26px вместо 32px), 
-    // чтобы кнопки были ближе к основанию.
-    float towerEffectiveHeight = 26.f * invZoom;
-    float gap = 4.f * dampedScale; // уменьшенный зазор
+    // Позиционирование: максимально прижимаем к основанию башни.
+    // Эффективная высота башни уменьшена до 18px.
+    float towerEffectiveHeight = 18.f * invZoom;
+    float gap = 1.f * targetScale; 
     float totalOffsetY = towerEffectiveHeight + (btnSize / 2.f) + gap;
 
-    float horizontalGap = 4.f * dampedScale;
+    float horizontalGap = 3.f * targetScale;
 
-    // Центрирование относительно точки screenPos (центр башни)
+    // Установка позиций (screenPos — центр башни)
     upgradeBtn.setPosition({ screenPos.x - btnSize - horizontalGap / 2.f, screenPos.y + totalOffsetY - (btnSize / 2.f) });
     sellBtn.setPosition({ screenPos.x + horizontalGap / 2.f, screenPos.y + totalOffsetY - (btnSize / 2.f) });
 }

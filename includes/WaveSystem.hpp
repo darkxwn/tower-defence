@@ -13,7 +13,7 @@
 
 // Структура волны
 struct Wave {
-    EnemyType type; // тип врага
+    std::string type; // идентификатор типа врага (строка)
     int count; // количество врагов в группе
 };
 
@@ -39,7 +39,7 @@ private:
     WaveState state = WaveState::Idle; // текущее состояние
 
     // Интервал спавна по типу врага
-    float getSpawnInterval(EnemyType type) const;
+    float getSpawnInterval(const std::string& type) const;
 
 public:
     // Загрузка волн из файла
