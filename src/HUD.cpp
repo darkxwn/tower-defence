@@ -30,11 +30,39 @@ HUD::HUD() {
     // Инициализация кнопок управления башней (улучшение и продажа)
     upgradeBtn = UI::Button(ResourceManager::get("icon-upgrade"), sf::Vector2f(36.f, 36.f));
     upgradeBtn.setIconScale({ 0.375f, 0.375f }); 
-    upgradeBtn.setCallback([this]() { upgradeRequested = true; });
+    upgradeBtn.setCallback([this]() { 
+        float elapsed = doubleClickClock.getElapsedTime().asSeconds();
+        // Если это повторный клик по той же кнопке в течение лимита времени
+        if (lastClickedBtnId == 1 && elapsed < doubleClickTime) {
+            upgradeRequested = true;
+            lastClickedBtnId = 0;
+            upgradeBtn.setIconColor(sf::Color::White); // возвращаем исходный цвет
+        } else {
+            // Первый клик — включаем режим ожидания подтверждения
+            lastClickedBtnId = 1;
+            doubleClickClock.restart();
+            upgradeBtn.setIconColor(sf::Color::Yellow); // желтая индикация
+            sellBtn.setIconColor(sf::Color::White);     // сброс другой кнопки
+        }
+    });
 
     sellBtn = UI::Button(ResourceManager::get("icon-sell"), sf::Vector2f(36.f, 36.f));
     sellBtn.setIconScale({ 0.375f, 0.375f });
-    sellBtn.setCallback([this]() { sellRequested = true; });
+    sellBtn.setCallback([this]() { 
+        float elapsed = doubleClickClock.getElapsedTime().asSeconds();
+        // Подтверждение продажи
+        if (lastClickedBtnId == 2 && elapsed < doubleClickTime) {
+            sellRequested = true;
+            lastClickedBtnId = 0;
+            sellBtn.setIconColor(sf::Color::White);
+        } else {
+            // Первый клик — индикация критического действия
+            lastClickedBtnId = 2;
+            doubleClickClock.restart();
+            sellBtn.setIconColor(sf::Color(255, 100, 100)); // светло-красная индикация
+            upgradeBtn.setIconColor(sf::Color::White);      // сброс другой кнопки
+        }
+    });
 
     // Создание слотов для башен
     auto towerNames = GameData::getTowerNames();
@@ -53,19 +81,25 @@ HUD::HUD() {
 }
 
 // Расставляет элементы интерфейса согласно размеру логического экрана
-void HUD::updateLayout(sf::Vector2f viewSize) {
-    float cx = viewSize.x / 2.f; // центр по горизонтали
+void HUD::updateLayout(sf::Vector2f viewSize, float uiScale) {
+    this->uiScale = uiScale;
+    float cx = viewSize.x / 2.f;
 
     pauseBtn.setPosition({ 20.f, 20.f });
-    skipBtn.setPosition({ cx + 150.f, 10.f });
+    skipBtn.setPosition({ cx + 130.f, 30.f });
     speedBtn.setPosition({ 15.0f, viewSize.y - 111.0f });
 
     float panelWidth = (2 + (int)towerSlots.size()) * 100.f;
     float startXPos = cx - panelWidth / 2.f;
+    float slotY = viewSize.y - 110.f;
 
     for (int i = 0; i < (int)towerSlots.size(); i++) {
-        towerSlots[i].setPosition({ (startXPos + 100.f) + i * 100.f, viewSize.y - 110.f });
+        towerSlots[i].setPosition({ (startXPos + 100.f) + i * 100.f, slotY });
     }
+}
+
+void HUD::setUiScale(float scale) {
+    uiScale = scale;
 }
 
 // Отрисовывает интерфейс: панели, ресурсы, волны и кнопки
@@ -73,27 +107,31 @@ void HUD::render(sf::RenderWindow& window, int money, int lives, int wave, WaveS
     auto& font = ResourceManager::getFont("main"); // шрифт
     sf::Vector2f ws = window.getView().getSize(); // логический размер UI
     float cx = ws.x / 2.f; // центр
+    float s = uiScale;
 
     pauseBtn.render(window);
 
     // Верхняя панель волн
+    float topPanelHeight = 85.f;
+    float topWidth = std::max(300.f * s, 200.f);
     sf::ConvexShape trapezoid;
     trapezoid.setPointCount(4);
-    trapezoid.setPoint(0, { cx - 300.f, 0.f });
-    trapezoid.setPoint(1, { cx + 300.f, 0.f });
-    trapezoid.setPoint(2, { cx + 200.f, 75.f });
-    trapezoid.setPoint(3, { cx - 200.f, 75.f });
-    trapezoid.setFillColor(Colors::Theme::PanelBg);
+    trapezoid.setPoint(0, { cx - topWidth, 0.f });
+    trapezoid.setPoint(1, { cx + topWidth, 0.f });
+    trapezoid.setPoint(2, { cx + topWidth * 0.67f, topPanelHeight });
+    trapezoid.setPoint(3, { cx - topWidth * 0.67f, topPanelHeight });
+    trapezoid.setFillColor(Colors::Theme::BackgroundDark);
     window.draw(trapezoid);
 
     std::string waveStr = "ВОЛНА " + std::to_string(wave + 1);
     sf::Text waveText(font, sf::String::fromUtf8(waveStr.begin(), waveStr.end()), 28);
     sf::FloatRect wtB = waveText.getLocalBounds();
     waveText.setOrigin({ wtB.position.x + wtB.size.x / 2.f, 0.f });
-    waveText.setPosition({ cx, 15.f });
+    waveText.setPosition({ cx, topPanelHeight / 2.f - wtB.size.y});
     window.draw(waveText);
 
     if (state == WaveState::Waiting || state == WaveState::Idle) {
+        skipBtn.setPosition({ cx + 100.f, topPanelHeight / 2.f - 24.f });
         skipBtn.render(window);
     }
 
@@ -101,16 +139,18 @@ void HUD::render(sf::RenderWindow& window, int money, int lives, int wave, WaveS
     int slotsCount = (int)towerSlots.size();
     float panelW = (2 + slotsCount) * 100.f;
     float startX = cx - panelW / 2.f;
+    float panelBottom = ws.y;
+    float panelTop = ws.y - 120.f;
 
     sf::ConvexShape hexagon;
     hexagon.setPointCount(6);
-    hexagon.setPoint(0, { cx - panelW / 2.f, ws.y });
+    hexagon.setPoint(0, { cx - panelW / 2.f, panelBottom });
     hexagon.setPoint(1, { cx - panelW / 2.f - 25.f, ws.y - 60.f });
-    hexagon.setPoint(2, { cx - panelW / 2.f, ws.y - 120.f });
-    hexagon.setPoint(3, { cx + panelW / 2.f, ws.y - 120.f });
+    hexagon.setPoint(2, { cx - panelW / 2.f, panelTop });
+    hexagon.setPoint(3, { cx + panelW / 2.f, panelTop });
     hexagon.setPoint(4, { cx + panelW / 2.f + 25.f, ws.y - 60.f });
-    hexagon.setPoint(5, { cx + panelW / 2.f, ws.y });
-    hexagon.setFillColor(Colors::Theme::PanelBg);
+    hexagon.setPoint(5, { cx + panelW / 2.f, panelBottom });
+    hexagon.setFillColor(Colors::Theme::BackgroundDark);
     window.draw(hexagon);
 
     // Ресурсы
@@ -221,6 +261,10 @@ void HUD::showTowerControls(sf::Vector2f screenPos, int sellPrice, float worldZo
     sellRequested = false;
     upgradeRequested = false;
     
+    // Не сбрасываем lastClickedBtnId — сохраняем состояние двойного клика при переключении башен
+    upgradeBtn.setIconColor(sf::Color::White);
+    sellBtn.setIconColor(sf::Color::White);
+    
     // Инвертированный зум мира (0.5 при приближении -> 2.0 масштаб объектов)
     float invZoom = 1.f / worldZoom;
 
@@ -244,8 +288,8 @@ void HUD::showTowerControls(sf::Vector2f screenPos, int sellPrice, float worldZo
     sellBtn.setSize({ btnSize, btnSize });
 
     // Позиционирование: максимально прижимаем к основанию башни.
-    // Эффективная высота башни уменьшена до 18px.
-    float towerEffectiveHeight = 18.f * invZoom;
+    // Эффективная высота башни уменьшена
+    float towerEffectiveHeight = 24.f * invZoom;
     float gap = 1.f * targetScale; 
     float totalOffsetY = towerEffectiveHeight + (btnSize / 2.f) + gap;
 
@@ -259,6 +303,9 @@ void HUD::showTowerControls(sf::Vector2f screenPos, int sellPrice, float worldZo
 // Скрывает кнопки управления башней
 void HUD::hideTowerControls() {
     showTowerMenu = false;
+    lastClickedBtnId = 0;
+    upgradeBtn.setIconColor(sf::Color::White);
+    sellBtn.setIconColor(sf::Color::White);
 }
 
 // Проверка запроса на продажу (вызывается из Game)

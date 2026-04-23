@@ -36,7 +36,7 @@ public:
     void update(float dt);
 
     // Отрисовка карты
-    void render(sf::RenderWindow& window);
+    void render(sf::RenderWindow& window, bool showSelected = true);
 
     // Центрирование карты на экране
     void centerOnScreen(sf::Vector2u windowSize, float topPanelH, float bottomPanelH);

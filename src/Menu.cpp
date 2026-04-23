@@ -74,7 +74,7 @@ void Menu::initUI() {
     headerCont->addChild(std::move(title));
 
     auto version = std::make_unique<UI::Text>(font, "v0.4a", 24);
-    version->setColor(sf::Color(180, 180, 180));
+    version->setColor(Colors::Theme::TextDark);
     headerCont->addChild(std::move(version));
     mainContainer->addChild(std::move(headerCont));
 
@@ -132,7 +132,7 @@ void Menu::initUI() {
             card->setContentAlign(UI::Container::ContentAlign::Start);
             card->setItemAlign(UI::Container::ItemAlign::Center);
             card->setDrawBackground(true);
-            card->setBackgroundColor(sf::Color(45, 45, 45));
+            card->setBackgroundColor(Colors::Theme::Widget);
             card->setPadding({ 5.f, 5.f });
             card->setDrawOutline(true);
 
@@ -193,6 +193,7 @@ void Menu::initUI() {
         settingsContent->setPadding({ 20.f, 20.f });
         settingsContent->setItemAlign(UI::Container::ItemAlign::Center);
         settingsContent->setContentAlign(UI::Container::ContentAlign::Center);
+        settingsContent->setScrollEnabled(true);
 
         // лямбда для создания строки меню с иконкой, заголовком и контролом
         auto createRow = [&](const sf::Texture& iconTex, const std::string& label, std::unique_ptr<UI::Widget> control, std::unique_ptr<UI::Text> valueText = nullptr) {
@@ -200,7 +201,7 @@ void Menu::initUI() {
             row->setDirection(UI::Container::Direction::Row);
             row->setContentAlign(UI::Container::ContentAlign::Center);
             row->setItemAlign(UI::Container::ItemAlign::Center);
-            row->setGap(30.f);
+            row->setGap(10.f);
 
             // Добавление иконки настройки
             auto icon = std::make_unique<UI::Image>(iconTex, sf::Vector2f(48.f, 48.f));
@@ -242,7 +243,7 @@ void Menu::initUI() {
         sensSlider->setCallback([this](float value) { tmpSensitivity = value; });
         settingsContent->addChild(createRow(sensIcon, "ЧУВСТВИТЕЛЬНОСТЬ", std::move(sensSlider)));
 
-        // Настройка: Масштаб интерфейса (выбор иконки и границ в зависимости от платформы)
+        // Настройка: Масштаб интерфейса
 #ifdef __ANDROID__
         float minScale = 0.7f;
         float maxScale = 1.5f;
@@ -314,7 +315,7 @@ void Menu::initUI() {
     resultOverlay->setDirection(UI::Container::Direction::Column);
     resultOverlay->setContentAlign(UI::Container::ContentAlign::Center);
     resultOverlay->setItemAlign(UI::Container::ItemAlign::Center);
-    resultOverlay->setBackgroundColor(sf::Color(0, 0, 0, 200));
+    resultOverlay->setBackgroundColor(Colors::Theme::Overlay);
     resultOverlay->setDrawBackground(true);
     resultOverlay->setDrawOutline(true);
 }
@@ -374,10 +375,10 @@ void Menu::updateCardsSelection() {
         if (i >= levels.size()) continue;
         const auto& level = levels[i];
         if (level.filePath == selectedLevel) {
-            card->setBackgroundColor(sf::Color(80, 80, 80));
+            card->setBackgroundColor(Colors::Theme::WidgetHover);
             card->setDrawOutline(true);
         } else {
-            card->setBackgroundColor(sf::Color(45, 45, 45));
+            card->setBackgroundColor(Colors::Theme::Widget);
         }
     }
     if (playBtnPtr) playBtnPtr->setEnabled(!selectedLevel.empty());
@@ -401,7 +402,7 @@ void Menu::handleEvents() {
 
 // Отрисовка интерфейса меню
 void Menu::render() {
-    window.clear(sf::Color(25, 25, 30));
+    window.clear(Colors::Theme::Background);
     window.setView(uiView);
     UI::Container* current = nullptr;
     switch (state) {
@@ -566,7 +567,7 @@ void Menu::notifyResult(SessionResult result, const std::string& levelPath) {
     auto& font = ResourceManager::getFont("main");
     std::string msg = (result == SessionResult::Win) ? "ПОБЕДА!" : "ПОРАЖЕНИЕ";
     auto text = std::make_unique<UI::Text>(font, msg, 80);
-    text->setColor((result == SessionResult::Win) ? sf::Color::Green : sf::Color::Red);
+    text->setColor((result == SessionResult::Win) ? Colors::Palette::PastelRed : Colors::Palette::PastelGreen);
     resultOverlay->addChild(std::move(text));
     auto back = std::make_unique<UI::Button>(font, "В МЕНЮ", sf::Vector2f(200.f, 60.f));
     back->setCallback([this]() { lastResult = SessionResult::None; });

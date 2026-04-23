@@ -12,7 +12,7 @@ namespace UI {
     
         // настройка дорожки
         track.setSize({ size.x * 0.8f, size.y * 0.2f }); // 80% ширины под дорожку
-        track.setFillColor(Colors::Theme::WidgetBg);
+        track.setFillColor(Colors::Theme::Widget);
     
         // настройка ручки
         handle.setSize({ size.y * 0.6f, size.y });

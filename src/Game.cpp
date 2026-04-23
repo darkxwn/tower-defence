@@ -45,12 +45,12 @@ void Game::initOverlays() {
     pRoot->setDrawOutline(true);
     pauseModalPtr = pRoot.get();
 
-    auto pHeader = std::make_unique<UI::Container>(sf::Vector2f(winSize.x * 0.9f, 60.f));
+    auto pHeader = std::make_unique<UI::Container>(sf::Vector2f(winSize.x * 0.9f, 100.f));
     pHeader->setDirection(UI::Container::Direction::Column);
     pHeader->setContentAlign(UI::Container::ContentAlign::Center);
     pHeader->setItemAlign(UI::Container::ItemAlign::Center);
     pHeader->setDrawOutline(true);
-    auto pTitle = std::make_unique<UI::Text>(font, "ПАУЗА", 60);
+    auto pTitle = std::make_unique<UI::Text>(font, "ПАУЗА", 96);
     pTitle->setColor(Colors::Theme::TextMain);
     pHeader->addChild(std::move(pTitle));
     pRoot->addChild(std::move(pHeader));
@@ -130,17 +130,36 @@ void Game::initOverlays() {
 void Game::updateViewSizes(sf::Vector2u windowSize) {
     float sw = static_cast<float>(windowSize.x);
     float sh = static_cast<float>(windowSize.y);
-    uiScale = sh / 1080.f;
+    //uiScale = sh / 1080.f;
+    float baseScale = sh / 1080.f;
 
-    // Динамический расчет лимитов зума на основе высоты экрана:
-    // minZoom: хотим видеть минимум ~450 единиц мира (близко).
-    // maxZoom: хотим видеть максимум ~1600 единиц мира (чтобы карта не была слишком мелкой).
-    minZoom = 450.f / sh;
-    maxZoom = 1600.f / sh;
+    uiScale = baseScale * settings.get<float>("ui_scale", 1.0f);
+    if (uiScale <= 0.1f) uiScale = 1.0f;
 
-    // Предохранители для очень маленьких или очень больших окон
-    if (minZoom > 0.6f) minZoom = 0.6f;
-    if (maxZoom < 1.1f) maxZoom = 1.1f;
+    // Динамический расчёт лимитов зума на основе высоты экрана
+    // Цель: на больших экранах давать больше отдаления (больший maxZoom),
+    // на маленьких экранах ограничивать отдаление, чтобы карта не была "муравейником"
+    
+    // Базовые размеры мира в логических единицах
+    const float minVisibleHeight = 80.f;   // мин. видимая высота мира (приближение)
+    const float maxVisibleHeight = 1200.f; // макс. видимая высота мира (отдаление)
+    
+    // Расчёт лимитов с учётом высоты экрана
+    minZoom = minVisibleHeight / sh;
+    maxZoom = maxVisibleHeight / sh;
+    
+    // Усиленная адаптация для больших экранов (1440p и выше)
+    // На экранах > 1440p даём дополнительное отдаление
+    if (sh > 1440.f) {
+        float scale = sh / 1440.f;
+        maxZoom *= (1.0f + 0.2f * (scale - 1.0f)); // до +20% на 4K экранах
+    }
+    
+    // Ограничители для крайних случаев (очень маленькие/большие окна)
+    if (minZoom > 0.5f) minZoom = 0.5f;    // не ближе 0.5
+    if (minZoom < 0.35f) minZoom = 0.35f;  // не дальше 0.35 (приближение)
+    if (maxZoom < 1.0f) maxZoom = 1.0f;    // не дальше 1.0 (отдаление на малых экранах)
+    if (maxZoom > 2.5f) maxZoom = 2.5f;    // предел для экстремально больших экранов
 
     float uiH = sh / uiScale;
     float uiW = uiH * (sw / sh);
@@ -155,7 +174,8 @@ void Game::updateViewSizes(sf::Vector2u windowSize) {
 
     worldView.zoom(currentZoom);
     
-    hud.updateLayout(logicalSize);
+    hud.updateLayout(logicalSize, uiScale * 0.85f);
+    hud.setUiScale(uiScale * 0.85f);
 
     auto updateOverlay = [&](std::unique_ptr<UI::Container>& overlay) {
         if (!overlay) return;
@@ -229,8 +249,13 @@ void Game::handleEvents() {
                 });
 
                 if (it != towers.end()) {
-                    // Возврат случайного процента стоимости (50-75%)
-                    float refundPercent = Math::Random::getInt(50, 75) / 100.f;
+                    // Возврат стоимости: 100% если первая волна ещё не запущена, иначе 50-75%
+                    float refundPercent;
+                    if (waveSystem.getState() == WaveState::Idle) {
+                        refundPercent = 1.0f; // 100% возврата до начала игры
+                    } else {
+                        refundPercent = Math::Random::getInt(50, 75) / 100.f;
+                    }
                     money += static_cast<int>(it->getCost() * refundPercent);
                     towers.erase(it);
                     map.setSelectedTile({ -1000.f, -1000.f }); // сброс выделения
@@ -249,7 +274,7 @@ void Game::handleEvents() {
             // Навигация по карте (только если клик не попал в UI)
             if (const auto* scroll = event->getIf<sf::Event::MouseWheelScrolled>()) {
                 float factor = (scroll->delta > 0) ? 0.9f : 1.1f;
-                if ((currentZoom * factor >= 0.5f) && (currentZoom * factor <= 1.6f)) {
+                if ((currentZoom * factor >= minZoom) && (currentZoom * factor <= maxZoom)) {
                     sf::Vector2f before = window.mapPixelToCoords(scroll->position, worldView);
                     worldView.zoom(factor);
                     currentZoom *= factor;
@@ -297,7 +322,7 @@ void Game::handleEvents() {
                     float newDist = std::sqrt(std::pow((float)p0.x - p1.x, 2) + std::pow((float)p0.y - p1.y, 2));
                     if (std::abs(newDist - initialPinchDistance) > 2.f) {
                         float f = initialPinchDistance / newDist;
-                        if (currentZoom * f >= 0.5f && currentZoom * f <= 1.6f) {
+                        if (currentZoom * f >= minZoom && currentZoom * f <= maxZoom) {
                             worldView.zoom(f);
                             currentZoom *= f;
                             worldView.move(worldBefore - window.mapPixelToCoords(mid, worldView));
@@ -383,11 +408,12 @@ void Game::render() {
     window.clear(Colors::Palette::Gray90);
 
     window.setView(worldView);
-    map.render(window);
+    bool slotSelected = hud.getSelectedSlot() != -1;
+    map.render(window, !slotSelected);
 
     Tile* selected = map.getSelectedTile();
     for (auto& t : towers) {
-        bool showR = (selected && selected->gridPos == t.getGridPos());
+        bool showR = (selected && selected->gridPos == t.getGridPos() && !slotSelected);
         t.render(window, map.getMapOffset(), showR);
     }
     for (auto& e : enemies) e->render(window, map.getMapOffset());
@@ -462,6 +488,11 @@ void Game::processInput(sf::Vector2i pixelPos) {
 
         if (tile && tile->type == TileType::Platform) {
             int slot = hud.getSelectedSlot();
+            
+            // Если выбран слот в магазине — сбрасываем выделение старой платформы сразу
+            if (slot != -1) {
+                map.setSelectedTile(sf::Vector2f(-1000.f, -1000.f));
+            }
             
             // Если выбран слот в магазине — строим башню
             if (slot != -1) {

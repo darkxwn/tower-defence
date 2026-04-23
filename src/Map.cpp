@@ -78,7 +78,7 @@ void Map::update(float dt) {
 }
 
 // Отрисовка карты
-void Map::render(sf::RenderWindow& window) {
+void Map::render(sf::RenderWindow& window, bool showSelected) {
     for (int y = 0; y < (int)tiles.size(); y++) {
         for (int x = 0; x < (int)tiles[y].size(); x++) {
             Tile& tile = tiles[y][x];
@@ -130,7 +130,7 @@ void Map::render(sf::RenderWindow& window) {
             }
 
             // подсветка выбранного тайла
-            if (selectedTile == &tile) {
+            if (showSelected && selectedTile == &tile) {
                 sf::Sprite act(ResourceManager::get("active"));
                 act.setScale({ 0.125f, 0.125f });
                 act.setPosition(sprite.getPosition());

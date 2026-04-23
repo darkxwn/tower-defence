@@ -43,7 +43,10 @@ public:
     void render(sf::RenderWindow& window, int money, int lives, int wave, WaveState state);
 
     // Обновляет позиции элементов при изменении размеров экрана
-    void updateLayout(sf::Vector2f viewSize);
+    void updateLayout(sf::Vector2f viewSize, float uiScale = 1.0f);
+
+    // Установить масштаб интерфейса
+    void setUiScale(float scale);
 
     // Обрабатывает события нажатий и наведения для кнопок. 
     // Возвращает true, если событие было поглощено интерфейсом.

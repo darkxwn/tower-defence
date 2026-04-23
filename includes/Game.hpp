@@ -54,8 +54,8 @@ private:
 
     // Простые параметры
     float currentZoom = 1.0f;                // текущий масштаб мира
-    float minZoom = 0.4f;                    // лимит приближения
-    float maxZoom = 1.6f;                    // лимит отдаления
+    float minZoom = 0.5f;                    // лимит приближения (вычисляется динамически)
+    float maxZoom = 1.5f;                    // лимит отдаления (вычисляется динамически)
     float uiScale = 1.0f;                    // масштаб интерфейса
     float initialPinchDistance = 0.f;        // дистанция зума
     bool isPanning = false;

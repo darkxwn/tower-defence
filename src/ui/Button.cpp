@@ -170,7 +170,7 @@ void Button::render(sf::RenderWindow& window) const {
         sf::RectangleShape drawShape = shape;
         if (!enabled) drawShape.setFillColor(Colors::Theme::WidgetDisabled);
         else if (isHovered && useHover) drawShape.setFillColor(Colors::Theme::WidgetHover);
-        else drawShape.setFillColor(Colors::Theme::WidgetBg);
+        else drawShape.setFillColor(Colors::Theme::Widget);
         window.draw(drawShape);
     }
 
