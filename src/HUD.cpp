@@ -113,7 +113,7 @@ void HUD::render(sf::RenderWindow& window, int money, int lives, int wave, WaveS
 
     // Верхняя панель волн
     float topPanelHeight = 85.f;
-    float topWidth = std::max(300.f * s, 200.f);
+    float topWidth = std::max(300.f * s, 250.f);
     sf::ConvexShape trapezoid;
     trapezoid.setPointCount(4);
     trapezoid.setPoint(0, { cx - topWidth, 0.f });
