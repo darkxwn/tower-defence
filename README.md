@@ -1,97 +1,46 @@
 # 🏰 Codename: Tower Defence
 
-![C++](https://img.shields.io/badge/C++-17%2F20-blue?style=flat-square&logo=c%2B%2B)
+![C++](https://img.shields.io/badge/C++-20-blue?style=flat-square&logo=c%2B%2B)
 ![SFML](https://img.shields.io/badge/SFML-3.0.2-green?style=flat-square)
-![Visual Studio 2022](https://img.shields.io/badge/Visual_Studio-2022-purple?style=flat-square&logo=visual-studio)
+![Platforms](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS%20%7C%20Android-orange?style=flat-square)
+![GitHub Actions](https://img.shields.io/badge/CI/CD-GitHub%20Actions-white?style=flat-square&logo=github-actions)
 
-**Codename: Tower Defence** — это классическая игра в жанре «Башенная защита» (Tower Defense) с сеточной картой и волнами противников. 
+**Codename: Tower Defence** — это кроссплатформенная игра в жанре «Башенная защита» (Tower Defense), разработанная на современном C++ с использованием библиотеки SFML 3.
 
 🎓 *Проект разрабатывается в рамках курсовой работы студентов 2-го курса факультета ИСТ ДонНТУ.*
 
 ---
 
-## 👥 Команда разработчиков
-* **[@darkxwn](https://github.com/darkxwn)** — PLACEHOLDER_ROLE
-* **[@BillVLad](https://github.com/BillVLad)** — PLACEHOLDER_ROLE
+## 🚀 Особенности
+- **Кроссплатформенность:** Полная поддержка Windows, Linux, macOS и Android из единого кодовой базы.
+- **Движок:** Собственная реализация системы камер с поддержкой зума и панорамирования.
+- **Управление:** Адаптивный ввод (Мышь + Сенсорный экран с поддержкой жестов).
+- **Архитектура:** Использование современных стандартов C++20 и автоматизированная сборка через CMake.
+- **Сохранения:** Система прогресса на базе JSON.
 
 ---
 
 ## 🛠 Технологии
-* **Язык:** C++ 
-* **Графическая библиотека:** SFML 3
+- **Язык:** C++20
+- **Графика и Ввод:** SFML 3.0.2
+- **Сборка:** CMake + Ninja
+- **Управление зависимостями:** FetchContent (автоматическая загрузка SFML и nlohmann_json)
+- **CI/CD:** GitHub Actions (автоматическая сборка артефактов под все ОС)
 
 ---
 
-## ⚙️ Требования для запуска
-Для работы с проектом и его сборки вам понадобится:
-- Операционная система: **Windows 10 / 11**, Linux
-- Среда разработки: **Visual Studio 2022** и выше (С установленным компонентом *«Разработка классических приложений на C++»*)
-- Git (для клонирования репозитория)
+## 👥 Команда разработчиков
+* **[@darkxwn](https://github.com/darkxwn)** — Игровая логика, UI, архитектура.
+* **[@BillVLad](https://github.com/BillVLad)** — Кроссплатформенная интеграция, Android NDK, CI/CD.
 
 ---
 
-## ⚙️ Сборка проекта
+## ⚙️ Сборка и запуск
+Подробные инструкции по установке зависимостей и компиляции под разные операционные системы находятся в отдельном файле:
 
-### Windows 
-В Visual Studio достаточно собрать конфигурацию CMakeLists.txt, дождаться подготовки и выбрать в Target'е `tower-defence.exe`, после чего, проект соберётся в `.exe` файл.
-### Linux
-1. Установка зависимостей:
+👉 **[Инструкция по сборке (BUILDING.md)](BUILDING.md)**
 
-1.1 Arch Linux
-```bash
-sudo pacman -S --needed base-devel cmake git \
-  freetype2 libx11 libxrandr libxcursor libxi libudev0-shim \
-  mesa glu openal libvorbis flac \
-  wayland wayland-protocols libxkbcommon
-```
-1.2 Ubuntu / Debian / Astra Linux
-```bash
-sudo apt update
-sudo apt install -y \
-  build-essential cmake git \
-  libx11-dev libxrandr-dev libxcursor-dev libxi-dev libudev-dev \
-  libgl1-mesa-dev libglu1-mesa-dev \
-  libfreetype-dev \
-  libopenal-dev \
-  libogg-dev libvorbis-dev libflac-dev \
-  libwayland-dev libxkbcommon-dev wayland-protocols
-```
-1.3 Fedora / Red Hat / CentOS
-```bash
-sudo dnf install -y \
-  gcc-c++ cmake make git \
-  libX11-devel libXrandr-devel libXcursor-devel libXi-devel systemd-devel \
-  mesa-libGL-devel mesa-libGLU-devel \
-  freetype-devel \
-  openal-soft-devel \
-  libogg-devel libvorbis-devel flac-devel \
-  wayland-devel libxkbcommon-devel wayland-protocols-devel
-```
-1.4 ALT Linux (Simply, Workstation, Образование)
-```bash
-sudo apt-get update
-sudo apt-get install -y \
-  gcc-c++ cmake git \
-  libX11-devel libXrandr-devel libXcursor-devel libXi-devel libudev-devel \
-  libGL-devel libGLU-devel \
-  libfreetype-devel \
-  libopenal-devel \
-  libogg-devel libvorbis-devel libflac-devel \
-  libwayland-client-devel libxkbcommon-devel wayland-protocols
-```
+---
 
-2. Создание папки для сборки:
-```bash
-mkdir build
-cd build
-```
-3. Подготовка проекта
-```bash
-cmake .. -DCMAKE_BUILD_TYPE=Release
-```
-4. Компиляция
-```bash
-# make -j$(nproc) для быстрой сборки
-make
-```
-Готово! Запустите `./tower-defence`.
+## 📄 Лицензия
+Проект распространяется под лицензией GNU GPL. Подробности в файле [LICENSE](LICENSE).
