@@ -20,8 +20,29 @@
 namespace fs = std::filesystem;
 
 // Инициализирует системы и строит интерфейс
-Menu::Menu(sf::RenderWindow& window, SettingsManager& settings) 
-    : window(window), settings(settings) {
+Menu::Menu(sf::RenderWindow& window, SettingsManager& settings, SaveManager& saveManager) 
+    : window(window), settings(settings), saveManager(saveManager) {
+    // загрузка улучшений из сохранений
+    std::vector<UpgradeManager::TowerUpgrade> data;
+    if (saveManager.getTowerData(data)) {
+        upgradeManager.setAllUpgrades(data);
+    }
+    else {
+        // инициализация базовыми значениями
+        upgradeManager.setAllUpgrades({
+            { "basic", 35.f, 1.0f, 192.f, 1.0f, 1.0f, 1.0f },
+            { "cannon", 80.f, 0.7f, 160.f, 1.0f, 1.0f, 1.0f },
+            { "double", 20.f, 2.0f, 128.f, 1.0f, 1.0f, 1.0f },
+            { "sniper", 150.f, 0.4f, 320.f, 1.0f, 1.0f, 1.0f }
+        });
+    }
+    // установка callback для сохранения при изменении улучшений
+    UpgradeManager* umPtr = &upgradeManager;
+    SaveManager* smPtr = &saveManager;
+    upgradeManager.setSaveCallback([umPtr, smPtr](const UpgradeManager::TowerUpgrade& up) {
+        smPtr->setTowerData(umPtr->getAllUpgrades());
+        smPtr->save();
+    });
     syncSettingsToTmp();
     scanLevels();
     initUI();
@@ -309,7 +330,7 @@ void Menu::initUI() {
         settingsNav->addChild(std::move(saveBtn));
     }
 
-    upgradesContainer = createSubMenu("УЛУЧШЕНИЯ", nullptr);
+    upgradesContainer = createUpgradeMenu();
 
     resultOverlay = std::make_unique<UI::Container>(winSize);
     resultOverlay->setDirection(UI::Container::Direction::Column);
@@ -362,6 +383,169 @@ std::unique_ptr<UI::Container> Menu::createSubMenu(const std::string& title, UI:
     back->setCallback([this]() { state = MenuState::Main; selectedLevel = ""; updateCardsSelection(); });
     nav->addChild(std::move(back));
     if (outNav) *outNav = nav.get();
+    root->addChild(std::move(nav));
+
+    return root;
+}
+
+// Создание подменю глобальных улучшений
+std::unique_ptr<UI::Container> Menu::createUpgradeMenu() {
+    auto& font = ResourceManager::getFont("main");
+    sf::Vector2f winSize = sf::Vector2f(window.getSize());
+
+    float headerHeight = 80.f;
+    float currencyHeight = 50.f;
+    float navHeight = 80.f;
+    float contentHeight = winSize.y - headerHeight - currencyHeight - navHeight - 60.f;
+
+    auto root = std::make_unique<UI::Container>(winSize);
+    root->setDirection(UI::Container::Direction::Column);
+    root->setContentAlign(UI::Container::ContentAlign::Center);
+    root->setItemAlign(UI::Container::ItemAlign::Center);
+    root->setPadding({ 20.f, 5.f });
+    root->setGap(10.f);
+    root->setDrawOutline(true);
+
+    // header
+    auto header = std::make_unique<UI::Container>(sf::Vector2f(winSize.x * 0.9f, headerHeight));
+    header->setDirection(UI::Container::Direction::Column);
+    header->setContentAlign(UI::Container::ContentAlign::Center);
+    header->setItemAlign(UI::Container::ItemAlign::Center);
+    header->setDrawOutline(true);
+    auto head = std::make_unique<UI::Text>(font, "УЛУЧШЕНИЯ", 60);
+    head->setColor(Colors::Theme::TextMain);
+    header->addChild(std::move(head));
+    root->addChild(std::move(header));
+
+    auto content = std::make_unique<UI::Container>(sf::Vector2f(winSize.x * 0.9f, 400.f));
+    content->setDirection(UI::Container::Direction::Column);
+    content->setContentAlign(UI::Container::ContentAlign::Center);
+    content->setItemAlign(UI::Container::ItemAlign::Center);
+    content->setGap(10.f);
+    content->setDrawOutline(true);
+
+    // currency
+    auto currency = std::make_unique<UI::Container>(sf::Vector2f(winSize.x * 0.9f, currencyHeight));
+    currency->setDirection(UI::Container::Direction::Row);
+    currency->setContentAlign(UI::Container::ContentAlign::Center);
+    currency->setItemAlign(UI::Container::ItemAlign::Center);
+    currency->setGap(15.f);
+    currency->setDrawOutline(true);
+    currency->setDrawBackground(true);
+    currency->setBackgroundColor(sf::Color::Transparent);
+
+    auto coinIcon = std::make_unique<UI::Image>(ResourceManager::get("icon-money"), sf::Vector2f(48.f, 48.f));
+    currency->addChild(std::move(coinIcon));
+
+    auto coinText = std::make_unique<UI::Text>(font, "1000", 24);
+    coinText->setColor(Colors::Theme::TextMain);
+    currency->addChild(std::move(coinText));
+
+    content->addChild(std::move(currency));
+
+    // cards - scroll container
+    auto cards = std::make_unique<UI::Container>(sf::Vector2f(winSize.x * 0.9f, contentHeight));
+    cards->setDirection(UI::Container::Direction::Row);
+    cards->setContentAlign(UI::Container::ContentAlign::Center);
+    cards->setItemAlign(UI::Container::ItemAlign::Center);
+    cards->setWrap(true);
+    cards->setGap(15.f);
+    cards->setDrawOutline(true);
+    cards->setDrawBackground(true);
+    cards->setBackgroundColor(sf::Color::Transparent);
+    cards->setScrollEnabled(true);
+
+    std::vector<std::string> towerNames = { "BASIC", "CANNON", "DOUBLE", "SNIPER" };
+    std::vector<std::string> towerTypes = { "basic", "cannon", "double", "sniper" };
+    std::vector<std::string> statNames = { "УРОН", "СКОРОСТЬ", "ДАЛЬНОСТЬ" };
+
+    for (size_t t = 0; t < towerNames.size(); ++t) {
+        auto towerCard = std::make_unique<UI::Container>(sf::Vector2f(350.f, 150.f));
+        towerCard->setDirection(UI::Container::Direction::Column);
+        towerCard->setContentAlign(UI::Container::ContentAlign::Start);
+        towerCard->setItemAlign(UI::Container::ItemAlign::Center);
+        towerCard->setPadding({ 10.f, 8.f });
+        towerCard->setGap(5.f);
+        towerCard->setDrawOutline(true);
+        towerCard->setDrawBackground(true);
+        towerCard->setBackgroundColor(sf::Color::Transparent);
+
+        auto towerName = std::make_unique<UI::Text>(font, towerNames[t], 24);
+        towerName->setColor(Colors::Theme::TextMain);
+        towerCard->addChild(std::move(towerName));
+
+        for (size_t s = 0; s < statNames.size(); ++s) {
+            auto statRow = std::make_unique<UI::Container>(sf::Vector2f(325.f, 35.f));
+            statRow->setDirection(UI::Container::Direction::Row);
+            statRow->setContentAlign(UI::Container::ContentAlign::Center);
+            statRow->setItemAlign(UI::Container::ItemAlign::Center);
+            statRow->setGap(10.f);
+            statRow->setDrawOutline(true);
+
+            auto statTextContainer = std::make_unique<UI::Container>(sf::Vector2f(150.f, 30.f));
+            statTextContainer->setDirection(UI::Container::Direction::Row);
+            statTextContainer->setContentAlign(UI::Container::ContentAlign::Center);
+            statTextContainer->setItemAlign(UI::Container::ItemAlign::Center);
+            statTextContainer->setGap(5.f);
+
+            auto statName = std::make_unique<UI::Text>(font, statNames[s], 18);
+            statName->setColor(Colors::Theme::TextMain);
+            statTextContainer->addChild(std::move(statName));
+
+            statRow->addChild(std::move(statTextContainer));
+
+            auto statValueConttainer = std::make_unique<UI::Container>(sf::Vector2f(50.f, 30.f));
+            statValueConttainer->setDirection(UI::Container::Direction::Row);
+            statValueConttainer->setContentAlign(UI::Container::ContentAlign::Center);
+            statValueConttainer->setItemAlign(UI::Container::ItemAlign::Center);
+
+            // получение актуального значения из UpgradeManager
+            float currentValue = 0.f;
+            if (s == 0) currentValue = upgradeManager.getDamage(towerTypes[t]);
+            else if (s == 1) currentValue = upgradeManager.getFirerate(towerTypes[t]);
+            else if (s == 2) currentValue = upgradeManager.getRange(towerTypes[t]);
+
+            auto statValue = std::make_unique<UI::Text>(font, std::to_string((int)currentValue), 18);
+            statValue->setColor(Colors::Theme::TextMain);
+            statValueConttainer->addChild(std::move(statValue));
+
+            statRow->addChild(std::move(statValueConttainer));
+
+            auto upgradeBtn = std::make_unique<UI::Button>(font, "+ 100", sf::Vector2f(80.f, 30.f));
+            upgradeBtn->setTextSize(12);
+            // callback для улучшения
+            auto towerTypeCopy = towerTypes[t];
+            UpgradeManager* umPtr = &upgradeManager;
+            upgradeBtn->setCallback([umPtr, towerTypeCopy, statIndex = s]() {
+                if (statIndex == 0) umPtr->upgradeDamage(towerTypeCopy, 0.1f);
+                else if (statIndex == 1) umPtr->upgradeFirerate(towerTypeCopy, 0.1f);
+                else if (statIndex == 2) umPtr->upgradeRange(towerTypeCopy, 0.1f);
+            });
+            statRow->addChild(std::move(upgradeBtn));
+
+            towerCard->addChild(std::move(statRow));
+        }
+
+        cards->addChild(std::move(towerCard));
+    }
+    content->addChild(std::move(cards));
+    root->addChild(std::move(content));
+
+    // nav
+    auto nav = std::make_unique<UI::Container>(sf::Vector2f(winSize.x * 0.9f, navHeight));
+    nav->setDirection(UI::Container::Direction::Row);
+    nav->setContentAlign(UI::Container::ContentAlign::Center);
+    nav->setItemAlign(UI::Container::ItemAlign::Center);
+    nav->setGap(30.f);
+    nav->setDrawOutline(true);
+    nav->setDrawBackground(true);
+    nav->setBackgroundColor(sf::Color::Transparent);
+
+    auto back = std::make_unique<UI::Button>(ResourceManager::get("icon-back"), font, "НАЗАД", sf::Vector2f(220.f, 60.f), UI::IconPlacement::Left);
+    back->setIconScale({ 0.5f, 0.5f });
+    back->setTextSize(20);
+    back->setCallback([this]() { state = MenuState::Main; });
+    nav->addChild(std::move(back));
     root->addChild(std::move(nav));
 
     return root;
@@ -442,7 +626,7 @@ void Menu::updateViewSizes(sf::Vector2u windowSize) {
         mainContainer->rebuild(); 
     }
 
-    auto updateSub = [&](std::unique_ptr<UI::Container>& cont) {
+auto updateSub = [&](std::unique_ptr<UI::Container>& cont) {
         if (cont) {
             float headerH = 80.f;  
             float navH = 80.f;  
@@ -453,8 +637,27 @@ void Menu::updateViewSizes(sf::Vector2u windowSize) {
             for (size_t i = 0; i < cont->getChildrenCount(); ++i) {
                 auto* child = dynamic_cast<UI::Container*>(cont->getChild(i));
                 if (child) {
-                    if (i == 1) child->setSize(sf::Vector2f(rootSize.x * 0.95f, contentH));
-                    else child->setSize(sf::Vector2f(rootSize.x * 0.95f, child->getSize().y));
+                    if (cont == upgradesContainer && i == 1) {
+                        // особая обработка для меню улучшений - content содержит currency и cards
+                        child->setSize(sf::Vector2f(rootSize.x * 0.95f, contentH));
+
+                        if (child->getChildrenCount() >= 2) {
+                            auto* currency = dynamic_cast<UI::Container*>(child->getChild(0));
+                            auto* cards = dynamic_cast<UI::Container*>(child->getChild(1));
+                            if (currency && cards) {
+                                // currency и cards по ширине content, cards по высоте оставшейся
+                                float gap = 10.f;
+                                currency->setSize(sf::Vector2f(child->getSize().x, currency->getSize().y));
+                                cards->setSize(sf::Vector2f(child->getSize().x, child->getSize().y - currency->getSize().y - gap));
+                            }
+                        }
+                    }
+                    else if (i == 1) {
+                        child->setSize(sf::Vector2f(rootSize.x * 0.95f, contentH));
+                    }
+                    else {
+                        child->setSize(sf::Vector2f(rootSize.x * 0.95f, child->getSize().y));
+                    }
                 }
             }
             cont->setSize(rootSize);

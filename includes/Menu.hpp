@@ -1,9 +1,12 @@
 #pragma once
 #include "SettingsManager.hpp"
+#include "UpgradeManager.hpp"
+#include "SaveManager.hpp"
 #include "ui/Container.hpp"
 #include "ui/Text.hpp"
 #include "ui/Button.hpp"
 #include "ui/Slider.hpp"
+#include "ui/Image.hpp"
 #include <SFML/Graphics.hpp>
 #include <string>
 #include <vector>
@@ -42,6 +45,8 @@ class Menu {
 private:
     sf::RenderWindow& window; // ссылка на окно отрисовки
     SettingsManager& settings; // ссылка на менеджер настроек
+    SaveManager& saveManager; // ссылка на менеджер сохранений
+    UpgradeManager upgradeManager; // менеджер улучшений
     MenuState state = MenuState::Main; // текущее состояние меню
 
     std::vector<LevelInfo> levels; // список доступных уровней
@@ -94,6 +99,9 @@ private:
     // Создание типового подменю с заголовком и навигацией
     std::unique_ptr<UI::Container> createSubMenu(const std::string& title, UI::Container** outContent, UI::Container** outNav = nullptr);
 
+    // Создание подменю улучшений
+    std::unique_ptr<UI::Container> createUpgradeMenu();
+
     // Обновление внешнего вида карточек при изменении выбора
     void updateCardsSelection();
 
@@ -105,7 +113,7 @@ private:
 
 public:
     // Конструктор инициализирует ресурсы и интерфейс
-    explicit Menu(sf::RenderWindow& window, SettingsManager& settings);
+    explicit Menu(sf::RenderWindow& window, SettingsManager& settings, SaveManager& saveManager);
 
     // Обработка системных событий меню и кликов
     void handleEvents();

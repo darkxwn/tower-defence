@@ -82,6 +82,7 @@ static void loadResources() {
     ResourceManager::load("icon-level", assetsPath + "icons/level.png");
     ResourceManager::load("icon-sell", assetsPath + "icons/sell.png");
     ResourceManager::load("icon-upgrade", assetsPath + "icons/upgrade.png");
+    ResourceManager::load("icon-money", assetsPath + "icons/money.png");
 #ifdef __ANDROID__
     ResourceManager::load("icon-sensivity", assetsPath + "icons/sensivity-mobile.png");
     ResourceManager::load("icon-display", assetsPath + "icons/display-mobile.png");
@@ -120,9 +121,10 @@ static void loadResources() {
 int main() {
     SettingsManager settings;
     // НУЖНО ДАЛЬШЕ СДЕЛАТЬ ЗАГРУЗКУ ПРОГРЕССА
-    SaveManager savemanager;
+    SaveManager saveManager;
 
     settings.load();
+    saveManager.load();
     
     sf::RenderWindow window(sf::VideoMode({1280, 720}), "Tower Defence", settings.get<bool>("fullscreen", false) ? sf::State::Fullscreen : sf::State::Windowed);
     window.setFramerateLimit(60);
@@ -134,7 +136,7 @@ int main() {
 
     loadResources();
 
-    auto menu = std::make_unique<Menu>(window, settings);
+    auto menu = std::make_unique<Menu>(window, settings, saveManager);
 
     sf::Vector2u lastWindowSize = { 1280, 720 };
 
@@ -162,7 +164,7 @@ int main() {
                 // Сохраняем фактический размер окна
                 lastWindowSize = window.getSize();
 
-                menu = std::make_unique<Menu>(window, settings);
+                menu = std::make_unique<Menu>(window, settings, saveManager);
                 menu->updateViewSizes(lastWindowSize);
             }
 

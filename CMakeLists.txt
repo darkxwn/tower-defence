@@ -32,7 +32,6 @@ set(SFML_BUILD_DOC OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(sfml)
 FetchContent_MakeAvailable(json)
 
-
 # СПИСОК ИСХОДНЫХ ФАЙЛОВ
 set(SOURCES
     main.cpp
@@ -49,6 +48,7 @@ set(SOURCES
     src/SettingsManager.cpp
     src/SaveManager.cpp
     src/WaveSystem.cpp
+    src/UpgradeManager.cpp
     src/utils/FileReader.cpp
     src/ui/Text.cpp
     src/ui/Button.cpp
