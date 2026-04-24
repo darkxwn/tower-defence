@@ -5,6 +5,7 @@
 #include "GameData.hpp"
 #include "ResourceManager.hpp"
 #include "SettingsManager.hpp"
+#include "SaveManager.hpp"
 #include <string>
 #include <vector>
 
@@ -118,6 +119,9 @@ static void loadResources() {
 
 int main() {
     SettingsManager settings;
+    // НУЖНО ДАЛЬШЕ СДЕЛАТЬ ЗАГРУЗКУ ПРОГРЕССА
+    SaveManager savemanager;
+
     settings.load();
     
     sf::RenderWindow window(sf::VideoMode({1280, 720}), "Tower Defence", settings.get<bool>("fullscreen", false) ? sf::State::Fullscreen : sf::State::Windowed);

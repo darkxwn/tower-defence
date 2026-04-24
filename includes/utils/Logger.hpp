@@ -7,6 +7,7 @@
 #define LOGE(...) ((void)__android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__))
 #else
 #include <cstdio>
-#define LOGI(...) printf(__VA_ARGS__); printf("\n")
-#define LOGE(...) fprintf(stderr, __VA_ARGS__); fprintf(stderr, "\n")
+#include <iostream>
+#define LOGI(...) do { printf(__VA_ARGS__); printf("\n"); fflush(stdout); } while (0)
+    #define LOGE(...) do { fprintf(stderr, __VA_ARGS__); fprintf(stderr, "\n"); fflush(stderr); } while (0)
 #endif

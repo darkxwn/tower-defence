@@ -479,27 +479,38 @@ void Menu::scanLevels() {
     levels.clear();
 
 #ifdef __ANDROID__
-    // логика для android через ndk asset manager
+    // --- ЛОГИКА ДЛЯ ANDROID ---
     ANativeActivity* activity = sf::getNativeActivity();
     AAssetDir* assetDir = AAssetManager_openDir(activity->assetManager, "levels");
     const char* fileName = nullptr;
 
     while ((fileName = AAssetDir_getNextFileName(assetDir)) != nullptr) {
-        std::string sName = fileName;
+        std::string sName = fileName; // "level01.map"
         if (sName.size() > 4 && sName.substr(sName.size() - 4) == ".map") {
-            std::string fullPath = "levels/" + sName;
-            levels.push_back({ fullPath, readLevelName(fullPath), (int)levels.size() });
+            LevelInfo info;
+            info.filePath = "levels/" + sName;
+            
+            // ID уровня — это имя файла без расширения
+            info.id = sName.substr(0, sName.find_last_of('.'));
+            
+            info.name = readLevelName(info.filePath);
+            levels.push_back(info);
         }
     }
     AAssetDir_close(assetDir);
 
-    // сортировка списка уровней по пути
+    // Сортируем по ID, чтобы уровень 01 был первым
     std::sort(levels.begin(), levels.end(), [](const LevelInfo& a, const LevelInfo& b) {
-        return a.filePath < b.filePath;
+        return a.id < b.id;
     });
 
+    // После сортировки проставляем правильные индексы
+    for (int i = 0; i < (int)levels.size(); i++) {
+        levels[i].index = i;
+    }
+
 #else
-    // логика для персональных компьютеров
+    // --- ЛОГИКА ДЛЯ ПК ---
     const std::string dirPath = "data/levels/";
 
     if (!fs::exists(dirPath) || !fs::is_directory(dirPath)) {
@@ -507,20 +518,30 @@ void Menu::scanLevels() {
         return;
     }
 
-    std::vector<fs::path> mapFiles;
-
+    std::vector<fs::path> mapPaths;
     for (const auto& entry : fs::directory_iterator(dirPath)) {
         if (entry.is_regular_file() && entry.path().extension() == ".map") {
-            mapFiles.push_back(entry.path());
+            mapPaths.push_back(entry.path());
         }
     }
-    std::sort(mapFiles.begin(), mapFiles.end());
+    
+    // Сортируем пути
+    std::sort(mapPaths.begin(), mapPaths.end());
 
-    for (int i = 0; i < (int)mapFiles.size(); ++i) {
-        std::string fullPath = mapFiles[i].string();
-        levels.push_back({ fullPath, readLevelName(fullPath), i });
+    for (int i = 0; i < (int)mapPaths.size(); ++i) {
+        LevelInfo info;
+        info.filePath = mapPaths[i].string();
+        
+        // В std::filesystem метод stem() идеально вырезает имя без расширения
+        info.id = mapPaths[i].stem().string(); 
+        
+        info.name = readLevelName(info.filePath);
+        info.index = i;
+        levels.push_back(info);
     }
 #endif
+
+    LOGI("Successfully scanned %d levels", (int)levels.size());
 }
 
 // Чтение названия уровня из файла

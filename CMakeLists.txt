@@ -11,12 +11,16 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Настройки статической сборки
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 set(SFML_STATIC_LIBRARIES ON CACHE BOOL "" FORCE)
-
 include(FetchContent)
 FetchContent_Declare(sfml
     GIT_REPOSITORY https://github.com/SFML/SFML.git
     GIT_TAG 3.0.2
     GIT_SHALLOW TRUE
+)
+
+FetchContent_Declare(json 
+    URL https://github.com/nlohmann/json/releases/download/v3.12.0/json.tar.xz
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
 )
 
 # Оптимизация сборки SFML
@@ -26,6 +30,7 @@ set(SFML_INSTALL_PKGCONFIG_FILES OFF CACHE BOOL "" FORCE)
 set(SFML_BUILD_DOC OFF CACHE BOOL "" FORCE)
 
 FetchContent_MakeAvailable(sfml)
+FetchContent_MakeAvailable(json)
 
 
 # СПИСОК ИСХОДНЫХ ФАЙЛОВ
@@ -42,6 +47,7 @@ set(SOURCES
     src/GameData.cpp
     src/ResourceManager.cpp
     src/SettingsManager.cpp
+    src/SaveManager.cpp
     src/WaveSystem.cpp
     src/utils/FileReader.cpp
     src/ui/Text.cpp
@@ -101,7 +107,8 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     SFML::Graphics
     SFML::Window
     SFML::System
-    # SFML::Audio
+    SFML::Audio
+    nlohmann_json::nlohmann_json
 )
 
 # Дополнительные либы по платформам

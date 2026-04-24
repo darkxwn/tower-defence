@@ -33,6 +33,7 @@ enum class SessionResult {
 // Информация об уровне из файла карты
 struct LevelInfo {
     std::string filePath; // путь к файлу .map
+    std::string id;       // "levelXX"
     std::string name; // название уровня
     int index; // порядковый номер
 };
