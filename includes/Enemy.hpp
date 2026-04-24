@@ -25,6 +25,8 @@ private:
 	int pathIndex = 0; // текущая цель на пути
 	const std::vector<sf::Vector2i>* path; // ссылка на узлы пути
 
+	const sf::Texture& texture; // ссылка на текстуру
+
 public:
 	// Конструктор инициализирует врага строковым типом и характеристиками
 	Enemy(const std::string& type, int health, int speed, const std::vector<sf::Vector2i>& path);

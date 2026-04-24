@@ -20,4 +20,5 @@ enum class TileType {
 struct Tile {
 	TileType type = TileType::Empty; // тип тайла
 	sf::Vector2i gridPos; // позиция на сетке
+	const sf::Texture* texture = nullptr; // кэшированный указатель на текстуру
 };

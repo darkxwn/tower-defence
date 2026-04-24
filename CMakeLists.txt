@@ -50,6 +50,7 @@ set(SOURCES
     src/WaveSystem.cpp
     src/UpgradeManager.cpp
     src/utils/FileReader.cpp
+    src/utils/Logger.cpp
     src/ui/Text.cpp
     src/ui/Button.cpp
     src/ui/Widget.cpp

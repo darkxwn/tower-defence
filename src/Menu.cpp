@@ -16,6 +16,7 @@
 #include <SFML/System/NativeActivity.hpp>
 #endif 
 
+using Engine::Logger;
 
 namespace fs = std::filesystem;
 
@@ -94,7 +95,7 @@ void Menu::initUI() {
     titleTextPtr = title.get();
     headerCont->addChild(std::move(title));
 
-    auto version = std::make_unique<UI::Text>(font, "v0.4a", 24);
+    auto version = std::make_unique<UI::Text>(font, "v0.5a", 24);
     version->setColor(Colors::Theme::TextDark);
     headerCont->addChild(std::move(version));
     mainContainer->addChild(std::move(headerCont));
@@ -717,7 +718,7 @@ void Menu::scanLevels() {
     const std::string dirPath = "data/levels/";
 
     if (!fs::exists(dirPath) || !fs::is_directory(dirPath)) {
-        LOGE("[Menu]: Папка уровней не найдена: %s", dirPath.c_str());
+        Logger::error("[Menu]: Папка уровней не найдена: {}", dirPath);
         return;
     }
 
@@ -744,7 +745,7 @@ void Menu::scanLevels() {
     }
 #endif
 
-    LOGI("Successfully scanned %d levels", (int)levels.size());
+    Logger::debug("Successfully scanned {} levels", (int)levels.size());
 }
 
 // Чтение названия уровня из файла

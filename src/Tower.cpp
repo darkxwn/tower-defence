@@ -8,6 +8,10 @@
 // Конструктор башни
 Tower::Tower(const std::string& slug, sf::Vector2i gridPos)
     : typeSlug(slug), gridPos(gridPos) {
+
+    textureBase = &ResourceManager::get("tower-" + typeSlug + "-base");
+    textureTower = &ResourceManager::get("tower-" + typeSlug + "-turret");
+
     stats = GameData::getTower(slug);
 }
 
@@ -102,13 +106,13 @@ void Tower::render(sf::RenderWindow& window, sf::Vector2f mapOffset, bool showRa
     }
 
     // основание башни
-    sf::Sprite base(ResourceManager::get("tower-" + typeSlug + "-base"));
+    sf::Sprite base(*textureBase);
     base.setScale({ 0.125f, 0.125f });
     base.setPosition(pixelPos);
     window.draw(base);
 
     // турель с поворотом
-    sf::Sprite turret(ResourceManager::get("tower-" + typeSlug + "-turret"));
+    sf::Sprite turret(*textureTower);
     turret.setScale({ 0.125f, 0.125f });
     turret.setOrigin({ 256.f, 256.f });
     turret.setPosition(pixelPos + sf::Vector2f(32.f, 32.f));

@@ -2,11 +2,14 @@
 #include <fstream>
 #include <sstream>
 #include <iostream>
+#include <utils/Logger.hpp>
 
 #ifdef ANDROID
 #include <SFML/System/NativeActivity.hpp>
 #include <android/native_activity.h>
 #endif
+
+using Engine::Logger;
 
 // Инициализация менеджера настроек
 SettingsManager::SettingsManager() {
@@ -62,7 +65,7 @@ void SettingsManager::load() {
 void SettingsManager::save() {
     std::ofstream file(settingsPath);
     if (!file.is_open()) {
-        std::cerr << "Failed to save settings to " << settingsPath << std::endl;
+        Logger::error("Не удалось сохранить настройки в {}", settingsPath);
         return;
     }
 

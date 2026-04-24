@@ -6,7 +6,15 @@
 
 // Конструктор инициализирует кнопки и их логику
 HUD::HUD() {
-    auto& font = ResourceManager::getFont("main"); // основной шрифт
+    // кэширование основных ресурсов
+    mainFont = &ResourceManager::getFont("main");
+    coinTex = &ResourceManager::get("icon-coins");
+    heartTex = &ResourceManager::get("icon-heart");
+
+    // кэширование текстур скорости
+    for (int i = 0; i < 3; ++i) {
+        speedTexs[i] = &ResourceManager::get("icon-speed" + std::to_string(i + 1));
+    }
 
     // Инициализация управляющих кнопок
     pauseBtn = UI::Button(ResourceManager::get("icon-pause"), sf::Vector2f(48.f, 48.f));
@@ -19,30 +27,27 @@ HUD::HUD() {
     skipBtn.setTransparent(true);
     skipBtn.setCallback([this]() { skipRequested = true; });
 
-    // speedBtn — иконка в полный размер кнопки, без фона
-    speedBtn = UI::Button(ResourceManager::get("icon-speed1"), sf::Vector2f(96.f, 96.f));
+    speedBtn = UI::Button(*speedTexs[0], sf::Vector2f(96.f, 96.f));
     speedBtn.setTransparent(true);
     speedBtn.setCallback([this]() {
         speedMode = (speedMode + 1) % 3;
-        speedBtn.setTexture(ResourceManager::get("icon-speed" + std::to_string(speedMode + 1)));
+        speedBtn.setTexture(*speedTexs[speedMode]); // использование кэшированного указателя
     });
 
-    // Инициализация кнопок управления башней (улучшение и продажа)
+    // Инициализация кнопок управления башней
     upgradeBtn = UI::Button(ResourceManager::get("icon-upgrade"), sf::Vector2f(36.f, 36.f));
     upgradeBtn.setIconScale({ 0.375f, 0.375f }); 
     upgradeBtn.setCallback([this]() { 
         float elapsed = doubleClickClock.getElapsedTime().asSeconds();
-        // Если это повторный клик по той же кнопке в течение лимита времени
         if (lastClickedBtnId == 1 && elapsed < doubleClickTime) {
             upgradeRequested = true;
             lastClickedBtnId = 0;
-            upgradeBtn.setIconColor(sf::Color::White); // возвращаем исходный цвет
+            upgradeBtn.setIconColor(sf::Color::White);
         } else {
-            // Первый клик — включаем режим ожидания подтверждения
             lastClickedBtnId = 1;
             doubleClickClock.restart();
-            upgradeBtn.setIconColor(sf::Color::Yellow); // желтая индикация
-            sellBtn.setIconColor(sf::Color::White);     // сброс другой кнопки
+            upgradeBtn.setIconColor(sf::Color::Yellow);
+            sellBtn.setIconColor(sf::Color::White);
         }
     });
 
@@ -50,17 +55,15 @@ HUD::HUD() {
     sellBtn.setIconScale({ 0.375f, 0.375f });
     sellBtn.setCallback([this]() { 
         float elapsed = doubleClickClock.getElapsedTime().asSeconds();
-        // Подтверждение продажи
         if (lastClickedBtnId == 2 && elapsed < doubleClickTime) {
             sellRequested = true;
             lastClickedBtnId = 0;
             sellBtn.setIconColor(sf::Color::White);
         } else {
-            // Первый клик — индикация критического действия
             lastClickedBtnId = 2;
             doubleClickClock.restart();
-            sellBtn.setIconColor(sf::Color(255, 100, 100)); // светло-красная индикация
-            upgradeBtn.setIconColor(sf::Color::White);      // сброс другой кнопки
+            sellBtn.setIconColor(sf::Color(255, 100, 100));
+            upgradeBtn.setIconColor(sf::Color::White);
         }
     });
 
@@ -69,7 +72,7 @@ HUD::HUD() {
     towerSlots.reserve((int)towerNames.size());
     for (int i = 0; i < (int)towerNames.size(); i++) {
         int cost = GameData::getTower(towerNames[i]).cost;
-        UI::Button slot(ResourceManager::get("tower-" + towerNames[i] + "-preview"), font, std::to_string(cost) + "$", sf::Vector2f(90.f, 100.f), UI::IconPlacement::Top);
+        UI::Button slot(ResourceManager::get("tower-" + towerNames[i] + "-preview"), *mainFont, std::to_string(cost) + "$", sf::Vector2f(90.f, 100.f), UI::IconPlacement::Top);
         slot.setIconScale(sf::Vector2f(0.15625f, 0.15625f));
         slot.setTextSize(16);
         slot.setTextColor(Colors::Theme::TextMoney);
@@ -104,9 +107,10 @@ void HUD::setUiScale(float scale) {
 
 // Отрисовывает интерфейс: панели, ресурсы, волны и кнопки
 void HUD::render(sf::RenderWindow& window, int money, int lives, int wave, WaveState state) {
-    auto& font = ResourceManager::getFont("main"); // шрифт
-    sf::Vector2f ws = window.getView().getSize(); // логический размер UI
-    float cx = ws.x / 2.f; // центр
+    if (!mainFont || !coinTex || !heartTex) return; // проверка валидности ресурсов
+
+    sf::Vector2f ws = window.getView().getSize();
+    float cx = ws.x / 2.f;
     float s = uiScale;
 
     pauseBtn.render(window);
@@ -114,8 +118,7 @@ void HUD::render(sf::RenderWindow& window, int money, int lives, int wave, WaveS
     // Верхняя панель волн
     float topPanelHeight = 85.f;
     float topWidth = std::max(300.f * s, 250.f);
-    sf::ConvexShape trapezoid;
-    trapezoid.setPointCount(4);
+    sf::ConvexShape trapezoid(4);
     trapezoid.setPoint(0, { cx - topWidth, 0.f });
     trapezoid.setPoint(1, { cx + topWidth, 0.f });
     trapezoid.setPoint(2, { cx + topWidth * 0.67f, topPanelHeight });
@@ -124,7 +127,7 @@ void HUD::render(sf::RenderWindow& window, int money, int lives, int wave, WaveS
     window.draw(trapezoid);
 
     std::string waveStr = "ВОЛНА " + std::to_string(wave + 1);
-    sf::Text waveText(font, sf::String::fromUtf8(waveStr.begin(), waveStr.end()), 28);
+    sf::Text waveText(*mainFont, sf::String::fromUtf8(waveStr.begin(), waveStr.end()), 28);
     sf::FloatRect wtB = waveText.getLocalBounds();
     waveText.setOrigin({ wtB.position.x + wtB.size.x / 2.f, 0.f });
     waveText.setPosition({ cx, topPanelHeight / 2.f - wtB.size.y});
@@ -135,15 +138,14 @@ void HUD::render(sf::RenderWindow& window, int money, int lives, int wave, WaveS
         skipBtn.render(window);
     }
 
-    // Нижняя панель башен
+    // Нижняя панель
     int slotsCount = (int)towerSlots.size();
     float panelW = (2 + slotsCount) * 100.f;
     float startX = cx - panelW / 2.f;
     float panelBottom = ws.y;
     float panelTop = ws.y - 120.f;
 
-    sf::ConvexShape hexagon;
-    hexagon.setPointCount(6);
+    sf::ConvexShape hexagon(6);
     hexagon.setPoint(0, { cx - panelW / 2.f, panelBottom });
     hexagon.setPoint(1, { cx - panelW / 2.f - 25.f, ws.y - 60.f });
     hexagon.setPoint(2, { cx - panelW / 2.f, panelTop });
@@ -153,26 +155,23 @@ void HUD::render(sf::RenderWindow& window, int money, int lives, int wave, WaveS
     hexagon.setFillColor(Colors::Theme::BackgroundDark);
     window.draw(hexagon);
 
-    // Ресурсы
-    sf::Sprite coins(ResourceManager::get("icon-coins"));
+    // Ресурсы — использование кэшированной текстуры монет
+    sf::Sprite coins(*coinTex);
     coins.setScale({ 0.625f, 0.625f });
     coins.setPosition({ startX + 15.f, ws.y - 105.f });
     window.draw(coins);
 
-    sf::Text mText(font, std::to_string(money) + "$", 26);
+    sf::Text mText(*mainFont, std::to_string(money) + "$", 26);
     mText.setFillColor(Colors::Theme::TextMoney);
     mText.setPosition({ startX + (90.f - mText.getLocalBounds().size.x) / 2, ws.y - 40.f });
     window.draw(mText);
 
     // Магазин башен
-    auto towerNames = GameData::getTowerNames();
     for (int i = 0; i < (int)towerSlots.size(); i++) {
         towerSlots[i].render(window);
-        sf::Vector2f slotPos = towerSlots[i].getGlobalBounds().position;
-
         if (i == selectedTowerSlot) {
             sf::RectangleShape highlight({ 90.f, 100.f });
-            highlight.setPosition(slotPos);
+            highlight.setPosition(towerSlots[i].getGlobalBounds().position);
             highlight.setFillColor(sf::Color::Transparent);
             highlight.setOutlineColor(Colors::Theme::TextMoney);
             highlight.setOutlineThickness(2.f);
@@ -180,20 +179,19 @@ void HUD::render(sf::RenderWindow& window, int money, int lives, int wave, WaveS
         }
     }
 
-    // Состояние базы
-    sf::Sprite heart(ResourceManager::get("icon-heart"));
+    // Состояние базы — использование кэшированной текстуры сердца
+    sf::Sprite heart(*heartTex);
     heart.setScale({ 0.625f, 0.625f });
     heart.setPosition({ startX + (slotsCount + 1) * 100.f + 15.f, ws.y - 105.f });
     window.draw(heart);
 
-    sf::Text lText(font, std::to_string(lives), 26);
+    sf::Text lText(*mainFont, std::to_string(lives), 26);
     lText.setFillColor(Colors::Theme::TextLives);
     lText.setPosition({ startX + (slotsCount + 1) * 100.f + (90.f - lText.getLocalBounds().size.x) / 2, ws.y - 40.f });
     window.draw(lText);
 
     speedBtn.render(window);
 
-    // Отрисовка меню управления башней (улучшение/продажа)
     if (showTowerMenu) {
         upgradeBtn.render(window);
         sellBtn.render(window);

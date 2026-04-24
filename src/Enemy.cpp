@@ -4,12 +4,14 @@
 #include "utils/Math.hpp"
 #include "Colors.hpp"
 
+using Engine::Logger;
+
 // Конструктор врага
 Enemy::Enemy(const std::string& type, int health, int speed, const std::vector<sf::Vector2i>& path)
-    : type(type), health(health), maxHealth(health), speed(speed), alive(true), path(&path)
+    : type(type), health(health), maxHealth(health), speed(speed), alive(true), path(&path), texture(ResourceManager::get("enemy-" + type))
 {
     if (path.empty()) {
-        LOGE("[Enemy]: Путь для врагов пуст!");
+        Logger::error("[Enemy]: Путь для врагов пуст!");
         return;
     }
     
@@ -44,9 +46,6 @@ void Enemy::update(float deltaTime) {
 
 // Отрисовка врага
 void Enemy::render(sf::RenderWindow& window, sf::Vector2f mapOffset) {
-    // выбор текстуры по имени типа (универсально)
-    std::string texName = "enemy-" + type;
-
     // позиция полоски жизней
     sf::Vector2f barPos = mapOffset + pos + offset + sf::Vector2f(16.0f, 8.f);
     float barWidth = 32.f;
@@ -66,7 +65,7 @@ void Enemy::render(sf::RenderWindow& window, sf::Vector2f mapOffset) {
     window.draw(hpBar);
 
     // спрайт врага
-    sf::Sprite sprite(ResourceManager::get(texName));
+    sf::Sprite sprite(texture);
     sprite.setScale({ 0.11f, 0.11f });
     sprite.setPosition(mapOffset + pos + offset + sf::Vector2f(16.f, 16.f));
     window.draw(sprite);

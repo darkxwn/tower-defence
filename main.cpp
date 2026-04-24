@@ -119,6 +119,7 @@ static void loadResources() {
 }
 
 int main() {
+    Engine::Logger::init("logs/latest.log");
     SettingsManager settings;
     // НУЖНО ДАЛЬШЕ СДЕЛАТЬ ЗАГРУЗКУ ПРОГРЕССА
     SaveManager saveManager;

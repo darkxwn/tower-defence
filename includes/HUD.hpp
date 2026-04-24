@@ -35,6 +35,11 @@ private:
     bool skipRequested = false; // запрос старта волны
     int selectedTowerSlot = -1; // индекс выбранной башни
 
+    const sf::Texture* coinTex = nullptr; // иконка монет
+    const sf::Texture* heartTex = nullptr; // иконка жизней
+    const sf::Font* mainFont = nullptr; // основной шрифт
+    const sf::Texture* speedTexs[3]; // массив текстур для режимов скорости
+
 public:
     // Конструктор инициализирует элементы интерфейса
     HUD();

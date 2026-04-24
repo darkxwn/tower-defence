@@ -8,6 +8,8 @@
 #include <android/native_activity.h>
 #endif
 
+using Engine::Logger;
+
 SaveManager::SaveManager() {
     savePath = getSavePath();
     setDefaults(); // Сначала ставим дефолты на случай отсутствия файла
@@ -36,7 +38,7 @@ void SaveManager::setDefaults() {
 void SaveManager::load() {
     std::ifstream file(savePath);
     if (!file.is_open()) {
-        LOGI("Save file not found at %s. Using defaults.", savePath.c_str());
+        Logger::debug("Save file not found at %s. Using defaults.", savePath.c_str());
         return;
     }
 
@@ -57,9 +59,9 @@ void SaveManager::load() {
             towerDataBlob = j["tower_data"];
         }
 
-        LOGI("Progress successfully loaded from %s", savePath.c_str());
+        Logger::debug("Прогресс успешно загружен с {}", savePath);
     } catch (const std::exception& e) {
-        LOGE("Failed to parse progress.json: %s", e.what());
+        Logger::error("Ошибка парсинга progress.json: %s", e.what());
         setDefaults(); // Если файл битый, откатываемся к началу
     }
 }
@@ -74,12 +76,12 @@ void SaveManager::save() {
         std::ofstream file(savePath);
         if (file.is_open()) {
             file << j.dump(4); // Сохраняем с отступом 4 пробела
-            LOGI("Progress saved to %s", savePath.c_str());
+            Logger::debug("Progress saved to {}", savePath);
         } else {
-            LOGE("Could not open %s for writing!", savePath.c_str());
+            Logger::error("Could not open {} for writing!", savePath);
         }
     } catch (const std::exception& e) {
-        LOGE("Error during saving progress: %s", e.what());
+        Logger::error("Error during saving progress: %s", e.what());
     }
 }
 

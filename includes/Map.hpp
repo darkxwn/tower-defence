@@ -20,6 +20,13 @@ private:
 
     float portalAngle = 0.f; // угол вращения слоя портала
 
+    const sf::Texture* portalLayer1Tex = nullptr; // слой портала 1
+    const sf::Texture* portalLayer2Tex = nullptr; // слой портала 2
+    const sf::Texture* activeTex = nullptr;        // текстура выделения
+    
+    // вспомогательный метод для назначения текстур тайлам
+    void assignTileTexture(Tile& tile);
+
     std::vector<sf::Vector2i> path; // путь врагов
     sf::Vector2i portalPos; // позиция портала
     sf::Vector2i basePos; // позиция базы

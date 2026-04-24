@@ -9,6 +9,8 @@
 #include <queue>
 #include <sstream>
 
+using Engine::Logger;
+
 // Загрузка уровня из .map файла
 void Map::load(const std::string& filePath) {
     // сброс данных перед загрузкой
@@ -22,7 +24,7 @@ void Map::load(const std::string& filePath) {
     auto content = readFile(filePath);
 
     if (!content.has_value()) {
-        LOGI("[ERROR]: Не удалось открыть файл карты: %s", filePath.c_str());
+        Logger::error("Не удалось открыть файл карты: {}", filePath);
         return;
     }
 
@@ -42,7 +44,7 @@ void Map::load(const std::string& filePath) {
 
     // проверка корректности размеров
     if (width <= 0 || height <= 0) {
-        std::cerr << "[ERROR]: Некорректные размеры карты в файле " << filePath << std::endl;
+        Logger::error("[ERROR]: Некорректные размеры карты в файле {}", filePath);
         return;
     }
 
@@ -67,7 +69,30 @@ void Map::load(const std::string& filePath) {
     if (portalPos.x != -1 && basePos.x != -1) {
         buildPath();
     } else {
-        std::cerr << "[ERROR]: На карте " << filePath << " не найден портал (1) или база (3)!" << std::endl;
+        Logger::error("На карте {} не найден портал (1) или база (3)!", filePath);
+    }
+
+    for (auto& row : tiles) {
+        for (auto& tile : row) {
+            assignTileTexture(tile);
+        }
+    }
+
+    portalLayer1Tex = &ResourceManager::get("portal-layer1");
+    portalLayer2Tex = &ResourceManager::get("portal-layer2");
+    activeTex = &ResourceManager::get("active");
+
+    Logger::debug("Карта загружена. Игра успешно запущена!");
+}
+
+// Присваивание текстур тайлам
+void Map::assignTileTexture(Tile& tile) {
+    switch (tile.type) {
+        case TileType::Road:     tile.texture = &ResourceManager::get("road"); break;
+        case TileType::Platform: tile.texture = &ResourceManager::get("platform"); break;
+        case TileType::Portal:   tile.texture = &ResourceManager::get("portal"); break;
+        case TileType::Base:     tile.texture = &ResourceManager::get("base"); break;
+        default:                 tile.texture = nullptr; break;
     }
 }
 
@@ -82,56 +107,38 @@ void Map::render(sf::RenderWindow& window, bool showSelected) {
     for (int y = 0; y < (int)tiles.size(); y++) {
         for (int x = 0; x < (int)tiles[y].size(); x++) {
             Tile& tile = tiles[y][x];
-            if (tile.type == TileType::Empty) continue;
 
-            // выбор текстуры по типу тайла
-            std::string tex;
-            switch (tile.type) {
-            case TileType::Road:
-                tex = "road";
-                break;
-            case TileType::Platform:
-                tex = "platform";
-                break;
-            case TileType::Portal:
-                tex = "portal";
-                break;
-            case TileType::Base:
-                tex = "base";
-                break;
-            default:
-                continue;
-            }
+            // 1. Если текстуры нет, этот тайл пустой — пропускаем
+            if (!tile.texture) continue;
 
-            // отрисовка основного тайла
-            sf::Sprite sprite(ResourceManager::get(tex));
+            // 2. Рисуем основной тайл
+            sf::Sprite sprite(*tile.texture);
             sprite.setScale({ 0.125f, 0.125f });
             sprite.setPosition(sf::Vector2f(tile.gridPos * 64) + mapOffset);
             window.draw(sprite);
 
-            // анимация портала
-            if (tile.type == TileType::Portal) {
-                sf::Vector2f center = sf::Vector2f(tile.gridPos * 64) + mapOffset + sf::Vector2f(32.f, 32.f);
+            // 3. Если это портал — рисуем слои анимации ПОВЕРХ
+            if (tile.type == TileType::Portal && portalLayer1Tex && portalLayer2Tex) {
+                sf::Vector2f center = sprite.getPosition() + sf::Vector2f(32.f, 32.f);
 
-                sf::Sprite layer1(ResourceManager::get("portal-layer1"));
-                layer1.setOrigin({ 256.f, 256.f });
-                layer1.setScale({ 0.12f, 0.12f });
-                layer1.setPosition(center);
-                layer1.setRotation(sf::degrees(portalAngle));
+                sf::Sprite l1(*portalLayer1Tex);
+                l1.setOrigin({ 256.f, 256.f });
+                l1.setScale({ 0.12f, 0.12f });
+                l1.setPosition(center);
+                l1.setRotation(sf::degrees(portalAngle));
+                window.draw(l1);
 
-                sf::Sprite layer2(ResourceManager::get("portal-layer2"));
-                layer2.setOrigin({ 256.f, 256.f });
-                layer2.setScale({ 0.085f, 0.085f });
-                layer2.setPosition(center);
-                layer2.setRotation(sf::degrees(-portalAngle));
-
-                window.draw(layer1);
-                window.draw(layer2);
+                sf::Sprite l2(*portalLayer2Tex);
+                l2.setOrigin({ 256.f, 256.f });
+                l2.setScale({ 0.085f, 0.085f });
+                l2.setPosition(center);
+                l2.setRotation(sf::degrees(-portalAngle));
+                window.draw(l2);
             }
 
-            // подсветка выбранного тайла
-            if (showSelected && selectedTile == &tile) {
-                sf::Sprite act(ResourceManager::get("active"));
+            // 4. Подсветка выбора
+            if (showSelected && selectedTile == &tile && activeTex) {
+                sf::Sprite act(*activeTex);
                 act.setScale({ 0.125f, 0.125f });
                 act.setPosition(sprite.getPosition());
                 window.draw(act);

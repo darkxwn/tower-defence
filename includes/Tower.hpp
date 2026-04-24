@@ -22,6 +22,9 @@ private:
     float currentAngle = 0.f; // текущий угол поворота турели
     float rotationSpeed = 180.f; // скорость поворота турели
 
+    const sf::Texture* textureBase = nullptr; // ссылка на текстуру base
+    const sf::Texture* textureTower = nullptr; // ссылка на текстуру tower
+
 public:
     Tower(const std::string& slug, sf::Vector2i gridPos);
 
