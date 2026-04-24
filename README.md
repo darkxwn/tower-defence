@@ -5,7 +5,7 @@
 ![Platforms](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS%20%7C%20Android-orange?style=flat-square)
 ![GitHub Actions](https://img.shields.io/badge/CI/CD-GitHub%20Actions-white?style=flat-square&logo=github-actions)
 
-**Codename: Tower Defence** — это кроссплатформенная игра в жанре «Башенная защита» (Tower Defense), разработанная на современном C++ с использованием библиотеки SFML 3.
+**Codename: Tower Defence** — это кроссплатформенная игра в жанре «Башенная защита» (Tower Defenсe), разработанная на современном C++ с использованием библиотеки SFML 3.
 
 🎓 *Проект разрабатывается в рамках курсовой работы студентов 2-го курса факультета ИСТ ДонНТУ.*
 
