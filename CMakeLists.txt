@@ -12,15 +12,17 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 set(SFML_STATIC_LIBRARIES ON CACHE BOOL "" FORCE)
 include(FetchContent)
-FetchContent_Declare(sfml
-    GIT_REPOSITORY https://github.com/SFML/SFML.git
-    GIT_TAG 3.0.2
-    GIT_SHALLOW TRUE
+
+# JSON (используем ZIP-архив, это быстро)
+FetchContent_Declare(
+    json
+    URL "https://github.com/nlohmann/json/archive/refs/tags/v3.11.3.zip"
 )
 
-FetchContent_Declare(json 
-    URL https://github.com/nlohmann/json/releases/download/v3.12.0/json.tar.xz
-    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+# SFML (используем ZIP ветки 3.0.x, чтобы не качать всю историю Git)
+FetchContent_Declare(
+    sfml
+    URL "https://github.com/SFML/SFML/archive/refs/tags/3.0.2.zip"
 )
 
 # Оптимизация сборки SFML
@@ -29,8 +31,7 @@ set(SFML_BUILD_TEST_SUITE OFF CACHE BOOL "" FORCE)
 set(SFML_INSTALL_PKGCONFIG_FILES OFF CACHE BOOL "" FORCE)
 set(SFML_BUILD_DOC OFF CACHE BOOL "" FORCE)
 
-FetchContent_MakeAvailable(sfml)
-FetchContent_MakeAvailable(json)
+FetchContent_MakeAvailable(sfml json)
 
 # СПИСОК ИСХОДНЫХ ФАЙЛОВ
 set(SOURCES
