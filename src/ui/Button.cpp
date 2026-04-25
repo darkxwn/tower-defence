@@ -260,6 +260,11 @@ void Button::setTextSize(unsigned int size) {
     }
 }
 
+// Получение указателя на текст (для обновления)
+sf::Text* Button::getTextPtr() {
+    return text.get();
+}
+
 // Изменение цвета иконки (цветовой фильтр)
 void Button::setIconColor(sf::Color color) {
     if (sprite) {

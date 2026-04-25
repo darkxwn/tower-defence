@@ -70,6 +70,11 @@ void GameData::load() {
         ss >> name;
 
         TowerStats stats = {};
+        stats.level = 0;
+        stats.costDamage = 50;
+        stats.costFirerate = 80;
+        stats.costRange = 100;
+        stats.costLevel = 200;
         std::string token;
         while (ss >> token) {
             size_t eq = token.find('=');
@@ -85,6 +90,11 @@ void GameData::load() {
             else if (key == "range")    stats.range = std::stof(valStr);
             else if (key == "cost")     stats.cost = std::stoi(valStr);
             else if (key == "splash")   stats.splash = std::stoi(valStr);
+            else if (key == "level")    stats.level = std::stoi(valStr);
+            else if (key == "costDamage")   stats.costDamage = std::stoi(valStr);
+            else if (key == "costFirerate")  stats.costFirerate = std::stoi(valStr);
+            else if (key == "costRange")    stats.costRange = std::stoi(valStr);
+            else if (key == "costLevel")   stats.costLevel = std::stoi(valStr);
         }
 
         towers[name] = stats;
@@ -116,4 +126,12 @@ std::vector<std::string> GameData::getTowerNames() {
 // Получение списка всех типов врагов для автоматической загрузки ресурсов
 std::vector<std::string> GameData::getEnemyTypes() {
     return enemyTypes;
+}
+
+// Получение базовых характеристик башни для инициализации улучшений
+TowerStats GameData::getBaseTowerStats(const std::string& name) {
+    auto it = towers.find(name);
+    if (it == towers.end())
+        throw std::runtime_error("[Ошибка]: Статы башни не найдены: " + name);
+    return it->second;
 }

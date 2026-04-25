@@ -17,8 +17,8 @@ HUD::HUD() {
     }
 
     // Инициализация управляющих кнопок
-    pauseBtn = UI::Button(ResourceManager::get("icon-pause"), sf::Vector2f(48.f, 48.f));
-    pauseBtn.setIconScale({ 0.5f, 0.5f });
+    pauseBtn = UI::Button(ResourceManager::get("icon-pause"), sf::Vector2f(64.f, 64.f));
+    pauseBtn.setIconScale({ 0.666f, 0.666f });
     pauseBtn.setTransparent(true);
     pauseBtn.setCallback([this]() { pauseRequested = true; });
 

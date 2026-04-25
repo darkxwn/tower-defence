@@ -1,5 +1,6 @@
 #include "Menu.hpp"
 #include "ResourceManager.hpp"
+#include "GameData.hpp"
 #include "utils/FileReader.hpp"
 #include "utils/Logger.hpp"
 #include "ui/Slider.hpp"
@@ -29,13 +30,8 @@ Menu::Menu(sf::RenderWindow& window, SettingsManager& settings, SaveManager& sav
         upgradeManager.setAllUpgrades(data);
     }
     else {
-        // инициализация базовыми значениями
-        upgradeManager.setAllUpgrades({
-            { "basic", 35.f, 1.0f, 192.f, 1.0f, 1.0f, 1.0f },
-            { "cannon", 80.f, 0.7f, 160.f, 1.0f, 1.0f, 1.0f },
-            { "double", 20.f, 2.0f, 128.f, 1.0f, 1.0f, 1.0f },
-            { "sniper", 150.f, 0.4f, 320.f, 1.0f, 1.0f, 1.0f }
-        });
+        // инициализация базовыми значениями из GameData
+        upgradeManager.initDefaults();
     }
     // установка callback для сохранения при изменении улучшений
     UpgradeManager* umPtr = &upgradeManager;
@@ -82,7 +78,7 @@ void Menu::initUI() {
     mainContainer->setGap(30.f);
     mainContainer->setDrawOutline(true);
 
-    auto headerCont = std::make_unique<UI::Container>(sf::Vector2f(winSize.x * 0.8f, 125.f));
+    auto headerCont = std::make_unique<UI::Container>(sf::Vector2f(winSize.x * 0.9f, 125.f));
     headerCont->setDirection(UI::Container::Direction::Column);
     headerCont->setContentAlign(UI::Container::ContentAlign::Center);
     headerCont->setItemAlign(UI::Container::ItemAlign::Center);
@@ -90,7 +86,8 @@ void Menu::initUI() {
     headerCont->setDrawOutline(true);
     headerContPtr = headerCont.get();
 
-    auto title = std::make_unique<UI::Text>(font, "TOWER DEFENCE", 96);
+    auto title = std::make_unique<UI::Text>(font, "TOWER DEFENCE", 96, sf::Vector2f(winSize.x * 0.9f, 80.f));
+    title->setAlignment(UI::Text::Align::Center);
     title->setColor(Colors::Theme::TextMain);
     titleTextPtr = title.get();
     headerCont->addChild(std::move(title));
@@ -170,15 +167,10 @@ void Menu::initUI() {
             numBlock->addChild(std::move(numText));
             card->addChild(std::move(numBlock));
 
-            auto nameBlock = std::make_unique<UI::Container>(sf::Vector2f(cardSize.x, cardSize.y - 55.f));
-            nameBlock->setDirection(UI::Container::Direction::Column);
-            nameBlock->setContentAlign(UI::Container::ContentAlign::Center);
-            nameBlock->setItemAlign(UI::Container::ItemAlign::Center);
-            nameBlock->setDrawOutline(true);
-            auto nameText = std::make_unique<UI::Text>(font, level.name, 20);
+            auto nameText = std::make_unique<UI::Text>(font, level.name, 20, sf::Vector2f(cardSize.x, cardSize.y - 55.f));
+            nameText->setAlignment(UI::Text::Align::Center);
             nameText->setColor(Colors::Theme::TextMain);
-            nameBlock->addChild(std::move(nameText));
-            card->addChild(std::move(nameBlock));
+            card->addChild(std::move(nameText));
 
             auto clicker = std::make_unique<UI::Button>(font, "", cardSize);
             clicker->setTransparent(true);
@@ -355,14 +347,9 @@ std::unique_ptr<UI::Container> Menu::createSubMenu(const std::string& title, UI:
     root->setGap(20.f);
     root->setDrawOutline(true);
 
-    auto header = std::make_unique<UI::Container>(sf::Vector2f(winSize.x * 0.9f, 80.f)); 
-    header->setDirection(UI::Container::Direction::Column);
-    header->setContentAlign(UI::Container::ContentAlign::Center);
-    header->setItemAlign(UI::Container::ItemAlign::Center);
-    header->setDrawOutline(true);
-    auto head = std::make_unique<UI::Text>(font, title, 60); 
-    head->setColor(Colors::Theme::TextMain);
-    header->addChild(std::move(head));
+    auto header = std::make_unique<UI::Text>(font, title, 60, sf::Vector2f(winSize.x * 0.9f, 80.f));
+    header->setAlignment(UI::Text::Align::Center);
+    header->setColor(Colors::Theme::TextMain);
     root->addChild(std::move(header));
 
     auto content = std::make_unique<UI::Container>(sf::Vector2f(winSize.x * 0.9f, 400.f)); 
@@ -408,14 +395,9 @@ std::unique_ptr<UI::Container> Menu::createUpgradeMenu() {
     root->setDrawOutline(true);
 
     // header
-    auto header = std::make_unique<UI::Container>(sf::Vector2f(winSize.x * 0.9f, headerHeight));
-    header->setDirection(UI::Container::Direction::Column);
-    header->setContentAlign(UI::Container::ContentAlign::Center);
-    header->setItemAlign(UI::Container::ItemAlign::Center);
-    header->setDrawOutline(true);
-    auto head = std::make_unique<UI::Text>(font, "УЛУЧШЕНИЯ", 60);
-    head->setColor(Colors::Theme::TextMain);
-    header->addChild(std::move(head));
+    auto header = std::make_unique<UI::Text>(font, "УЛУЧШЕНИЯ", 60, sf::Vector2f(winSize.x * 0.9f, headerHeight));
+    header->setAlignment(UI::Text::Align::Center);
+    header->setColor(Colors::Theme::TextMain);
     root->addChild(std::move(header));
 
     auto content = std::make_unique<UI::Container>(sf::Vector2f(winSize.x * 0.9f, 400.f));
@@ -438,9 +420,9 @@ std::unique_ptr<UI::Container> Menu::createUpgradeMenu() {
     auto coinIcon = std::make_unique<UI::Image>(ResourceManager::get("icon-money"), sf::Vector2f(48.f, 48.f));
     currency->addChild(std::move(coinIcon));
 
-    auto coinText = std::make_unique<UI::Text>(font, "1000", 24);
-    coinText->setColor(Colors::Theme::TextMain);
-    currency->addChild(std::move(coinText));
+    // текст валюты (глобальные деньги) - показываем из SaveManager
+    moneyTextPtr = new UI::Text(font, std::to_string(saveManager.getMoney()), 24);
+    currency->addChild(std::unique_ptr<UI::Text>(moneyTextPtr));
 
     content->addChild(std::move(currency));
 
@@ -456,14 +438,27 @@ std::unique_ptr<UI::Container> Menu::createUpgradeMenu() {
     cards->setBackgroundColor(sf::Color::Transparent);
     cards->setScrollEnabled(true);
 
-    std::vector<std::string> towerNames = { "BASIC", "CANNON", "DOUBLE", "SNIPER" };
-    std::vector<std::string> towerTypes = { "basic", "cannon", "double", "sniper" };
-    std::vector<std::string> statNames = { "УРОН", "СКОРОСТЬ", "ДАЛЬНОСТЬ" };
+    std::vector<std::string> towerTypes = GameData::getTowerNames();
+    std::vector<std::string> statNames = { "УРОВЕНЬ", "АТАКА", "СКОР. АТАКИ", "РАДИУС" };
+    
+    // порядок: 0=level, 1=damage, 2=firerate, 3=range
 
-    for (size_t t = 0; t < towerNames.size(); ++t) {
-        auto towerCard = std::make_unique<UI::Container>(sf::Vector2f(350.f, 150.f));
+    std::vector<std::string> towerDisplayNames;
+    for (const auto& name : towerTypes) {
+        std::string upper = name;
+        std::transform(upper.begin(), upper.end(), upper.begin(), ::toupper);
+        towerDisplayNames.push_back(upper);
+    }
+
+    upgradeValuePtrs.clear();
+    upgradeValuePtrs.resize(towerTypes.size());
+    upgradeCostPtrs.clear();
+    upgradeCostPtrs.resize(towerTypes.size());
+
+    for (size_t t = 0; t < towerTypes.size(); ++t) {
+        auto towerCard = std::make_unique<UI::Container>(sf::Vector2f(450.f, 220.f));
         towerCard->setDirection(UI::Container::Direction::Column);
-        towerCard->setContentAlign(UI::Container::ContentAlign::Start);
+        towerCard->setContentAlign(UI::Container::ContentAlign::Center);
         towerCard->setItemAlign(UI::Container::ItemAlign::Center);
         towerCard->setPadding({ 10.f, 8.f });
         towerCard->setGap(5.f);
@@ -471,57 +466,75 @@ std::unique_ptr<UI::Container> Menu::createUpgradeMenu() {
         towerCard->setDrawBackground(true);
         towerCard->setBackgroundColor(sf::Color::Transparent);
 
-        auto towerName = std::make_unique<UI::Text>(font, towerNames[t], 24);
+        auto towerName = std::make_unique<UI::Text>(font, towerDisplayNames[t], 28);
         towerName->setColor(Colors::Theme::TextMain);
         towerCard->addChild(std::move(towerName));
 
         for (size_t s = 0; s < statNames.size(); ++s) {
-            auto statRow = std::make_unique<UI::Container>(sf::Vector2f(325.f, 35.f));
+            auto statRow = std::make_unique<UI::Container>(sf::Vector2f(400.f, 40.f));
             statRow->setDirection(UI::Container::Direction::Row);
             statRow->setContentAlign(UI::Container::ContentAlign::Center);
             statRow->setItemAlign(UI::Container::ItemAlign::Center);
-            statRow->setGap(10.f);
+            statRow->setGap(5.f);
             statRow->setDrawOutline(true);
 
-            auto statTextContainer = std::make_unique<UI::Container>(sf::Vector2f(150.f, 30.f));
-            statTextContainer->setDirection(UI::Container::Direction::Row);
-            statTextContainer->setContentAlign(UI::Container::ContentAlign::Center);
-            statTextContainer->setItemAlign(UI::Container::ItemAlign::Center);
-            statTextContainer->setGap(5.f);
-
-            auto statName = std::make_unique<UI::Text>(font, statNames[s], 18);
+            auto statName = std::make_unique<UI::Text>(font, statNames[s], 20, sf::Vector2f(170.f , 35.f));
+            statName->setAlignment(UI::Text::Align::Left);
             statName->setColor(Colors::Theme::TextMain);
-            statTextContainer->addChild(std::move(statName));
-
-            statRow->addChild(std::move(statTextContainer));
-
-            auto statValueConttainer = std::make_unique<UI::Container>(sf::Vector2f(50.f, 30.f));
-            statValueConttainer->setDirection(UI::Container::Direction::Row);
-            statValueConttainer->setContentAlign(UI::Container::ContentAlign::Center);
-            statValueConttainer->setItemAlign(UI::Container::ItemAlign::Center);
+            statRow->addChild(std::move(statName));
 
             // получение актуального значения из UpgradeManager
             float currentValue = 0.f;
-            if (s == 0) currentValue = upgradeManager.getDamage(towerTypes[t]);
-            else if (s == 1) currentValue = upgradeManager.getFirerate(towerTypes[t]);
-            else if (s == 2) currentValue = upgradeManager.getRange(towerTypes[t]);
+            int currentLevel = 0;
+            if (s == 0) currentLevel = upgradeManager.getLevel(towerTypes[t]);
+            else if (s == 1) currentValue = upgradeManager.getDamage(towerTypes[t]);
+            else if (s == 2) currentValue = upgradeManager.getFirerate(towerTypes[t]);
+            else if (s == 3) currentValue = upgradeManager.getRange(towerTypes[t]);
 
-            auto statValue = std::make_unique<UI::Text>(font, std::to_string((int)currentValue), 18);
-            statValue->setColor(Colors::Theme::TextMain);
-            statValueConttainer->addChild(std::move(statValue));
+            std::string valueStr;
+            if (s == 1) {
+                valueStr = std::to_string(currentValue);
+                valueStr = valueStr.substr(0, valueStr.find('.') + 2);
+            } else if (s == 3) {
+                valueStr = std::to_string(currentLevel);
+            } else {
+                valueStr = std::to_string((int)currentValue);
+            }
+            UI::Text* statValuePtr = new UI::Text(font, valueStr, 20, sf::Vector2f(70.f, 35.f));
+            statValuePtr->setAlignment(UI::Text::Align::Left);
+            statValuePtr->setColor(Colors::Theme::TextMain);
+            upgradeValuePtrs[t].push_back(statValuePtr);
+            statRow->addChild(std::unique_ptr<UI::Text>(statValuePtr));
 
-            statRow->addChild(std::move(statValueConttainer));
-
-            auto upgradeBtn = std::make_unique<UI::Button>(font, "+ 100", sf::Vector2f(80.f, 30.f));
-            upgradeBtn->setTextSize(12);
+            int currentCost = upgradeManager.getUpgradeCost(towerTypes[t], s);
+            std::string costStr = std::to_string(currentCost);
+            UI::Text* costTextPtr = new UI::Text(font, costStr, 20, sf::Vector2f(80.f, 35.f));
+            costTextPtr->setAlignment(UI::Text::Align::Left);
+            costTextPtr->setColor(Colors::Theme::TextMoney);
+            upgradeCostPtrs[t].push_back(costTextPtr);
+            statRow->addChild(std::unique_ptr<UI::Text>(costTextPtr));
+                        
+            auto upgradeBtn = std::make_unique<UI::Button>(ResourceManager::get("icon-upgrade2"), sf::Vector2f(50.f, 35.f));
+            upgradeBtn->setIconScale({ 35.f / 96.f, 35.f / 96.f });
+            upgradeBtn->setTextSize(20);
             // callback для улучшения
             auto towerTypeCopy = towerTypes[t];
             UpgradeManager* umPtr = &upgradeManager;
-            upgradeBtn->setCallback([umPtr, towerTypeCopy, statIndex = s]() {
-                if (statIndex == 0) umPtr->upgradeDamage(towerTypeCopy, 0.1f);
-                else if (statIndex == 1) umPtr->upgradeFirerate(towerTypeCopy, 0.1f);
-                else if (statIndex == 2) umPtr->upgradeRange(towerTypeCopy, 0.1f);
+            SaveManager* smPtr = &saveManager;
+
+            upgradeBtn->setCallback([umPtr, smPtr, towerTypeCopy, statIndex = s]() {
+                if (statIndex == 0 && umPtr->getLevel(towerTypeCopy) >= UpgradeManager::MAX_TOWER_LEVEL) return;
+                
+                int cost = umPtr->getUpgradeCost(towerTypeCopy, statIndex);
+                if (smPtr->spendMoney(cost)) {
+                    if (statIndex == 0)
+                        umPtr->upgradeLevel(towerTypeCopy);
+                    else if (statIndex == 1) umPtr->upgradeDamage(towerTypeCopy, 0.1f);
+                    else if (statIndex == 2) umPtr->upgradeFirerate(towerTypeCopy, 0.1f);
+                    else if (statIndex == 3) umPtr->upgradeRange(towerTypeCopy, 0.1f);
+                }
             });
+
             statRow->addChild(std::move(upgradeBtn));
 
             towerCard->addChild(std::move(statRow));
@@ -597,6 +610,43 @@ void Menu::render() {
         case MenuState::Upgrades: current = upgradesContainer.get(); break;
     }
     if (current) current->render(window);
+    
+    // обновление текста валюты в меню улучшений
+    if (state == MenuState::Upgrades && moneyTextPtr) {
+        moneyTextPtr->setText(std::to_string(saveManager.getMoney()));
+        
+        // обновление значений статов (используем те же типы, что и при создании меню)
+        std::vector<std::string> towerTypes = GameData::getTowerNames();
+for (size_t t = 0; t < upgradeValuePtrs.size() && t < towerTypes.size(); ++t) {
+            for (size_t s = 0; s < upgradeValuePtrs[t].size(); ++s) {
+                float currentValue = 0.f;
+                int currentLevel = 0;
+                if (s == 0) currentLevel = upgradeManager.getLevel(towerTypes[t]);
+                else if (s == 1) currentValue = upgradeManager.getDamage(towerTypes[t]);
+                else if (s == 2) currentValue = upgradeManager.getFirerate(towerTypes[t]);
+                else if (s == 3) currentValue = upgradeManager.getRange(towerTypes[t]);
+                
+                std::string valueStr;
+                if (s == 2) {
+                    valueStr = std::to_string(currentValue);
+                    valueStr = valueStr.substr(0, valueStr.find('.') + 2);
+                } else if (s == 0) {
+                    valueStr = std::to_string(currentLevel);
+                } else {
+                    valueStr = std::to_string((int)currentValue);
+                }
+                upgradeValuePtrs[t][s]->setText(valueStr);
+                
+                // обновление цены
+                int cost = upgradeManager.getUpgradeCost(towerTypes[t], s);
+                std::string costStr = std::to_string(cost);
+                if (upgradeCostPtrs[t].size() > s && upgradeCostPtrs[t][s]) {
+                    upgradeCostPtrs[t][s]->setText(costStr);
+                }
+            }
+        }
+    }
+    
     if (lastResult != SessionResult::None) resultOverlay->render(window);
     window.display();
 }
@@ -627,7 +677,27 @@ void Menu::updateViewSizes(sf::Vector2u windowSize) {
         mainContainer->rebuild(); 
     }
 
-auto updateSub = [&](std::unique_ptr<UI::Container>& cont) {
+    // обновление size для текстов улучшений при ресайзе
+    if (upgradesContainer) {
+        auto towerTypes = GameData::getTowerNames();
+        for (size_t t = 0; t < upgradeValuePtrs.size() && t < towerTypes.size(); ++t) {
+            for (size_t s = 0; s < upgradeValuePtrs[t].size(); ++s) {
+                if (upgradeValuePtrs[t][s]) {
+                    upgradeValuePtrs[t][s]->setSize(sf::Vector2f(70.f, 35.f));
+                }
+            }
+        }
+        for (size_t t = 0; t < upgradeCostPtrs.size() && t < towerTypes.size(); ++t) {
+            for (size_t s = 0; s < upgradeCostPtrs[t].size(); ++s) {
+                if (upgradeCostPtrs[t][s]) {
+                    upgradeCostPtrs[t][s]->setSize(sf::Vector2f(80.f, 35.f));
+                }
+            }
+        }
+        upgradesContainer->rebuild();
+    }
+
+    auto updateSub = [&](std::unique_ptr<UI::Container>& cont) {
         if (cont) {
             float headerH = 80.f;  
             float navH = 80.f;  
@@ -807,4 +877,14 @@ void Menu::cleanup() {
     if (settingsContainer) settingsContainer.reset();
     if (upgradesContainer) upgradesContainer.reset();
     if (resultOverlay) resultOverlay.reset();
+}
+
+// Получение количества денег
+int Menu::getMoney() const {
+    return saveManager.getMoney();
+}
+
+// Получение менеджера улучшений
+UpgradeManager& Menu::getUpgradeManager() {
+    return upgradeManager;
 }

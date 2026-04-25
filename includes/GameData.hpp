@@ -25,6 +25,11 @@ struct TowerStats {
 	float firerate; // частота стрельбы
 	int cost;       // стоимость постройки
 	int splash;     // радиус взрыва (0 если нет)
+	int level;      // уровень башни
+	int costDamage;      // цена улучшения урона
+	int costFirerate;   // цена улучшения скорости стрельбы
+	int costRange;      // цена улучшения дальности
+	int costLevel;     // цена повышения уровня
 };
 
 class GameData {
@@ -49,4 +54,7 @@ public:
 
 	// Получение списка всех типов врагов, найденных в конфигурации
 	static std::vector<std::string> getEnemyTypes();
+
+	// Получение базовых характеристик башни для инициализации улучшений
+	static TowerStats getBaseTowerStats(const std::string& name);
 };

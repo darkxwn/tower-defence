@@ -1,10 +1,11 @@
 #pragma once
-#include <SFML/Graphics.hpp>
 #include "Enemy.hpp"
 #include "GameData.hpp"
+#include "UpgradeManager.hpp"
+#include <Projectile.hpp>
+#include <SFML/Graphics.hpp>
 #include <cmath>
 #include <list>
-#include <Projectile.hpp>
 
 ///////////////////////////////////////////////////////////////////////////
 //
@@ -26,7 +27,8 @@ private:
     const sf::Texture* textureTower = nullptr; // ссылка на текстуру tower
 
 public:
-    Tower(const std::string& slug, sf::Vector2i gridPos);
+    // Конструктор башни
+    Tower(const std::string& slug, sf::Vector2i gridPos, UpgradeManager& upgradeManager);
 
     // Обновление башни
     void update(float deltaTime, std::vector<std::unique_ptr<Enemy>>& enemies, std::vector<Projectile>& projectiles, sf::Vector2f mapOffset);

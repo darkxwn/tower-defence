@@ -105,6 +105,9 @@ namespace UI {
         // Изменение размера текста
         void setTextSize(unsigned int size);
 
+        // Получение указателя на текст (для обновления)
+        sf::Text* getTextPtr();
+
         // Изменение цвета иконки (цветовой фильтр)
         void setIconColor(sf::Color color);
 

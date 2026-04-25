@@ -29,8 +29,14 @@ namespace UI {
         // Конструктор текста
         Text(const sf::Font& font, const std::string& utf8Text = "", unsigned int fontSize = 24);
 
+        // Конструктор текста с размером контейнера для выравнивания
+        Text(const sf::Font& font, const std::string& utf8Text, unsigned int fontSize, sf::Vector2f containerSize);
+
         // Изменение позиции текста
         void setPosition(sf::Vector2f pos) override;
+
+        // Изменение размера (переопределено для пересчёта выравнивания)
+        void setSize(sf::Vector2f size) override;
 
         // Изменение текстового содержимого
         void setText(const std::string& utf8Text);
@@ -49,6 +55,9 @@ namespace UI {
 
         // Изменение размера шрифта
         void setFontSize(unsigned int fontSize);
+
+        // Получение указателя на внутренний sf::Text
+        sf::Text* getText();
 
         // Изменение межстрочного интервала
         void setLineSpacing(float spacing);

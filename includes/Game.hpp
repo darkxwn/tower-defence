@@ -4,6 +4,8 @@
 #include "HUD.hpp"
 #include "Map.hpp"
 #include "SettingsManager.hpp"
+#include "SaveManager.hpp"
+#include "UpgradeManager.hpp"
 #include "Tower.hpp"
 #include "WaveSystem.hpp"
 #include "ui/Container.hpp"
@@ -71,6 +73,8 @@ private:
     Map map;
     Base base;
     WaveSystem waveSystem;
+    UpgradeManager& upgradeManager;
+    SaveManager& saveManager;
 
     // Коллекции объектов
     std::vector<std::unique_ptr<Enemy>> enemies;
@@ -103,7 +107,8 @@ private:
 
 public:
     // Конструктор загружает уровень и инициализирует игру
-    Game(sf::RenderWindow& window, SettingsManager& settings, const std::string& levelPath);
+    Game(sf::RenderWindow& window, SettingsManager& settings, SaveManager& saveManager, 
+        UpgradeManager& upgradeManager, const std::string& levelPath);
     
     // Запускает выполнение игровой сессии
     void run();

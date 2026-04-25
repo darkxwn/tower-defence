@@ -8,8 +8,10 @@
 #include <cmath>
 
 // Конструктор инициализирует игру и системы
-Game::Game(sf::RenderWindow& window, SettingsManager& settings, const std::string& levelPath) :
-    window(window), settings(settings), base({ 0, 0 }) {
+Game::Game(sf::RenderWindow& window, SettingsManager& settings, SaveManager& saveManager, 
+           UpgradeManager& upgradeManager, const std::string& levelPath) :
+    window(window), settings(settings), saveManager(saveManager), 
+    upgradeManager(upgradeManager), base({ 0, 0 }) {
 
     map.load(levelPath);
     map.centerOnScreen(window.getSize(), 75.f, 120.f);
@@ -45,15 +47,10 @@ void Game::initOverlays() {
     pRoot->setDrawOutline(true);
     pauseModalPtr = pRoot.get();
 
-    auto pHeader = std::make_unique<UI::Container>(sf::Vector2f(winSize.x * 0.9f, 100.f));
-    pHeader->setDirection(UI::Container::Direction::Column);
-    pHeader->setContentAlign(UI::Container::ContentAlign::Center);
-    pHeader->setItemAlign(UI::Container::ItemAlign::Center);
-    pHeader->setDrawOutline(true);
-    auto pTitle = std::make_unique<UI::Text>(font, "ПАУЗА", 96);
+    auto pTitle = std::make_unique<UI::Text>(font, "ПАУЗА", 96, sf::Vector2f(winSize.x * 0.9f, 100.f));
+    pTitle->setAlignment(UI::Text::Align::Center);
     pTitle->setColor(Colors::Theme::TextMain);
-    pHeader->addChild(std::move(pTitle));
-    pRoot->addChild(std::move(pHeader));
+    pRoot->addChild(std::move(pTitle));
 
     auto pNav = std::make_unique<UI::Container>(sf::Vector2f(winSize.x * 0.9f, 80.f));
     pNav->setDirection(UI::Container::Direction::Row);
@@ -94,15 +91,10 @@ void Game::initOverlays() {
     eRoot->setDrawOutline(true);
     endModalPtr = eRoot.get();
 
-    auto eHeader = std::make_unique<UI::Container>(sf::Vector2f(winSize.x * 0.9f, 60.f));
-    eHeader->setDirection(UI::Container::Direction::Column);
-    eHeader->setContentAlign(UI::Container::ContentAlign::Center);
-    eHeader->setItemAlign(UI::Container::ItemAlign::Center);
-    eHeader->setDrawOutline(true);
-    auto eTitle = std::make_unique<UI::Text>(font, "ФИНАЛ", 60);
+    auto eTitle = std::make_unique<UI::Text>(font, "ФИНАЛ", 60, sf::Vector2f(winSize.x * 0.9f, 60.f));
+    eTitle->setAlignment(UI::Text::Align::Center);
     endTitlePtr = eTitle.get();
-    eHeader->addChild(std::move(eTitle));
-    eRoot->addChild(std::move(eHeader));
+    eRoot->addChild(std::move(eTitle));
 
     auto eSub = std::make_unique<UI::Text>(font, "Результат уровня", 32);
     endSubTitlePtr = eSub.get();
@@ -136,9 +128,8 @@ void Game::updateViewSizes(sf::Vector2u windowSize) {
     uiScale = baseScale * settings.get<float>("ui_scale", 1.0f);
     if (uiScale <= 0.1f) uiScale = 1.0f;
 
-    // Динамический расчёт лимитов зума на основе высоты экрана
-    // Цель: на больших экранах давать больше отдаления (больший maxZoom),
-    // на маленьких экранах ограничивать отдаление, чтобы карта не была "муравейником"
+    // на больших экранах давать больше отдаления (больший maxZoom),
+    // на маленьких экранах ограничивать отдаление
     
     // Базовые размеры мира в логических единицах
     const float minVisibleHeight = 80.f;   // мин. видимая высота мира (приближение)
@@ -180,6 +171,7 @@ void Game::updateViewSizes(sf::Vector2u windowSize) {
     auto updateOverlay = [&](std::unique_ptr<UI::Container>& overlay) {
         if (!overlay) return;
         overlay->setSize(logicalSize);
+        overlay->setPosition({ 0, 0 });
         float rootW = logicalSize.x * 0.9f;
         for (size_t i = 0; i < overlay->getChildrenCount(); ++i) {
             auto* child = dynamic_cast<UI::Container*>(overlay->getChild(i));
@@ -380,7 +372,11 @@ void Game::update(float deltaTime) {
 
     for (auto& e : enemies) {
         if (e->hasReachedBase()) base.takeDamage(1);
-        if (e->isKilled()) money += GameData::getEnemy(e->getType()).reward;
+        if (e->isKilled()) {
+            // получение случайных денег + множитель от улучшений
+            int reward = upgradeManager.getRandomMoney();
+            money += reward;
+        }
     }
 
     enemies.erase(std::remove_if(enemies.begin(), enemies.end(), [](const std::unique_ptr<Enemy>& e) { return !e->isAlive(); }), enemies.end());
@@ -395,6 +391,9 @@ void Game::update(float deltaTime) {
     }
     else if (waveSystem.isFinished() && enemies.empty()) {
         state = GameState::Victory;
+        // сохранение денег при победе
+        saveManager.addMoney(money);
+        saveManager.save();
         if (endTitlePtr) {
             endTitlePtr->setText("ПОБЕДА!");
             endTitlePtr->setColor(Colors::Theme::TextMain);
@@ -505,7 +504,7 @@ void Game::processInput(sf::Vector2i pixelPos) {
 
                     if (!occupied && money >= cost) {
                         money -= cost;
-                        towers.emplace_back(name, tile->gridPos);
+                        towers.emplace_back(name, tile->gridPos, upgradeManager);
                         hud.resetSelectedSlot();
                     }
                 }

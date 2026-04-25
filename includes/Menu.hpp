@@ -78,6 +78,13 @@ private:
     UI::Slider* uiScaleSliderPtr = nullptr;
     UI::Button* fsBtnPtr = nullptr;
     UI::Button* vsyncBtnPtr = nullptr;
+    UI::Text* moneyTextPtr = nullptr; // текст валюты в подменю улучшений
+
+    // указатели на тексты статов в подменю улучшений (по башням и статам)
+    std::vector<std::vector<UI::Text*>> upgradeValuePtrs; // [towerIndex][statIndex]
+    
+    // указатели на тексты цен улучшений
+    std::vector<std::vector<UI::Text*>> upgradeCostPtrs; // [towerIndex][statIndex]
 
     SessionResult lastResult = SessionResult::None; // итог последней игры
     std::string lastLevelPath; // путь к последней сыгранной карте
@@ -142,6 +149,12 @@ public:
     // Принятие результата игры для отображения баннера
     void notifyResult(SessionResult result, const std::string& levelPath);
 
-    // Очистка всех ресурсов перед закрытием окна
+    // Получение количества денег
+    int getMoney() const;
+
+    // Получение менеджера улучшений
+    UpgradeManager& getUpgradeManager();
+
+    // Получение количества денег
     void cleanup();
 };

@@ -82,6 +82,7 @@ static void loadResources() {
     ResourceManager::load("icon-level", assetsPath + "icons/level.png");
     ResourceManager::load("icon-sell", assetsPath + "icons/sell.png");
     ResourceManager::load("icon-upgrade", assetsPath + "icons/upgrade.png");
+    ResourceManager::load("icon-upgrade2", assetsPath + "icons/upgrade2.png");
     ResourceManager::load("icon-money", assetsPath + "icons/money.png");
 #ifdef __ANDROID__
     ResourceManager::load("icon-sensivity", assetsPath + "icons/sensivity-mobile.png");
@@ -180,7 +181,7 @@ int main() {
         
         bool keepPlaying = true;
         while (keepPlaying && window.isOpen()) {
-            Game game(window, settings, levelPath);
+            Game game(window, settings, saveManager, menu->getUpgradeManager(), levelPath);
             game.run();
 
             GameEndReason reason = game.getEndReason();

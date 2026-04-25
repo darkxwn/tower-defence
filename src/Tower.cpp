@@ -3,16 +3,24 @@
 #include "ResourceManager.hpp"
 #include "Colors.hpp"
 #include "Projectile.hpp"
+#include "UpgradeManager.hpp"
 #include "utils/Math.hpp"
 
 // Конструктор башни
-Tower::Tower(const std::string& slug, sf::Vector2i gridPos)
+Tower::Tower(const std::string& slug, sf::Vector2i gridPos, UpgradeManager& upgradeManager)
     : typeSlug(slug), gridPos(gridPos) {
 
     textureBase = &ResourceManager::get("tower-" + typeSlug + "-base");
     textureTower = &ResourceManager::get("tower-" + typeSlug + "-turret");
 
-    stats = GameData::getTower(slug);
+    // базовые статы из GameData
+    auto baseStats = GameData::getTower(slug);
+    stats = baseStats;
+
+    // применяем улучшения
+    stats.damage = (int)upgradeManager.getDamage(slug);
+    stats.firerate = upgradeManager.getFirerate(slug);
+    stats.range = upgradeManager.getRange(slug);
 }
 
 // Обновление башни
