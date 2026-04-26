@@ -26,7 +26,7 @@ jobs:
         uses: nttld/setup-ndk@v1
         id: setup-ndk
         with:
-          ndk-version: r27с
+          ndk-version: r27b # это работает, ладно...
           add-to-path: true
 
       - name: Install Ninja
