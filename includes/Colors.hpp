@@ -40,8 +40,9 @@ namespace Colors {
         inline const sf::Color WidgetDisabled = Palette::Gray95; // фон выключенного виджета
 
         inline const sf::Color TextMain = Palette::White; // основной текст
-        inline const sf::Color TextMoney = Palette::PastelYellow; // текст денег
-        inline const sf::Color TextLives = Palette::PastelRed; // текст жизней
+        inline const sf::Color TextYellow = Palette::PastelYellow; // текст денег
+        inline const sf::Color TextGreen = Palette::PastelGreen;
+        inline const sf::Color TextRed = Palette::PastelRed; // текст жизней
         inline const sf::Color TextDark = Palette::Gray50; // темный текст 
 
         inline const sf::Color RadiusFill = sf::Color(255, 255, 255, 20); // заливка радиуса башни

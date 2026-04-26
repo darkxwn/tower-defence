@@ -97,6 +97,7 @@ void Game::initOverlays() {
     eRoot->addChild(std::move(eTitle));
 
     auto eSub = std::make_unique<UI::Text>(font, "Результат уровня", 32, sf::Vector2f(winSize.x * 0.9f, 60.f));
+    eSub->setAlignment(UI::Text::Align::Center);
     endSubTitlePtr = eSub.get();
     eRoot->addChild(std::move(eSub));
 
@@ -122,35 +123,26 @@ void Game::initOverlays() {
 void Game::updateViewSizes(sf::Vector2u windowSize) {
     float sw = static_cast<float>(windowSize.x);
     float sh = static_cast<float>(windowSize.y);
-    //uiScale = sh / 1080.f;
     float baseScale = sh / 1080.f;
 
     uiScale = baseScale * settings.get<float>("ui_scale", 1.0f);
     if (uiScale <= 0.1f) uiScale = 1.0f;
 
-    // на больших экранах давать больше отдаления (больший maxZoom),
-    // на маленьких экранах ограничивать отдаление
+    const float minVisibleHeight = 80.f;
+    const float maxVisibleHeight = 1200.f;
     
-    // Базовые размеры мира в логических единицах
-    const float minVisibleHeight = 80.f;   // мин. видимая высота мира (приближение)
-    const float maxVisibleHeight = 1200.f; // макс. видимая высота мира (отдаление)
-    
-    // Расчёт лимитов с учётом высоты экрана
     minZoom = minVisibleHeight / sh;
     maxZoom = maxVisibleHeight / sh;
     
-    // Усиленная адаптация для больших экранов (1440p и выше)
-    // На экранах > 1440p даём дополнительное отдаление
     if (sh > 1440.f) {
         float scale = sh / 1440.f;
-        maxZoom *= (1.0f + 0.2f * (scale - 1.0f)); // до +20% на 4K экранах
+        maxZoom *= (1.0f + 0.2f * (scale - 1.0f));
     }
     
-    // Ограничители для крайних случаев (очень маленькие/большие окна)
-    if (minZoom > 0.5f) minZoom = 0.5f;    // не ближе 0.5
-    if (minZoom < 0.35f) minZoom = 0.35f;  // не дальше 0.35 (приближение)
-    if (maxZoom < 1.0f) maxZoom = 1.0f;    // не дальше 1.0 (отдаление на малых экранах)
-    if (maxZoom > 2.5f) maxZoom = 2.5f;    // предел для экстремально больших экранов
+    if (minZoom > 0.5f) minZoom = 0.5f;
+    if (minZoom < 0.35f) minZoom = 0.35f;
+    if (maxZoom < 1.0f) maxZoom = 1.0f;
+    if (maxZoom > 2.5f) maxZoom = 2.5f;
 
     float uiH = sh / uiScale;
     float uiW = uiH * (sw / sh);
@@ -159,7 +151,6 @@ void Game::updateViewSizes(sf::Vector2u windowSize) {
     uiView = sf::View(sf::Vector2f(uiW / 2.f, uiH / 2.f), logicalSize);
     worldView = sf::View(sf::Vector2f(sw / 2.f, sh / 2.f), sf::Vector2f(sw, sh));
     
-    // Ограничиваем текущий зум новыми лимитами при изменении размера окна
     if (currentZoom < minZoom) currentZoom = minZoom;
     if (currentZoom > maxZoom) currentZoom = maxZoom;
 
@@ -175,32 +166,24 @@ void Game::updateViewSizes(sf::Vector2u windowSize) {
         float rootW = logicalSize.x * 0.9f;
 
         for (size_t i = 0; i < overlay->getChildrenCount(); ++i) {
-            auto* child = overlay->getChild(i); // Получаем просто как Widget*
+            auto* child = overlay->getChild(i);
             if (!child) continue;
-
-            // ПЕРВАЯ ОШИБКА: Раньше здесь был dynamic_cast<UI::Container*>
-            // Теперь мы должны менять размер любому виджету на верхнем уровне
             child->setSize(sf::Vector2f(rootW, child->getSize().y));
 
-            // Если это контейнер, пройдемся по его детям (Header, Nav и т.д.)
             if (auto* asContainer = dynamic_cast<UI::Container*>(child)) {
                 for (size_t j = 0; j < asContainer->getChildrenCount(); ++j) {
                     auto* subChild = asContainer->getChild(j);
-                    if (subChild) {
-                        // Устанавливаем ширину для всех вложенных блоков (текстов и контейнеров)
-                        subChild->setSize(sf::Vector2f(rootW, subChild->getSize().y));
-                    }
+                    if (subChild) subChild->setSize(sf::Vector2f(rootW, subChild->getSize().y));
                 }
             }
         }
         overlay->rebuild();
-        };
+    };
     if (endTitlePtr) endTitlePtr->setMaxWidth(logicalSize.x * 0.9f);
     if (endSubTitlePtr) endSubTitlePtr->setMaxWidth(logicalSize.x * 0.9f);
 
     updateOverlay(pauseOverlay);
     updateOverlay(endOverlay);
-
 }
 
 // Запускает основной цикл игровой сессии
@@ -237,12 +220,11 @@ void Game::handleEvents() {
             }
         }
 
-        // Обрабатываем события HUD и проверяем, поглотил ли он клик
         bool uiConsumed = hud.handleEvent(*event, window, uiView);
         if (hud.isPauseRequested()) state = GameState::Paused;
         if (hud.isSkipRequested()) waveSystem.startWave();
 
-        // Обработка продажи выбранной башни (сразу после события клика)
+        // Обработка продажи выбранной башни
         if (hud.isSellRequested()) {
             Tile* selected = map.getSelectedTile();
             if (selected) {
@@ -251,19 +233,34 @@ void Game::handleEvents() {
                 });
 
                 if (it != towers.end()) {
-                    // Возврат стоимости: 100% если первая волна ещё не запущена, иначе 50-75%
-                    float refundPercent;
-                    if (waveSystem.getState() == WaveState::Idle) {
-                        refundPercent = 1.0f; // 100% возврата до начала игры
-                    } else {
-                        refundPercent = Math::Random::getInt(50, 75) / 100.f;
-                    }
-                    money += static_cast<int>(it->getCost() * refundPercent);
+                    // Возвращаем 100% только если ПЕРВАЯ волна еще не запущена (состояние Idle)
+                    float refundPercent = (waveSystem.getState() == WaveState::Idle) ? 1.0f : 0.65f;
+                    money += static_cast<int>(it->getTotalValue() * refundPercent);
                     towers.erase(it);
-                    map.setSelectedTile({ -1000.f, -1000.f }); // сброс выделения
+                    map.setSelectedTile({ -1000.f, -1000.f });
                     hud.hideTowerControls();
                 }
             }
+            hud.resetRequests();
+        }
+
+        // Обработка улучшения выбранной башни
+        if (hud.isUpgradeRequested()) {
+            Tile* selected = map.getSelectedTile();
+            if (selected) {
+                auto it = std::find_if(towers.begin(), towers.end(), [&](Tower& t) {
+                    return t.getGridPos() == selected->gridPos;
+                });
+
+                if (it != towers.end() && it->canUpgradeInGame()) {
+                    int cost = it->getInGameUpgradeCost();
+                    if (money >= cost) {
+                        money -= cost;
+                        it->upgradeInGame(cost);
+                    }
+                }
+            }
+            hud.resetRequests();
         }
 
         if (state == GameState::Paused && pauseOverlay) {
@@ -273,7 +270,7 @@ void Game::handleEvents() {
             endOverlay->handleEvent(*event, window, uiView);
         }
         else if (state == GameState::Playing && !uiConsumed) {
-            // Навигация по карте (только если клик не попал в UI)
+            // Управление камерой (зум и панорамирование)
             if (const auto* scroll = event->getIf<sf::Event::MouseWheelScrolled>()) {
                 float factor = (scroll->delta > 0) ? 0.9f : 1.1f;
                 if ((currentZoom * factor >= minZoom) && (currentZoom * factor <= maxZoom)) {
@@ -284,23 +281,15 @@ void Game::handleEvents() {
                     clampView();
                 }
             }
-
+            // ... (остальной ввод без изменений) ...
             if (const auto* touch = event->getIf<sf::Event::TouchBegan>()) {
-                if (touch->finger == 0) {
-                    isPanning = true;
-                    hasMoved = false;
-                    startTouchPos = touch->position;
-                    lastInputPos = touch->position;
-                }
+                if (touch->finger == 0) { isPanning = true; hasMoved = false; startTouchPos = touch->position; lastInputPos = touch->position; }
                 if (touch->finger == 1 && sf::Touch::isDown(0)) {
-                    isPinching = true;
-                    isPanning = false;
-                    sf::Vector2f p0(sf::Touch::getPosition(0, window));
-                    sf::Vector2f p1(sf::Touch::getPosition(1, window));
+                    isPinching = true; isPanning = false;
+                    sf::Vector2f p0(sf::Touch::getPosition(0, window)); sf::Vector2f p1(sf::Touch::getPosition(1, window));
                     initialPinchDistance = std::sqrt(std::pow(p0.x - p1.x, 2) + std::pow(p0.y - p1.y, 2));
                 }
             }
-
             if (const auto* t = event->getIf<sf::Event::TouchMoved>()) {
                 sf::Vector2i currentPos = t->position;
                 if (isPanning) {
@@ -313,20 +302,15 @@ void Game::handleEvents() {
                         clampView();
                     }
                 }
-
-                // Pinch-Zoom обработка (два пальца)
                 if (isPinching && sf::Touch::isDown(0) && sf::Touch::isDown(1)) {
-                    sf::Vector2i p0 = sf::Touch::getPosition(0, window);
-                    sf::Vector2i p1 = sf::Touch::getPosition(1, window);
+                    sf::Vector2i p0 = sf::Touch::getPosition(0, window); sf::Vector2i p1 = sf::Touch::getPosition(1, window);
                     sf::Vector2i mid((p0.x + p1.x) / 2, (p0.y + p1.y) / 2);
                     sf::Vector2f worldBefore = window.mapPixelToCoords(mid, worldView);
-
                     float newDist = std::sqrt(std::pow((float)p0.x - p1.x, 2) + std::pow((float)p0.y - p1.y, 2));
                     if (std::abs(newDist - initialPinchDistance) > 2.f) {
                         float f = initialPinchDistance / newDist;
                         if (currentZoom * f >= minZoom && currentZoom * f <= maxZoom) {
-                            worldView.zoom(f);
-                            currentZoom *= f;
+                            worldView.zoom(f); currentZoom *= f;
                             worldView.move(worldBefore - window.mapPixelToCoords(mid, worldView));
                             clampView();
                         }
@@ -334,27 +318,20 @@ void Game::handleEvents() {
                     }
                 }
             }
-
             sf::Vector2i actionPos(-1, -1);
             if (const auto* click = event->getIf<sf::Event::MouseButtonPressed>()) {
                 if (click->button == sf::Mouse::Button::Left) actionPos = click->position;
-                if (click->button == sf::Mouse::Button::Right) {
-                    isPanning = true;
-                    lastInputPos = click->position;
-                }
+                if (click->button == sf::Mouse::Button::Right) { isPanning = true; lastInputPos = click->position; }
             }
             if (const auto* touchEnd = event->getIf<sf::Event::TouchEnded>()) {
                 if (touchEnd->finger == 0 && !hasMoved && !isPinching) actionPos = touchEnd->position;
-                if (touchEnd->finger == 0) isPanning = false;
-                if (touchEnd->finger == 1) isPinching = false;
+                if (touchEnd->finger == 0) isPanning = false; if (touchEnd->finger == 1) isPinching = false;
             }
             if (const auto* released = event->getIf<sf::Event::MouseButtonReleased>()) {
                 if (released->button == sf::Mouse::Button::Right) isPanning = false;
             }
-
             if (actionPos.x != -1) processInput(actionPos);
         }
-
         if (const auto* m = event->getIf<sf::Event::MouseMoved>()) {
             if (isPanning) {
                 sf::Vector2f delta = sf::Vector2f(lastInputPos - m->position);
@@ -383,9 +360,8 @@ void Game::update(float deltaTime) {
     for (auto& e : enemies) {
         if (e->hasReachedBase()) base.takeDamage(1);
         if (e->isKilled()) {
-            // получение случайных денег + множитель от улучшений
-            int reward = upgradeManager.getRandomMoney();
-            money += reward;
+            money += e->getReward();
+            accumulatedGlobalMoney += upgradeManager.getRandomMoney(saveManager.getMoneyMultiplier());
         }
     }
 
@@ -393,21 +369,14 @@ void Game::update(float deltaTime) {
 
     if (base.isDestroyed()) {
         state = GameState::GameOver;
-        if (endTitlePtr) {
-            endTitlePtr->setText("ПОРАЖЕНИЕ");
-            endTitlePtr->setColor(sf::Color::Red);
-        }
+        if (endTitlePtr) { endTitlePtr->setText("ПОРАЖЕНИЕ"); endTitlePtr->setColor(sf::Color::Red); }
         if (endSubTitlePtr) endSubTitlePtr->setText("Ваша база уничтожена");
     }
     else if (waveSystem.isFinished() && enemies.empty()) {
         state = GameState::Victory;
-        // сохранение денег при победе
-        saveManager.addMoney(money);
+        saveManager.addMoney(accumulatedGlobalMoney);
         saveManager.save();
-        if (endTitlePtr) {
-            endTitlePtr->setText("ПОБЕДА!");
-            endTitlePtr->setColor(Colors::Theme::TextMain);
-        }
+        if (endTitlePtr) { endTitlePtr->setText("ПОБЕДА!"); endTitlePtr->setColor(Colors::Theme::TextMain); }
         if (endSubTitlePtr) endSubTitlePtr->setText("Все волны отражены");
     }
 }
@@ -415,7 +384,6 @@ void Game::update(float deltaTime) {
 // Отрисовка всех слоев игры
 void Game::render() {
     window.clear(Colors::Palette::Gray90);
-
     window.setView(worldView);
     bool slotSelected = hud.getSelectedSlot() != -1;
     map.render(window, !slotSelected);
@@ -428,23 +396,20 @@ void Game::render() {
     for (auto& e : enemies) e->render(window, map.getMapOffset());
     for (auto& p : projectiles) p.render(window, map.getMapOffset());
 
-    // Обновление позиции меню управления башней (если есть выделенная платформа с башней)
     if (selected && selected->type == TileType::Platform && hud.getSelectedSlot() == -1) {
         auto it = std::find_if(towers.begin(), towers.end(), [&](const Tower& t) {
             return t.getGridPos() == selected->gridPos;
         });
 
         if (it != towers.end()) {
-            // Центр плитки в мировых координатах
             sf::Vector2f worldCenter = sf::Vector2f(selected->gridPos * 64) + map.getMapOffset() + sf::Vector2f(32.f, 32.f);
-            
-            // Перевод центра башни в пиксели экрана
             sf::Vector2i pixelPos = window.mapCoordsToPixel(worldCenter, worldView);
-            // Перевод в координаты UI-камеры
             sf::Vector2f uiPos = window.mapPixelToCoords(pixelPos, uiView);
             
-            // Передаем позицию центра и текущий масштаб мира
-            hud.showTowerControls(uiPos, it->getCost(), currentZoom);
+            float refundPercent = (waveSystem.getState() == WaveState::Idle) ? 1.0f : 0.65f;
+            int sellPrice = (int)(it->getTotalValue() * refundPercent);
+
+            hud.showTowerControls(uiPos, sellPrice, it->getInGameUpgradeCost(), it->canUpgradeInGame(), currentZoom);
         } else {
             hud.hideTowerControls();
         }
@@ -455,12 +420,8 @@ void Game::render() {
     window.setView(uiView);
     hud.render(window, money, base.getLives(), waveSystem.getCurrentWave(), waveSystem.getState());
 
-    if (state == GameState::Paused && pauseOverlay) {
-        pauseOverlay->render(window);
-    }
-    else if ((state == GameState::GameOver || state == GameState::Victory) && endOverlay) {
-        endOverlay->render(window);
-    }
+    if (state == GameState::Paused && pauseOverlay) pauseOverlay->render(window);
+    else if ((state == GameState::GameOver || state == GameState::Victory) && endOverlay) endOverlay->render(window);
 
     window.display();
 }
@@ -469,18 +430,15 @@ void Game::render() {
 void Game::clampView() {
     sf::Vector2f center = worldView.getCenter();
     sf::Vector2f size = worldView.getSize();
-
     float mapLeft = map.getMapOffset().x;
     float mapTop = map.getMapOffset().y;
     float mapRight = mapLeft + map.getWidth() * 64.f;
     float mapBottom = mapTop + map.getHeight() * 64.f;
-
     float mx = size.x * 0.1f, my = size.y * 0.1f;
     if (center.x < mapLeft - mx) center.x = mapLeft - mx;
     if (center.x > mapRight + mx) center.x = mapRight + mx;
     if (center.y < mapTop - my) center.y = mapTop - my;
     if (center.y > mapBottom + my) center.y = mapBottom + my;
-
     worldView.setCenter(center);
 }
 
@@ -491,19 +449,12 @@ void Game::processInput(sf::Vector2i pixelPos) {
 
     if (state == GameState::Playing) {
         Tile* tile = map.getTileAtScreen(worldPos);
-        
-        // Скрываем меню управления башней по умолчанию при новом клике
         hud.hideTowerControls();
 
         if (tile && tile->type == TileType::Platform) {
             int slot = hud.getSelectedSlot();
+            if (slot != -1) map.setSelectedTile(sf::Vector2f(-1000.f, -1000.f));
             
-            // Если выбран слот в магазине — сбрасываем выделение старой платформы сразу
-            if (slot != -1) {
-                map.setSelectedTile(sf::Vector2f(-1000.f, -1000.f));
-            }
-            
-            // Если выбран слот в магазине — строим башню
             if (slot != -1) {
                 auto names = GameData::getTowerNames();
                 if (slot < (int)names.size()) {
@@ -520,27 +471,20 @@ void Game::processInput(sf::Vector2i pixelPos) {
                 }
             } 
             else {
-                // Если слот не выбран — выделяем платформу
                 map.setSelectedTile(worldPos);
-                
-                // Проверяем, есть ли на этой платформе башня
                 auto it = std::find_if(towers.begin(), towers.end(), [&](const Tower& t) {
                     return t.getGridPos() == tile->gridPos;
                 });
 
                 if (it != towers.end()) {
-                    // Переводим мировые координаты центра плитки в координаты экрана
                     sf::Vector2f tileWorldCenter = sf::Vector2f(tile->gridPos * 64) + map.getMapOffset() + sf::Vector2f(32.f, 32.f);
                     sf::Vector2i pixelCoords = window.mapCoordsToPixel(tileWorldCenter, worldView);
-                    
-                    // Переводим пиксели экрана в координаты UI-камеры
                     sf::Vector2f uiPos = window.mapPixelToCoords(pixelCoords, uiView);
-                    
-                    hud.showTowerControls(uiPos, it->getCost());
+                    float refundPercent = (waveSystem.getState() == WaveState::Idle) ? 1.0f : 0.65f;
+                    hud.showTowerControls(uiPos, (int)(it->getTotalValue() * refundPercent), it->getInGameUpgradeCost(), it->canUpgradeInGame());
                 }
             }
         } else {
-            // Клик по неигровой области — сброс выделения
             map.setSelectedTile(worldPos);
         }
     }
@@ -549,14 +493,7 @@ void Game::processInput(sf::Vector2i pixelPos) {
 GameEndReason Game::getEndReason() const { return endReason; }
 
 void Game::cleanup() {
-    // Полностью уничтожаем оверлеи и сбрасываем указатели. 
-    // Это гарантирует, что спрайты внутри кнопок удалятся до завершения работы программы.
     if (pauseOverlay) pauseOverlay.reset();
     if (endOverlay) endOverlay.reset();
-
-    // Сбрасываем сырые указатели на элементы внутри оверлеев
-    pauseModalPtr = nullptr;
-    endModalPtr = nullptr;
-    endTitlePtr = nullptr;
-    endSubTitlePtr = nullptr;
+    pauseModalPtr = nullptr; endModalPtr = nullptr; endTitlePtr = nullptr; endSubTitlePtr = nullptr;
 }

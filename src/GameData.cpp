@@ -70,11 +70,13 @@ void GameData::load() {
         ss >> name;
 
         TowerStats stats = {};
+        stats.rank = 0;
         stats.level = 0;
+        stats.costRank = 200;
         stats.costDamage = 50;
         stats.costFirerate = 80;
         stats.costRange = 100;
-        stats.costLevel = 200;
+        stats.costLevel = 250;
         std::string token;
         while (ss >> token) {
             size_t eq = token.find('=');
@@ -90,11 +92,13 @@ void GameData::load() {
             else if (key == "range")    stats.range = std::stof(valStr);
             else if (key == "cost")     stats.cost = std::stoi(valStr);
             else if (key == "splash")   stats.splash = std::stoi(valStr);
+            else if (key == "rank")     stats.rank = std::stoi(valStr);
             else if (key == "level")    stats.level = std::stoi(valStr);
+            else if (key == "costRank")     stats.costRank = std::stoi(valStr);
             else if (key == "costDamage")   stats.costDamage = std::stoi(valStr);
             else if (key == "costFirerate")  stats.costFirerate = std::stoi(valStr);
             else if (key == "costRange")    stats.costRange = std::stoi(valStr);
-            else if (key == "costLevel")   stats.costLevel = std::stoi(valStr);
+            else if (key == "costLevel")    stats.costLevel = std::stoi(valStr);
         }
 
         towers[name] = stats;

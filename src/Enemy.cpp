@@ -7,8 +7,8 @@
 using Engine::Logger;
 
 // Конструктор врага
-Enemy::Enemy(const std::string& type, int health, int speed, const std::vector<sf::Vector2i>& path)
-    : type(type), health(health), maxHealth(health), speed(speed), alive(true), path(&path), texture(ResourceManager::get("enemy-" + type))
+Enemy::Enemy(const std::string& type, int health, int speed, int reward, const std::vector<sf::Vector2i>& path)
+    : type(type), health(health), maxHealth(health), speed(speed), reward(reward), alive(true), path(&path), texture(ResourceManager::get("enemy-" + type))
 {
     if (path.empty()) {
         Logger::error("[Enemy]: Путь для врагов пуст!");
@@ -117,6 +117,11 @@ std::string Enemy::getType() const {
     return type;
 }
 
+// Получение награды
+int Enemy::getReward() const {
+    return reward;
+}
+
 // Получение текущей позиции
 sf::Vector2f Enemy::getPos() const {
     return pos;
@@ -131,4 +136,3 @@ bool Enemy::isKilled() const {
 int Enemy::getPathIndex() const {
     return pathIndex;
 }
-

@@ -16,6 +16,7 @@ private:
 	std::string type; // идентификатор типа врага (строка)
 	int health; // текущее здоровье
 	int speed; // скорость движения
+	int reward; // награда в монетах (внутри уровня)
 	bool alive; // флаг жизни
 	bool reachedBase = false; // флаг достижения конца пути
 	int maxHealth; // исходное здоровье для отрисовки HP-бара
@@ -29,7 +30,7 @@ private:
 
 public:
 	// Конструктор инициализирует врага строковым типом и характеристиками
-	Enemy(const std::string& type, int health, int speed, const std::vector<sf::Vector2i>& path);
+	Enemy(const std::string& type, int health, int speed, int reward, const std::vector<sf::Vector2i>& path);
 
 	// Обновление логики движения
 	void update(float deltaTime);
@@ -57,6 +58,9 @@ public:
 
 	// Получение идентификатора типа
 	std::string getType() const;
+
+	// Получение награды в монетах
+	int getReward() const;
 
 	// Индекс текущей точки пути
 	int getPathIndex() const;

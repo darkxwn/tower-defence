@@ -23,7 +23,11 @@ private:
     UI::Button sellBtn; // кнопка продажи
     bool showTowerMenu = false; // флаг отображения меню управления башней
     bool sellRequested = false; // флаг запроса продажи
-    bool upgradeRequested = false; // флаг запроса улучшения (заглушка)
+    bool upgradeRequested = false; // флаг запроса улучшения
+
+    int currentSellPrice = 0;
+    int currentUpgradePrice = 0;
+    bool canUpgrade = false;
 
     // Логика подтверждения (даблклик)
     sf::Clock doubleClickClock;
@@ -61,7 +65,7 @@ public:
     void resetSelectedSlot();
 
     // Показывает меню управления башней в указанных экранных координатах
-    void showTowerControls(sf::Vector2f screenPos, int sellPrice, float worldZoom = 1.0f);
+    void showTowerControls(sf::Vector2f screenPos, int sellPrice, int upgradePrice, bool canUpgrade, float worldZoom = 1.0f);
 
     // Скрывает меню управления башней
     void hideTowerControls();
@@ -71,6 +75,9 @@ public:
 
     // Проверка запроса на улучшение
     bool isUpgradeRequested() const;
+
+    // Сброс флагов запросов
+    void resetRequests();
 
     // Получение множителя скорости игры
     float getGameSpeed() const;

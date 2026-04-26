@@ -64,10 +64,16 @@ void WaveSystem::update(float deltaTime, std::vector<std::unique_ptr<Enemy>>& en
     // Ожидание уничтожения всех врагов текущей волны
     if (state == WaveState::Fighting) {
         if (enemies.empty()) {
-            currentWave++;
-            if (currentWave >= (int)waves.size()) return;
-            state = WaveState::Waiting;
-            waitTimer = waitInterval;
+            // Если есть следующая волна — увеличиваем счетчик и ждем
+            if (currentWave + 1 < (int)waves.size()) {
+                currentWave++;
+                state = WaveState::Waiting;
+                waitTimer = waitInterval;
+            } else {
+                // Иначе помечаем как "завершено" (currentWave остается на последней)
+                // Важно: isFinished теперь должен проверять не только индекс, но и состояние
+                state = WaveState::Finished; 
+            }
         }
         return;
     }
@@ -82,7 +88,7 @@ void WaveSystem::update(float deltaTime, std::vector<std::unique_ptr<Enemy>>& en
 
         // Получаем статы врага из GameData по строковому типу
         auto stats = GameData::getEnemy(wave.type);
-        enemies.push_back(std::make_unique<Enemy>(wave.type, stats.health, stats.speed, path));
+        enemies.push_back(std::make_unique<Enemy>(wave.type, stats.health, stats.speed, stats.reward, path));
 
         spawned++;
 
@@ -103,7 +109,7 @@ void WaveSystem::startWave() {
 
 // Проверка завершения всех волн
 bool WaveSystem::isFinished() const {
-    return currentWave >= (int)waves.size();
+    return state == WaveState::Finished;
 }
 
 // Получение текущего состояния

@@ -12,33 +12,31 @@ using Engine::Logger;
 
 SaveManager::SaveManager() {
     savePath = getSavePath();
-    setDefaults(); // Сначала ставим дефолты на случай отсутствия файла
+    setDefaults(); 
     load();
 }
 
 std::string SaveManager::getSavePath() {
 #ifdef __ANDROID__
     ANativeActivity* activity = sf::getNativeActivity();
-    // Пишем во внутреннюю защищенную папку приложения
     return std::string(activity->internalDataPath) + "/progress.json";
 #else
-    // На ПК сохраняем в папку с конфигами
     return "data/config/progress.json";
 #endif
 }
 
 void SaveManager::setDefaults() {
     money = 0;
+    moneyMultiplier = 1.0f;
     levels.clear();
-    // Открываем первый уровень по умолчанию
-    levels["level01"] = { 0, true }; // 0 звезд, разблокирован
-    towerDataBlob = json::object(); // Пустой объект
+    levels["level01"] = { 0, true };
+    towerDataBlob = json::object();
 }
 
 void SaveManager::load() {
     std::ifstream file(savePath);
     if (!file.is_open()) {
-        Logger::debug("Save file not found at %s. Using defaults.", savePath.c_str());
+        Logger::debug("Save file not found at {}. Using defaults.", savePath.c_str());
         return;
     }
 
@@ -46,23 +44,21 @@ void SaveManager::load() {
         json j;
         file >> j;
 
-        // Загружаем деньги
         money = j.value("money", 0);
+        moneyMultiplier = j.value("money_multiplier", 1.0f);
 
-        // Загружаем уровни
         if (j.contains("levels")) {
             levels = j["levels"].get<std::map<std::string, LevelProgress>>();
         }
 
-        // Загружаем "черный ящик" данных башен
-        if (j.contains("tower_data")) {
-            towerDataBlob = j["tower_data"];
+        if (j.contains("towers")) {
+            towerDataBlob = j["towers"];
         }
 
         Logger::debug("Прогресс успешно загружен с {}", savePath);
     } catch (const std::exception& e) {
-        Logger::error("Ошибка парсинга progress.json: %s", e.what());
-        setDefaults(); // Если файл битый, откатываемся к началу
+        Logger::error("Ошибка парсинга progress.json: {}", e.what());
+        setDefaults();
     }
 }
 
@@ -70,22 +66,21 @@ void SaveManager::save() {
     try {
         json j;
         j["money"] = money;
+        j["money_multiplier"] = moneyMultiplier;
         j["levels"] = levels;
-        j["tower_data"] = towerDataBlob;
+        j["towers"] = towerDataBlob;
 
         std::ofstream file(savePath);
         if (file.is_open()) {
-            file << j.dump(4); // Сохраняем с отступом 4 пробела
+            file << j.dump(4);
             Logger::debug("Progress saved to {}", savePath);
         } else {
             Logger::error("Could not open {} for writing!", savePath);
         }
     } catch (const std::exception& e) {
-        Logger::error("Error during saving progress: %s", e.what());
+        Logger::error("Error during saving progress: {}", e.what());
     }
 }
-
-// --- Реализация логики ---
 
 int SaveManager::getMoney() const { return money; }
 
@@ -101,6 +96,10 @@ bool SaveManager::spendMoney(int amount) {
     return false;
 }
 
+float SaveManager::getMoneyMultiplier() const { return moneyMultiplier; }
+
+void SaveManager::setMoneyMultiplier(float multiplier) { moneyMultiplier = multiplier; }
+
 int SaveManager::getStars(const std::string& levelId) const {
     if (levels.count(levelId)) return levels.at(levelId).stars;
     return 0;
@@ -114,18 +113,10 @@ void SaveManager::setStars(const std::string& levelId, int stars) {
 
 bool SaveManager::isUnlocked(const std::string& levelId) const {
     auto it = levels.find(levelId);
-    
-    if (it != levels.end()) {
-        return it->second.unlocked;
-    }
-    
+    if (it != levels.end()) return it->second.unlocked;
     return false; 
 }
 
 void SaveManager::unlockLevel(const std::string& levelId) {
-    // Устанавливаем флаг разблокировки. 
-    // Если записи об уровне ещё нет, она будет создана автоматически.
     levels[levelId].unlocked = true;
-    // Мы не вызываем здесь save() принудительно, чтобы можно было 
-    // изменить несколько настроек сразу, а потом сохранить один раз.
 }

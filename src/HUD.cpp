@@ -34,9 +34,10 @@ HUD::HUD() {
         speedBtn.setTexture(*speedTexs[speedMode]); // использование кэшированного указателя
     });
 
-    // Инициализация кнопок управления башней
-    upgradeBtn = UI::Button(ResourceManager::get("icon-upgrade"), sf::Vector2f(36.f, 36.f));
-    upgradeBtn.setIconScale({ 0.375f, 0.375f }); 
+    // Инициализация кнопок управления башней (иконка сверху, текст снизу)
+    upgradeBtn = UI::Button(ResourceManager::get("icon-upgrade"), *mainFont, "", sf::Vector2f(48.f, 48.f), UI::IconPlacement::Top);
+    upgradeBtn.setIconScale({ 0.32f, 0.32f }); 
+    upgradeBtn.setTextSize(11);
     upgradeBtn.setCallback([this]() { 
         float elapsed = doubleClickClock.getElapsedTime().asSeconds();
         if (lastClickedBtnId == 1 && elapsed < doubleClickTime) {
@@ -51,8 +52,9 @@ HUD::HUD() {
         }
     });
 
-    sellBtn = UI::Button(ResourceManager::get("icon-sell"), sf::Vector2f(36.f, 36.f));
-    sellBtn.setIconScale({ 0.375f, 0.375f });
+    sellBtn = UI::Button(ResourceManager::get("icon-sell"), *mainFont, "", sf::Vector2f(48.f, 48.f), UI::IconPlacement::Top);
+    sellBtn.setIconScale({ 0.32f, 0.32f });
+    sellBtn.setTextSize(11);
     sellBtn.setCallback([this]() { 
         float elapsed = doubleClickClock.getElapsedTime().asSeconds();
         if (lastClickedBtnId == 2 && elapsed < doubleClickTime) {
@@ -62,7 +64,7 @@ HUD::HUD() {
         } else {
             lastClickedBtnId = 2;
             doubleClickClock.restart();
-            sellBtn.setIconColor(sf::Color(255, 100, 100));
+            sellBtn.setIconColor(Colors::Theme::TextRed);
             upgradeBtn.setIconColor(sf::Color::White);
         }
     });
@@ -75,7 +77,7 @@ HUD::HUD() {
         UI::Button slot(ResourceManager::get("tower-" + towerNames[i] + "-preview"), *mainFont, std::to_string(cost) + "$", sf::Vector2f(90.f, 100.f), UI::IconPlacement::Top);
         slot.setIconScale(sf::Vector2f(0.15625f, 0.15625f));
         slot.setTextSize(16);
-        slot.setTextColor(Colors::Theme::TextMoney);
+        slot.setTextColor(Colors::Theme::TextYellow);
         slot.setCallback([this, i]() {
             selectedTowerSlot = (selectedTowerSlot == i) ? -1 : i;
         });
@@ -162,7 +164,7 @@ void HUD::render(sf::RenderWindow& window, int money, int lives, int wave, WaveS
     window.draw(coins);
 
     sf::Text mText(*mainFont, std::to_string(money) + "$", 26);
-    mText.setFillColor(Colors::Theme::TextMoney);
+    mText.setFillColor(Colors::Theme::TextYellow);
     mText.setPosition({ startX + (90.f - mText.getLocalBounds().size.x) / 2, ws.y - 40.f });
     window.draw(mText);
 
@@ -173,7 +175,7 @@ void HUD::render(sf::RenderWindow& window, int money, int lives, int wave, WaveS
             sf::RectangleShape highlight({ 90.f, 100.f });
             highlight.setPosition(towerSlots[i].getGlobalBounds().position);
             highlight.setFillColor(sf::Color::Transparent);
-            highlight.setOutlineColor(Colors::Theme::TextMoney);
+            highlight.setOutlineColor(Colors::Theme::TextYellow);
             highlight.setOutlineThickness(2.f);
             window.draw(highlight);
         }
@@ -186,13 +188,20 @@ void HUD::render(sf::RenderWindow& window, int money, int lives, int wave, WaveS
     window.draw(heart);
 
     sf::Text lText(*mainFont, std::to_string(lives), 26);
-    lText.setFillColor(Colors::Theme::TextLives);
+    lText.setFillColor(Colors::Theme::TextRed);
     lText.setPosition({ startX + (slotsCount + 1) * 100.f + (90.f - lText.getLocalBounds().size.x) / 2, ws.y - 40.f });
     window.draw(lText);
 
     speedBtn.render(window);
 
     if (showTowerMenu) {
+        // Динамическое обновление цвета в зависимости от баланса игрока
+        if (canUpgrade) {
+            upgradeBtn.setTextColor(money >= currentUpgradePrice ? Colors::Theme::TextGreen : sf::Color::Red);
+        } else {
+            upgradeBtn.setTextColor(sf::Color(150, 150, 150)); // Серый для MAX
+        }
+
         upgradeBtn.render(window);
         sellBtn.render(window);
     }
@@ -254,48 +263,53 @@ bool HUD::handleEvent(const sf::Event& event, const sf::RenderWindow& window, co
 }
 
 // Позиционирует кнопки улучшения и продажи под выбранной платформой
-void HUD::showTowerControls(sf::Vector2f screenPos, int sellPrice, float worldZoom) {
+void HUD::showTowerControls(sf::Vector2f screenPos, int sellPrice, int upgradePrice, bool canUpgrade, float worldZoom) {
     showTowerMenu = true;
-    sellRequested = false;
-    upgradeRequested = false;
+    this->currentSellPrice = sellPrice;
+    this->currentUpgradePrice = upgradePrice;
+    this->canUpgrade = canUpgrade;
+    
+    upgradeBtn.setEnabled(canUpgrade);
+    upgradeBtn.setText(canUpgrade ? std::to_string(upgradePrice) + "$" : "MAX");
+    upgradeBtn.setTextColor(canUpgrade ? Colors::Theme::TextGreen : sf::Color(150, 150, 150));
+    
+    sellBtn.setText(std::to_string(sellPrice) + "$");
+    sellBtn.setTextColor(Colors::Theme::TextRed);
     
     // Не сбрасываем lastClickedBtnId — сохраняем состояние двойного клика при переключении башен
     upgradeBtn.setIconColor(sf::Color::White);
     sellBtn.setIconColor(sf::Color::White);
     
-    // Инвертированный зум мира (0.5 при приближении -> 2.0 масштаб объектов)
+    // Инвертированный зум мира
     float invZoom = 1.f / worldZoom;
-
-    // Масштабирование 1-к-1: теперь кнопки уменьшаются/увеличиваются в точности как башни.
     float targetScale = invZoom;
 
-    // Лимиты масштаба: расширяем диапазон, чтобы кнопки могли становиться меньше при отдалении.
 #ifdef __ANDROID__
-    targetScale = std::clamp(targetScale, 0.5f, 1.2f);
+    targetScale = std::clamp(targetScale, 0.7f, 1.2f);
 #else
-    targetScale = std::clamp(targetScale, 0.4f, 1.4f);
+    targetScale = std::clamp(targetScale, 0.6f, 1.4f);
 #endif
 
-    // Применяем масштаб: базовая иконка 0.375f (для 36px при иконке 96px)
-    float targetIconScale = 0.375f * targetScale;
+    float targetIconScale = 0.32f * targetScale;
     upgradeBtn.setIconScale({ targetIconScale, targetIconScale });
     sellBtn.setIconScale({ targetIconScale, targetIconScale });
 
-    float btnSize = 36.f * targetScale;
-    upgradeBtn.setSize({ btnSize, btnSize });
-    sellBtn.setSize({ btnSize, btnSize });
+    // Уменьшаем базовый размер кнопок
+    sf::Vector2f btnSize(48.f * targetScale, 48.f * targetScale);
+    upgradeBtn.setSize(btnSize);
+    sellBtn.setSize(btnSize);
+    upgradeBtn.setTextSize(static_cast<unsigned int>(11 * targetScale));
+    sellBtn.setTextSize(static_cast<unsigned int>(11 * targetScale));
 
-    // Позиционирование: максимально прижимаем к основанию башни.
-    // Эффективная высота башни уменьшена
-    float towerEffectiveHeight = 24.f * invZoom;
-    float gap = 1.f * targetScale; 
-    float totalOffsetY = towerEffectiveHeight + (btnSize / 2.f) + gap;
+    // Смещение ВЫШЕ (уменьшаем значения)
+    float towerHeightOffset = 32.f * invZoom; 
+    float gap = 8.f * targetScale; 
+    float totalOffsetY = towerHeightOffset + gap;
 
-    float horizontalGap = 3.f * targetScale;
+    float horizontalGap = 8.f * targetScale;
 
-    // Установка позиций (screenPos — центр башни)
-    upgradeBtn.setPosition({ screenPos.x - btnSize - horizontalGap / 2.f, screenPos.y + totalOffsetY - (btnSize / 2.f) });
-    sellBtn.setPosition({ screenPos.x + horizontalGap / 2.f, screenPos.y + totalOffsetY - (btnSize / 2.f) });
+    upgradeBtn.setPosition({ screenPos.x - btnSize.x - horizontalGap / 2.f, screenPos.y + totalOffsetY });
+    sellBtn.setPosition({ screenPos.x + horizontalGap / 2.f, screenPos.y + totalOffsetY });
 }
 
 // Скрывает кнопки управления башней
@@ -311,9 +325,14 @@ bool HUD::isSellRequested() const {
     return sellRequested;
 }
 
-// Проверка запроса на улучшение (заглушка)
+// Проверка запроса на улучшение
 bool HUD::isUpgradeRequested() const {
     return upgradeRequested;
+}
+
+void HUD::resetRequests() {
+    sellRequested = false;
+    upgradeRequested = false;
 }
 
 // Получение множителя скорости игры

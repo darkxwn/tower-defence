@@ -22,6 +22,10 @@ private:
     float fireTimer = 0.f; // таймер стрельбы
     float currentAngle = 0.f; // текущий угол поворота турели
     float rotationSpeed = 180.f; // скорость поворота турели
+    
+    int inGameLevel = 1;      // Текущий уровень внутри боя
+    int maxInGameLevel = 1;   // Максимально доступный уровень
+    int totalInvested = 0;    // Суммарно потрачено монет на эту башню
 
     const sf::Texture* textureBase = nullptr; // ссылка на текстуру base
     const sf::Texture* textureTower = nullptr; // ссылка на текстуру tower
@@ -44,4 +48,14 @@ public:
 
     // Получение стоимости башни
     int getCost() const;
+
+    // Получение всей вложенной суммы
+    int getTotalValue() const;
+
+    // Прокачка внутри игры
+    void upgradeInGame(int cost);
+    int getInGameUpgradeCost() const;
+    int getInGameLevel() const;
+    int getMaxInGameLevel() const;
+    bool canUpgradeInGame() const;
 };

@@ -15,85 +15,85 @@ using json = nlohmann::json;
 
 class UpgradeManager {
 public:
-    static const unsigned int MAX_TOWER_LEVEL = 10;
+    static const unsigned int MAX_TOWER_RANK = 10;
+    static const unsigned int MAX_INGAME_LEVEL = 10;
+    static const unsigned int UPGRADES_PER_RANK = 5; // Сколько уровней стата дает 1 ранг
+
     static int moneyMin;
     static int moneyMax;
 
     struct TowerUpgrade {
         std::string towerType;
+        
+        // Базовые статы из конфига
         float baseDamage = 35.f;
         float baseFirerate = 1.0f;
         float baseRange = 192.f;
-        int level = 0;
+
+        // Глобальный прогресс
+        int rank = 0;
+        int level = 0; // Максимально доступный уровень в игре
+
+        // Уровни прокачки конкретных характеристик (шаги)
+        int damageLvl = 0;
+        int firerateLvl = 0;
+        int rangeLvl = 0;
+
+        // Итоговые множители (от глобальной прокачки)
         float damageMultiplier = 1.0f;
         float firerateMultiplier = 1.0f;
         float rangeMultiplier = 1.0f;
-        float moneyMultiplier = 1.0f;
+
+        // Цены (базовые)
+        int costRank = 200;
         int costDamage = 50;
         int costFirerate = 80;
         int costRange = 100;
-        int costLevel = 200;
+        int costLevel = 250;
     };
 
 private:
     std::vector<TowerUpgrade> upgrades;
-    std::function<void(const TowerUpgrade&)> onUpgradeChanged;
+    std::function<void()> onUpgradeChanged;
 
 public:
-    // Установка callback для сохранения при изменении улучшения
-    void setSaveCallback(std::function<void(const TowerUpgrade&)> callback);
-
-    // Инициализация базовыми значениями из GameData
+    void setSaveCallback(std::function<void()> callback);
     void initDefaults();
 
-    // Получение всех улучшений (для SaveManager)
     const std::vector<TowerUpgrade>& getAllUpgrades() const;
-
-    // Установка всех улучшений (от SaveManager)
     void setAllUpgrades(const std::vector<TowerUpgrade>& data);
 
-    // Получение улучшения для типа башни
     const TowerUpgrade* getUpgrade(const std::string& towerType) const;
 
-    // Получение актуального урона (база * множитель)
+    // Геттеры статов
     float getDamage(const std::string& towerType) const;
-
-    // Получение актуальной скорости (база * множитель)
     float getFirerate(const std::string& towerType) const;
-
-    // Получение актуальной дальности (база * множитель)
     float getRange(const std::string& towerType) const;
-
-    // Получение уровня башни
+    int getRank(const std::string& towerType) const;
     int getLevel(const std::string& towerType) const;
 
-    // Получение множителя денег
-    float getMoneyMultiplier(const std::string& towerType) const;
+    // Проверка лимитов
+    bool isStatAtLimit(const std::string& towerType, const std::string& statKey) const;
+    int getMaxStatLevel(const std::string& towerType) const;
 
-    // Получение текущей стоимости улучшения (statIndex: 0=damage, 1=firerate, 2=range, 3=level)
+    // Цены
     int getUpgradeCost(const std::string& towerType, int statIndex) const;
-
-    // Получение текущей стоимости улучшения по ключу
     int getUpgradeCost(const std::string& towerType, const std::string& statKey) const;
 
-    // Получение случайного количества денег за убийство
-    int getRandomMoney() const;
+    // Деньги
+    int getRandomMoney(float multiplier = 1.0f) const;
 
-    // Изменение улучшения урона
+    // Методы улучшения
     void upgradeDamage(const std::string& towerType, float increment);
-
-    // Изменение улучшения скорости
     void upgradeFirerate(const std::string& towerType, float increment);
-
-    // Изменение улучшения дальности
     void upgradeRange(const std::string& towerType, float increment);
-
-    // Изменение уровня башни
-    void upgradeLevel(const std::string& towerType);
+    void upgradeRank(const std::string& towerType);
+    void upgradeMaxLevel(const std::string& towerType);
 };
 
-// Сериализация для SaveManager (NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE)
+// Сериализация
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(UpgradeManager::TowerUpgrade,
-    towerType, baseDamage, baseFirerate, baseRange, level,
-    damageMultiplier, firerateMultiplier, rangeMultiplier, moneyMultiplier,
-    costDamage, costFirerate, costRange, costLevel)
+    towerType, baseDamage, baseFirerate, baseRange, rank, level,
+    damageLvl, firerateLvl, rangeLvl,
+    damageMultiplier, firerateMultiplier, rangeMultiplier,
+    costRank, costDamage, costFirerate, costRange, costLevel)

@@ -86,6 +86,9 @@ private:
     // указатели на тексты цен улучшений
     std::vector<std::vector<UI::Text*>> upgradeCostPtrs; // [towerIndex][statIndex]
 
+    // указатели на кнопки улучшений
+    std::vector<std::vector<UI::Button*>> upgradeBtnPtrs; // [towerIndex][statIndex]
+
     SessionResult lastResult = SessionResult::None; // итог последней игры
     std::string lastLevelPath; // путь к последней сыгранной карте
 
@@ -155,6 +158,6 @@ public:
     // Получение менеджера улучшений
     UpgradeManager& getUpgradeManager();
 
-    // Получение количества денег
+    // Очистка ресурсов интерфейса
     void cleanup();
 };

@@ -25,11 +25,13 @@ struct TowerStats {
 	float firerate; // частота стрельбы
 	int cost;       // стоимость постройки
 	int splash;     // радиус взрыва (0 если нет)
-	int level;      // уровень башни
+	int rank;       // глобальный ранг (влияет на лимиты статов)
+	int level;      // макс. уровень башни в игре
+	int costRank;        // цена повышения ранга
 	int costDamage;      // цена улучшения урона
-	int costFirerate;   // цена улучшения скорости стрельбы
-	int costRange;      // цена улучшения дальности
-	int costLevel;     // цена повышения уровня
+	int costFirerate;    // цена улучшения скорости стрельбы
+	int costRange;       // цена улучшения дальности
+	int costLevel;       // цена повышения макс. уровня (в игре)
 };
 
 class GameData {

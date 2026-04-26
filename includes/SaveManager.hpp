@@ -21,6 +21,7 @@ private:
     
     // Основные данные
     int money = 0;
+    float moneyMultiplier = 1.0f;
     std::map<std::string, LevelProgress> levels;
 
     // Универсальный контейнер для данных башен (хранит любой JSON)
@@ -35,25 +36,25 @@ public:
     void load();
     void save();
 
-    // --- Глобальные деньги ---
+    // Глобальные деньги
     int getMoney() const;
     void addMoney(int amount);
     bool spendMoney(int amount);
+    float getMoneyMultiplier() const;
+    void setMoneyMultiplier(float multiplier);
 
-    // --- Прогресс уровней ---
+    // Прогресс уровней
     int getStars(const std::string& levelId) const;
     void setStars(const std::string& levelId, int stars);
     bool isUnlocked(const std::string& levelId) const;
     void unlockLevel(const std::string& levelId);
 
-    // --- Универсальная работа с данными башен ---
-    // Сюда можно передать любой объект, для которого определен to_json
+    // Универсальная работа с данными башен
     template <typename T>
     void setTowerData(const T& dataObject) {
         towerDataBlob = dataObject;
     }
 
-    // Отсюда можно вытащить данные в любой объект, для которого есть from_json
     template <typename T>
     bool getTowerData(T& outDataObject) const {
         if (towerDataBlob.is_null() || towerDataBlob.empty()) {

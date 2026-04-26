@@ -22,7 +22,8 @@ enum class WaveState {
     Idle, // ожидание запуска первой волны
     Waiting, // пауза между волнами
     Spawning, // спавн врагов
-    Fighting // все заспавнены, ожидание завершения
+    Fighting, // все заспавнены, ожидание завершения
+    Finished // все волны завершены
 };
 
 class WaveSystem {

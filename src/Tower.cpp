@@ -17,7 +17,12 @@ Tower::Tower(const std::string& slug, sf::Vector2i gridPos, UpgradeManager& upgr
     auto baseStats = GameData::getTower(slug);
     stats = baseStats;
 
-    // применяем улучшения
+    // Максимально доступный уровень в игре (база 1 + то что прокачано глобально)
+    maxInGameLevel = 1 + upgradeManager.getLevel(slug);
+    inGameLevel = 1;
+    totalInvested = stats.cost;
+
+    // Применяем глобальные улучшения
     stats.damage = (int)upgradeManager.getDamage(slug);
     stats.firerate = upgradeManager.getFirerate(slug);
     stats.range = upgradeManager.getRange(slug);
@@ -142,3 +147,26 @@ std::string Tower::getTypeSlug() const {
 int Tower::getCost() const {
     return stats.cost;
 }
+
+int Tower::getTotalValue() const {
+    return totalInvested;
+}
+
+void Tower::upgradeInGame(int cost) {
+    if (inGameLevel < maxInGameLevel) {
+        inGameLevel++;
+        totalInvested += cost;
+        float bonus = 1.2f; // +20% к текущим
+        stats.damage = (int)(stats.damage * bonus);
+        stats.firerate *= bonus;
+        stats.range *= bonus;
+    }
+}
+
+int Tower::getInGameUpgradeCost() const {
+    return (int)(stats.cost * 0.5f * inGameLevel);
+}
+
+int Tower::getInGameLevel() const { return inGameLevel; }
+int Tower::getMaxInGameLevel() const { return maxInGameLevel; }
+bool Tower::canUpgradeInGame() const { return inGameLevel < maxInGameLevel; }

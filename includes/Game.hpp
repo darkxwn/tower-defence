@@ -64,6 +64,7 @@ private:
     bool isPinching = false;
     bool hasMoved = false;
     int money = 0;
+    int accumulatedGlobalMoney = 0; // накопленные глобальные деньги за уровень
 
     GameState state = GameState::Playing;
     GameEndReason endReason = GameEndReason::None;
