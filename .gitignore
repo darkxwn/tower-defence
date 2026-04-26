@@ -46,4 +46,5 @@ cli
 GEMINI.md
 
 .todo
-/android/app/.cxx/RelWithDebInfo/1k2d3n5a
+/cmake-build-debug-visual-studio/
+/android/app/.cxx/RelWithDebInfo/

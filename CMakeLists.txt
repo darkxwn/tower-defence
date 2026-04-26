@@ -1,9 +1,28 @@
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.15...3.30)
 
 set(CMAKE_POLICY_DEFAULT_CMP0000 NEW)
 set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
 
 project(tower-defence LANGUAGES CXX)
+
+if(ANDROID)
+    # Принудительно выставляем стандарт для ВСЕХ, включая FetchContent
+    set(CMAKE_CXX_STANDARD 20 CACHE STRING "" FORCE)
+    set(CMAKE_CXX_STANDARD_REQUIRED ON CACHE BOOL "" FORCE)
+    
+    # Глобальный хак: заставляем компилятор и линковщик использовать c++_shared
+    # Эти флаги добавятся К КАЖДОЙ команде компиляции и линковки
+    add_compile_options(-stdlib=libc++)
+    add_link_options("-static-libstdc++") 
+    
+    # Принудительно задаем STL для NDK Toolchain
+    set(CMAKE_ANDROID_STL_TYPE c++_shared CACHE STRING "" FORCE)
+    set(ANDROID_STL c++_shared CACHE STRING "" FORCE)
+    
+    # Чтобы SFML не переопределял стандарт на 17
+    set(SFML_USE_SYSTEM_DEPS OFF CACHE BOOL "" FORCE)
+    link_libraries(c++_shared)
+endif()
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -11,18 +30,23 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Настройки статической сборки
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 set(SFML_STATIC_LIBRARIES ON CACHE BOOL "" FORCE)
+
 include(FetchContent)
 
-# JSON (используем ZIP-архив, это быстро)
-FetchContent_Declare(
-    json
-    URL "https://github.com/nlohmann/json/archive/refs/tags/v3.11.3.zip"
+# JSON
+FetchContent_Declare(json
+    GIT_REPOSITORY https://github.com/nlohmann/json
+    GIT_SHALLOW ON
+    GIT_TAG v3.12.0
 )
 
-# SFML (используем ZIP ветки 3.0.x, чтобы не качать всю историю Git)
-FetchContent_Declare(
-    sfml
-    URL "https://github.com/SFML/SFML/archive/refs/tags/3.0.2.zip"
+# SFML
+FetchContent_Declare(SFML
+    GIT_REPOSITORY https://github.com/SFML/SFML.git
+    GIT_TAG 3.0.2
+    GIT_SHALLOW ON
+    EXCLUDE_FROM_ALL
+    SYSTEM
 )
 
 # Оптимизация сборки SFML
@@ -75,9 +99,11 @@ if(ANDROID)
     add_library(${PROJECT_NAME} SHARED ${SOURCES})
 else()
     # Остальные - исполняемый файл
-    add_executable(${PROJECT_NAME} WIN32 MACOSX_BUNDLE ${SOURCES} ${WIN_RESOURCES} ${MACOS_ICON}
-
-    )
+    if("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
+        add_executable(${PROJECT_NAME} MACOSX_BUNDLE ${SOURCES} ${WIN_RESOURCES} ${MACOS_ICON})
+    else()
+        add_executable(${PROJECT_NAME} WIN32 MACOSX_BUNDLE ${SOURCES} ${WIN_RESOURCES} ${MACOS_ICON})
+    endif()
 endif()
 
 # НАСТРОЙКИ СПЕЦИФИЧНЫХ ПЛАТФОРМ
@@ -109,7 +135,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     SFML::Graphics
     SFML::Window
     SFML::System
-    SFML::Audio
+    #SFML::Audio
     nlohmann_json::nlohmann_json
 )
 

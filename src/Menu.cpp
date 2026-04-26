@@ -815,7 +815,7 @@ void Menu::scanLevels() {
     }
 #endif
 
-    Logger::debug("Successfully scanned {} levels", (int)levels.size());
+    Logger::debug("Успешно просканировано {} уровней", (int)levels.size());
 }
 
 // Чтение названия уровня из файла

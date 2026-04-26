@@ -1,5 +1,9 @@
 #include "utils/Logger.hpp"
 
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
 #ifdef __ANDROID__
 #include <android/log.h>
 #endif
@@ -15,6 +19,11 @@ bool Logger::initialized = false;
 
 // Инициализация системы логирования с ротацией файлов
 void Logger::init(const std::string& fileName) {
+#ifdef _WIN32
+    SetConsoleOutputCP(CP_UTF8);
+    SetConsoleCP(CP_UTF8);
+#endif
+
 #ifndef __ANDROID__
     if (initialized) return;
 

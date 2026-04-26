@@ -1,3 +1,21 @@
+import java.util.Properties
+import java.io.FileInputStream
+
+// Функция для загрузки свойств
+val localProperties = Properties().apply {
+    val localPropertiesFile = rootProject.file("local.properties")
+    if (localPropertiesFile.exists()) {
+        load(FileInputStream(localPropertiesFile))
+    }
+}
+
+// Хелпер для получения пропсов (сначала из командной строки -P, потом из local.properties)
+fun getSignProperty(key: String, localKey: String): String {
+    return project.findProperty(key)?.toString() 
+        ?: localProperties.getProperty(localKey) 
+        ?: ""
+}
+
 plugins {
     id("com.android.application")
 }
@@ -5,22 +23,73 @@ plugins {
 android {
     namespace = "com.darkxwn.billvlad.towerdefence"
     compileSdk = 35
-    ndkVersion = "23.2.8568313" // Пример для r23c. Поставь ту, что у тебя в папке.
+    ndkVersion = "27.2.12479018"
+	
+	signingConfigs {
+        create("release") {
+            // Файл ключа должен лежать в папке android/app/
+            storeFile = file("release.keystore")
+            
+            // Пароли, которые ты вводил при создании через keytool
+            storePassword = getSignProperty("releaseStorePassword", "release.keystore.password")
+            keyAlias = getSignProperty("releaseKeyAlias", "release.key.alias")
+            keyPassword = getSignProperty("releaseKeyPassword", "release.key.password")
+            
+            // Опционально для Android 16/HyperOS: принудительно используем V2/V3 подпись
+            enableV1Signing = true
+            enableV2Signing = true
+            enableV3Signing = true
+            enableV4Signing = true
+        }
+    }
+	
+	buildTypes {
+        getByName("release") {
+            isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("release")
+            
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+        }
+        
+        getByName("debug") {
+            // Отладочная сборка по умолчанию подписывается дебажным ключом Google
+            isMinifyEnabled = false
+        }
+    }
+
+    splits {
+        abi {
+            isEnable = true // Включает разделение
+            reset() // Сбрасывает список архитектур по умолчанию
+            include("arm64-v8a", "armeabi-v7a", "x86_64") // Список нужных архитектур
+            isUniversalApk = true // Если true, создаст еще и один общий тяжелый APK
+        }
+    }
 
     defaultConfig {
         applicationId = "com.darkxwn.billvlad.towerdefence"
         minSdk = 26
-        targetSdk = 35
+        targetSdk = 36
         versionCode = 3
         versionName = "0.3a"
 
         externalNativeBuild {
-            cmake {
-                arguments("-DANDROID_STL=c++_shared")
-                cppFlags("-std=c++17")
-                abiFilters("arm64-v8a", "armeabi-v7a")
-            }
-        }
+			cmake {
+				cppFlags("-std=c++20")
+				arguments(
+					"-Wno-dev",
+					"-DANDROID_STL=c++_shared",
+					"-DANDROID_CPP_FEATURES=rtti exceptions", // Добавь это
+					"-DCMAKE_CXX_STANDARD=20",
+					"-DCMAKE_CXX_STANDARD_REQUIRED=ON",
+					"-DSFML_OS_ANDROID=ON"
+				)
+				abiFilters("arm64-v8a", "armeabi-v7a")
+			}
+		}
     }
 
     externalNativeBuild {
@@ -33,18 +102,17 @@ android {
     sourceSets {
         getByName("main") {
             manifest.srcFile("src/main/AndroidManifest.xml")
-            // Исправленный синтаксис (без ворнингов)
             assets.setSrcDirs(listOf("../../assets", "../../data"))
         }
     }
     packaging {
-        jniLibs {
-            // Если Gradle находит две одинаковые либы, он просто берет первую
-            pickFirsts.add("lib/arm64-v8a/libtower-defence.so")
-            pickFirsts.add("lib/armeabi-v7a/libtower-defence.so")
-            pickFirsts.add("*libsfml-*.so")
-        }
-    }
+		jniLibs {
+			// Обязательно разрешаем дубликаты для STL, так как SFML может пытаться тащить свой
+			pickFirsts.add("**/libc++_shared.so")
+			pickFirsts.add("**/libsfml-*.so")
+			pickFirsts.add("**/libtower-defence.so")
+		}
+	}
 }
 
 dependencies {
