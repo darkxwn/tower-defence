@@ -1,19 +1,21 @@
 import java.util.Properties
-import java.io.FileInputStream
+import java.io.File
 
-// Функция для загрузки свойств
-val localProperties = Properties().apply {
-    val localPropertiesFile = rootProject.file("local.properties")
-    if (localPropertiesFile.exists()) {
-        load(FileInputStream(localPropertiesFile))
-    }
+val localProperties = Properties()
+val localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.inputStream().use { localProperties.load(it) }
 }
 
 // Хелпер для получения пропсов (сначала из командной строки -P, потом из local.properties)
 fun getSignProperty(key: String, localKey: String): String {
-    return project.findProperty(key)?.toString() 
-        ?: localProperties.getProperty(localKey) 
-        ?: ""
+    val value = project.findProperty(key)?.toString() ?: localProperties.getProperty(localKey)
+    if (value.isNullOrBlank()) {
+        // Это поможет нам понять, почему пароль "неверный" (он может быть просто пустым)
+        println("WARNING: Property $localKey not found in local.properties or via -P$key")
+        return ""
+    }
+    return value.trim() // trim() уберет случайные пробелы в конце строки
 }
 
 plugins {
@@ -27,15 +29,12 @@ android {
 	
 	signingConfigs {
         create("release") {
-            // Файл ключа должен лежать в папке android/app/
             storeFile = file("release.keystore")
-            
-            // Пароли, которые ты вводил при создании через keytool
             storePassword = getSignProperty("releaseStorePassword", "release.keystore.password")
             keyAlias = getSignProperty("releaseKeyAlias", "release.key.alias")
-            keyPassword = getSignProperty("releaseKeyPassword", "release.key.password")
-            
-            // Опционально для Android 16/HyperOS: принудительно используем V2/V3 подпись
+            keyPassword = getSignProperty("releaseKeyPassword", "release.key.password")            
+            println("DEBUG: Password length is ${storePassword?.length}")
+
             enableV1Signing = true
             enableV2Signing = true
             enableV3Signing = true

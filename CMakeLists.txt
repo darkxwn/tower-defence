@@ -19,8 +19,9 @@ if(ANDROID)
     set(CMAKE_ANDROID_STL_TYPE c++_shared CACHE STRING "" FORCE)
     set(ANDROID_STL c++_shared CACHE STRING "" FORCE)
     
-    # Чтобы SFML не переопределял стандарт на 17
+    set(SFML_OS_ANDROID ON CACHE BOOL "" FORCE)
     set(SFML_USE_SYSTEM_DEPS OFF CACHE BOOL "" FORCE)
+    set(SFML_BUILD_MAIN ON CACHE BOOL "" FORCE)
     link_libraries(c++_shared)
 endif()
 
