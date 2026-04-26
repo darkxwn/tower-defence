@@ -39,7 +39,7 @@ void Game::initOverlays() {
     pauseOverlay->setBackgroundColor(sf::Color(0, 0, 0, 150));
     pauseOverlay->setDrawBackground(true);
 
-    auto pRoot = std::make_unique<UI::Container>(sf::Vector2f(winSize.x * 0.9f, 180.f));
+    auto pRoot = std::make_unique<UI::Container>(sf::Vector2f(winSize.x * 0.9f, 300.f));
     pRoot->setDirection(UI::Container::Direction::Column);
     pRoot->setContentAlign(UI::Container::ContentAlign::Center);
     pRoot->setItemAlign(UI::Container::ItemAlign::Center);
@@ -83,7 +83,7 @@ void Game::initOverlays() {
     endOverlay->setBackgroundColor(sf::Color(0, 0, 0, 200));
     endOverlay->setDrawBackground(true);
 
-    auto eRoot = std::make_unique<UI::Container>(sf::Vector2f(winSize.x * 0.9f, 180.f));
+    auto eRoot = std::make_unique<UI::Container>(sf::Vector2f(winSize.x * 0.9f, 300.f));
     eRoot->setDirection(UI::Container::Direction::Column);
     eRoot->setContentAlign(UI::Container::ContentAlign::Center);
     eRoot->setItemAlign(UI::Container::ItemAlign::Center);
@@ -96,7 +96,7 @@ void Game::initOverlays() {
     endTitlePtr = eTitle.get();
     eRoot->addChild(std::move(eTitle));
 
-    auto eSub = std::make_unique<UI::Text>(font, "Результат уровня", 32);
+    auto eSub = std::make_unique<UI::Text>(font, "Результат уровня", 32, sf::Vector2f(winSize.x * 0.9f, 60.f));
     endSubTitlePtr = eSub.get();
     eRoot->addChild(std::move(eSub));
 
@@ -173,24 +173,34 @@ void Game::updateViewSizes(sf::Vector2u windowSize) {
         overlay->setSize(logicalSize);
         overlay->setPosition({ 0, 0 });
         float rootW = logicalSize.x * 0.9f;
+
         for (size_t i = 0; i < overlay->getChildrenCount(); ++i) {
-            auto* child = dynamic_cast<UI::Container*>(overlay->getChild(i));
-            if (child) {
-                child->setSize(sf::Vector2f(rootW, child->getSize().y));
-                // Обновляем размеры внутрянки (Header, Nav и т.д.)
-                for (size_t j = 0; j < child->getChildrenCount(); ++j) {
-                    auto* subChild = dynamic_cast<UI::Container*>(child->getChild(j));
+            auto* child = overlay->getChild(i); // Получаем просто как Widget*
+            if (!child) continue;
+
+            // ПЕРВАЯ ОШИБКА: Раньше здесь был dynamic_cast<UI::Container*>
+            // Теперь мы должны менять размер любому виджету на верхнем уровне
+            child->setSize(sf::Vector2f(rootW, child->getSize().y));
+
+            // Если это контейнер, пройдемся по его детям (Header, Nav и т.д.)
+            if (auto* asContainer = dynamic_cast<UI::Container*>(child)) {
+                for (size_t j = 0; j < asContainer->getChildrenCount(); ++j) {
+                    auto* subChild = asContainer->getChild(j);
                     if (subChild) {
+                        // Устанавливаем ширину для всех вложенных блоков (текстов и контейнеров)
                         subChild->setSize(sf::Vector2f(rootW, subChild->getSize().y));
                     }
                 }
             }
         }
         overlay->rebuild();
-    };
+        };
+    if (endTitlePtr) endTitlePtr->setMaxWidth(logicalSize.x * 0.9f);
+    if (endSubTitlePtr) endSubTitlePtr->setMaxWidth(logicalSize.x * 0.9f);
 
     updateOverlay(pauseOverlay);
     updateOverlay(endOverlay);
+
 }
 
 // Запускает основной цикл игровой сессии

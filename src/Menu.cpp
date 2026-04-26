@@ -471,14 +471,14 @@ std::unique_ptr<UI::Container> Menu::createUpgradeMenu() {
         towerCard->addChild(std::move(towerName));
 
         for (size_t s = 0; s < statNames.size(); ++s) {
-            auto statRow = std::make_unique<UI::Container>(sf::Vector2f(400.f, 40.f));
+            auto statRow = std::make_unique<UI::Container>(sf::Vector2f(400.f, 36.f));
             statRow->setDirection(UI::Container::Direction::Row);
             statRow->setContentAlign(UI::Container::ContentAlign::Center);
             statRow->setItemAlign(UI::Container::ItemAlign::Center);
             statRow->setGap(5.f);
             statRow->setDrawOutline(true);
 
-            auto statName = std::make_unique<UI::Text>(font, statNames[s], 20, sf::Vector2f(170.f , 35.f));
+            auto statName = std::make_unique<UI::Text>(font, statNames[s], 18, sf::Vector2f(170.f , 32.f));
             statName->setAlignment(UI::Text::Align::Left);
             statName->setColor(Colors::Theme::TextMain);
             statRow->addChild(std::move(statName));
@@ -500,7 +500,7 @@ std::unique_ptr<UI::Container> Menu::createUpgradeMenu() {
             } else {
                 valueStr = std::to_string((int)currentValue);
             }
-            UI::Text* statValuePtr = new UI::Text(font, valueStr, 20, sf::Vector2f(70.f, 35.f));
+            UI::Text* statValuePtr = new UI::Text(font, valueStr, 18, sf::Vector2f(70.f, 32.f));
             statValuePtr->setAlignment(UI::Text::Align::Left);
             statValuePtr->setColor(Colors::Theme::TextMain);
             upgradeValuePtrs[t].push_back(statValuePtr);
@@ -508,17 +508,17 @@ std::unique_ptr<UI::Container> Menu::createUpgradeMenu() {
 
             int currentCost = upgradeManager.getUpgradeCost(towerTypes[t], s);
             std::string costStr = std::to_string(currentCost);
-            UI::Text* costTextPtr = new UI::Text(font, costStr, 20, sf::Vector2f(80.f, 35.f));
+            UI::Text* costTextPtr = new UI::Text(font, costStr, 18, sf::Vector2f(80.f, 32.f));
             costTextPtr->setAlignment(UI::Text::Align::Left);
             costTextPtr->setColor(Colors::Theme::TextMoney);
             upgradeCostPtrs[t].push_back(costTextPtr);
             statRow->addChild(std::unique_ptr<UI::Text>(costTextPtr));
                         
-            auto upgradeBtn = std::make_unique<UI::Button>(ResourceManager::get("icon-upgrade2"), sf::Vector2f(50.f, 35.f));
-            upgradeBtn->setIconScale({ 35.f / 96.f, 35.f / 96.f });
+            auto upgradeBtn = std::make_unique<UI::Button>(ResourceManager::get("icon-upgrade2"), sf::Vector2f(50.f, 32.f));
+            upgradeBtn->setIconScale({ 32.f / 96.f, 32.f / 96.f });
             upgradeBtn->setTextSize(20);
             // callback для улучшения
-            auto towerTypeCopy = towerTypes[t];
+            auto& towerTypeCopy = towerTypes[t];
             UpgradeManager* umPtr = &upgradeManager;
             SaveManager* smPtr = &saveManager;
 
@@ -699,35 +699,43 @@ void Menu::updateViewSizes(sf::Vector2u windowSize) {
 
     auto updateSub = [&](std::unique_ptr<UI::Container>& cont) {
         if (cont) {
-            float headerH = 80.f;  
-            float navH = 80.f;  
-            float gap = 20.f;   
-            float p = 5.f;    
+            float headerH = 80.f;
+            float navH = 80.f;
+            float gap = 20.f;
+            float p = 5.f;
             float contentH = rootSize.y - headerH - navH - gap * 2.f - p * 2.f;
 
             for (size_t i = 0; i < cont->getChildrenCount(); ++i) {
-                auto* child = dynamic_cast<UI::Container*>(cont->getChild(i));
-                if (child) {
-                    if (cont == upgradesContainer && i == 1) {
-                        // особая обработка для меню улучшений - content содержит currency и cards
-                        child->setSize(sf::Vector2f(rootSize.x * 0.95f, contentH));
+                auto* child = cont->getChild(i); // Получаем как Widget*
+                if (!child) continue;
 
-                        if (child->getChildrenCount() >= 2) {
-                            auto* currency = dynamic_cast<UI::Container*>(child->getChild(0));
-                            auto* cards = dynamic_cast<UI::Container*>(child->getChild(1));
-                            if (currency && cards) {
-                                // currency и cards по ширине content, cards по высоте оставшейся
-                                float gap = 10.f;
-                                currency->setSize(sf::Vector2f(child->getSize().x, currency->getSize().y));
-                                cards->setSize(sf::Vector2f(child->getSize().x, child->getSize().y - currency->getSize().y - gap));
-                            }
+                // 1. Устанавливаем ширину для ВСЕХ элементов (и Текстов, и Контейнеров)
+                // Чтобы они правильно центрировались в логическом пространстве
+                float targetWidth = rootSize.x * 0.95f;
+
+                if (cont == upgradesContainer && i == 1) {
+                    child->setSize(sf::Vector2f(targetWidth, contentH));
+
+                    // Для меню улучшений лезем внутрь контента (там currency и cards)
+                    if (auto* asContainer = dynamic_cast<UI::Container*>(child)) {
+                        if (asContainer->getChildrenCount() >= 2) {
+                            auto* currency = asContainer->getChild(0);
+                            auto* cards = asContainer->getChild(1);
+                            if (currency) currency->setSize(sf::Vector2f(targetWidth, currency->getSize().y));
+                            if (cards) cards->setSize(sf::Vector2f(targetWidth, child->getSize().y - currency->getSize().y - 10.f));
                         }
                     }
-                    else if (i == 1) {
-                        child->setSize(sf::Vector2f(rootSize.x * 0.95f, contentH));
-                    }
-                    else {
-                        child->setSize(sf::Vector2f(rootSize.x * 0.95f, child->getSize().y));
+                }
+                else if (i == 1) { // Область контента в других меню
+                    child->setSize(sf::Vector2f(targetWidth, contentH));
+                    // Если это контейнер (как cardsArea), он сам пересчитает детей при rebuild
+                }
+                else { // Заголовок (i=0) или Навигация (i=2)
+                    child->setSize(sf::Vector2f(targetWidth, child->getSize().y));
+
+                    // Если это текст-заголовок, принудительно ограничиваем ширину переноса
+                    if (auto* asText = dynamic_cast<UI::Text*>(child)) {
+                        asText->setMaxWidth(targetWidth);
                     }
                 }
             }

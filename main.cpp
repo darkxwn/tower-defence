@@ -75,8 +75,6 @@ static void loadResources() {
     ResourceManager::load("icon-exit", assetsPath + "icons/exit.png");
     ResourceManager::load("icon-save", assetsPath + "icons/save.png");
     ResourceManager::load("icon-back", assetsPath + "icons/back.png");
-    ResourceManager::load("icon-save", assetsPath + "icons/save.png");
-    ResourceManager::load("icon-back", assetsPath + "icons/back.png");
     ResourceManager::load("icon-audio", assetsPath + "icons/audio.png");
     ResourceManager::load("icon-music", assetsPath + "icons/music.png");
     ResourceManager::load("icon-level", assetsPath + "icons/level.png");
