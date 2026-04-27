@@ -32,19 +32,18 @@ jobs:
         run: sudo apt-get install ninja-build
 
       - name: Accept Android Licenses
-        run: yes | sdkmanager --licenses || true
-
-      - name: Make Gradle executable
-        run: chmod +x android/gradlew
+        run: |
+          # Используем встроенный способ принятия лицензий
+          yes | ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --licenses || true
 
       - name: Build with Gradle
         env:
           ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
         run: |
           cd android
-          rm -rf .gradle app/build app/.cxx app/src/main/jniLibs
           chmod +x gradlew
-          ./gradlew assembleDebug --no-build-cache
+          # Добавляем флаг автоматического принятия лицензий для Gradle
+          ./gradlew assembleDebug --no-build-cache -Pandroid.builder.sdkDownload=true
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
