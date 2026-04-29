@@ -1,36 +1,31 @@
 cmake_minimum_required(VERSION 3.15...3.30)
 
-set(CMAKE_POLICY_DEFAULT_CMP0000 NEW)
-set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
-
 project(tower-defence LANGUAGES CXX)
 
 if(ANDROID)
-    # Принудительно выставляем стандарт для ВСЕХ, включая FetchContent
     set(CMAKE_CXX_STANDARD 20 CACHE STRING "" FORCE)
     set(CMAKE_CXX_STANDARD_REQUIRED ON CACHE BOOL "" FORCE)
     
-    # Глобальный хак: заставляем компилятор и линковщик использовать c++_shared
-    # Эти флаги добавятся К КАЖДОЙ команде компиляции и линковки
-    add_compile_options(-stdlib=libc++)
-    add_link_options("-static-libstdc++") 
-    
-    # Принудительно задаем STL для NDK Toolchain
+    # Убираем статик-линк, оставляем только shared для NDK
     set(CMAKE_ANDROID_STL_TYPE c++_shared CACHE STRING "" FORCE)
     set(ANDROID_STL c++_shared CACHE STRING "" FORCE)
     
     set(SFML_OS_ANDROID ON CACHE BOOL "" FORCE)
     set(SFML_USE_SYSTEM_DEPS OFF CACHE BOOL "" FORCE)
     set(SFML_BUILD_MAIN ON CACHE BOOL "" FORCE)
+    
+    # Глобальная линковка STL
     link_libraries(c++_shared)
 endif()
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Настройки статической сборки
+# Настройки сборки SFML (важно: до FetchContent)
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
-set(SFML_STATIC_LIBRARIES ON CACHE BOOL "" FORCE)
+if(ANDROID)
+    set(BUILD_SHARED_LIBS ON CACHE BOOL "" FORCE) # На Android либы должны быть Shared
+endif()
 
 include(FetchContent)
 
@@ -41,21 +36,20 @@ FetchContent_Declare(json
     GIT_TAG v3.12.0
 )
 
-# SFML
-FetchContent_Declare(SFML
+# SFML - ИСПРАВЛЕНО: имя в нижнем регистре для Linux
+FetchContent_Declare(sfml
     GIT_REPOSITORY https://github.com/SFML/SFML.git
     GIT_TAG 3.0.2
     GIT_SHALLOW ON
-    EXCLUDE_FROM_ALL
     SYSTEM
 )
 
-# Оптимизация сборки SFML
 set(SFML_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(SFML_BUILD_TEST_SUITE OFF CACHE BOOL "" FORCE)
 set(SFML_INSTALL_PKGCONFIG_FILES OFF CACHE BOOL "" FORCE)
 set(SFML_BUILD_DOC OFF CACHE BOOL "" FORCE)
 
+# ИСПРАВЛЕНО: соответствие имен
 FetchContent_MakeAvailable(sfml json)
 
 # СПИСОК ИСХОДНЫХ ФАЙЛОВ
@@ -96,12 +90,10 @@ endif()
 
 set(MACOS_ICON "${CMAKE_CURRENT_SOURCE_DIR}/game_macos.icns")
 
-# СОЗДАНИЕ ЦЕЛИ (Target)
+# СОЗДАНИЕ ЦЕЛИ
 if(ANDROID)
-    # Android требует библиотеку .so
     add_library(${PROJECT_NAME} SHARED ${SOURCES})
 else()
-    # Остальные - исполняемый файл
     if("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
         add_executable(${PROJECT_NAME} MACOSX_BUNDLE ${SOURCES} ${WIN_RESOURCES} ${MACOS_ICON})
     else()
@@ -133,26 +125,26 @@ endif()
 # ИНКЛУДЫ И ЛИНКОВКА
 target_include_directories(${PROJECT_NAME} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/includes")
 
-# Общие библиотеки
+# ЛИНКОВКА - ИСПРАВЛЕНО: использование правильных имен таргетов
 target_link_libraries(${PROJECT_NAME} PRIVATE
-    SFML::Graphics
-    SFML::Window
-    SFML::System
-    #SFML::Audio
+    sfml-graphics
+    sfml-window
+    sfml-system
     nlohmann_json::nlohmann_json
 )
 
 # Дополнительные либы по платформам
+
 if(ANDROID)
     target_link_libraries(${PROJECT_NAME} PRIVATE
-        "-Wl,--whole-archive" SFML::Main "-Wl,--no-whole-archive"
+        "-Wl,--whole-archive" sfml-main "-Wl,--no-whole-archive"
         android
         log
         GLESv2
         EGL
     )
 elseif(WIN32)
-    target_link_libraries(${PROJECT_NAME} PRIVATE SFML::Main)
+    target_link_libraries(${PROJECT_NAME} PRIVATE sfml-main)
 elseif(APPLE)
     target_link_libraries(${PROJECT_NAME} PRIVATE "-framework CoreFoundation")
 endif()

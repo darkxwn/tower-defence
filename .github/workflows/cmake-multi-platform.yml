@@ -20,42 +20,37 @@ jobs:
         with:
           java-version: '21'
           distribution: 'temurin'
-          cache: 'gradle'
 
       - name: Setup Android NDK
         uses: nttld/setup-ndk@v1
         id: setup-ndk
         with:
-          ndk-version: r27b # это работает, ладно...
+          ndk-version: r27d
           add-to-path: true
 
       - name: Install Ninja
         run: sudo apt-get install ninja-build
 
-      # Декодируем Keystore из секретов GitHub
-      - name: Decode Keystore
-        run: |
-          echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 --decode > android/app/release.keystore
-
       - name: Accept Android Licenses
-        run: yes | sdkmanager --licenses || true
+        run: |
+          # Используем встроенный способ принятия лицензий
+          yes | ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --licenses || true
 
-      - name: Build Release APK
+      - name: Build with Gradle
         env:
           ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
-          RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
-          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
-          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleRelease \
-            -Pandroid.injected.abi=arm64-v8a \
-            -PreleaseStorePassword=$RELEASE_STORE_PASSWORD \
-            -PreleaseKeyAlias=$RELEASE_KEY_ALIAS \
-            -PreleaseKeyPassword=$RELEASE_KEY_PASSWORD \
-            --no-build-cache --stacktrace
+          # Добавляем флаг автоматического принятия лицензий для Gradle
+          ./gradlew assembleDebug --no-build-cache -Pandroid.builder.sdkDownload=true
 
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: tower-defence-android-${{ github.run_number }}
+          # Используем маску, чтобы найти APK в любой подпапке build
+          path: android/app/build/outputs/apk/**/*.apk
       - name: Upload Signed APK
         uses: actions/upload-artifact@v4
         with:
