@@ -22,6 +22,9 @@ namespace UI {
         position = pos;
         background.setPosition(pos);
         outline.setPosition(pos);
+        if (backgroundSlice) {
+            backgroundSlice->setPosition(pos);
+        }
         recalculateLayout();
     }
 
@@ -30,6 +33,9 @@ namespace UI {
         this->size = size;
         background.setSize(size);
         outline.setSize(size);
+        if (backgroundSlice) {
+            backgroundSlice->setSize(size);
+        }
         recalculateLayout();
     }
 
@@ -78,6 +84,24 @@ namespace UI {
     // Изменение флага видимости фона
     void Container::setDrawBackground(bool draw) {
         drawBackground = draw;
+    }
+
+    // Изменение текстуры фона с индивидуальными отступами
+    void Container::setBackgroundTexture(const sf::Texture& tex, float l, float t, float r, float b) {
+        if (!backgroundSlice) {
+            backgroundSlice = std::make_unique<NineSlice>(tex, l, t, r, b);
+        }
+        else {
+            backgroundSlice->setTexture(tex, l, t, r, b);
+        }
+        backgroundSlice->setSize(size);
+        backgroundSlice->setPosition(position);
+        setDrawBackground(true);
+    }
+
+    // Изменение текстуры фона с одинаковыми отступами
+    void Container::setBackgroundTexture(const sf::Texture& tex, float edge) {
+        setBackgroundTexture(tex, edge, edge, edge, edge);
     }
 
     // Изменение флага видимости отладочной рамки
@@ -150,7 +174,7 @@ namespace UI {
 
         if (layoutChildren.empty()) return;
 
-        // структура для управления линиями при переносе (Wrap)
+        // структура для управления линиями при переносе
         struct Line {
             std::vector<Widget*> items; 
             float mainSize = 0.f; 
@@ -190,7 +214,7 @@ namespace UI {
         for (const auto& line : lines) {
             totalLinesCrossSize += line.crossSize;
         }
-        // Добавляем отступы между линиями
+        // добавление отступов между линиями
         if (lines.size() > 1) {
             totalLinesCrossSize += (lines.size() - 1) * gap;
         }
@@ -199,10 +223,10 @@ namespace UI {
         float currentCrossPos = 0.f;
         float containerCrossSize = (direction == Direction::Row) ? (size.y - padding.y * 2.f) : (size.x - padding.x * 2.f);
 
-        if (contentAlign == ContentAlign::Center) {
+        if (itemAlign == ItemAlign::Center) {
             currentCrossPos = std::max(0.f, (containerCrossSize - totalLinesCrossSize) / 2.f);
         }
-        else if (contentAlign == ContentAlign::End) {
+        else if (itemAlign == ItemAlign::End) {
             currentCrossPos = std::max(0.f, containerCrossSize - totalLinesCrossSize);
         }
 
@@ -251,7 +275,7 @@ namespace UI {
             currentCrossPos += line.crossSize + gap;
         }
         
-        // Виджеты, которые не участвуют в расстановке, принудительно ставятся в начало контейнера
+        // позиционирование виджетов вне автоматической расстановки
         for (auto& child : children) {
             if (child->isVisible() && !child->getFollowsLayout()) {
                 child->setPosition(position);
@@ -267,9 +291,9 @@ namespace UI {
         sf::Vector2f mousePos = window.mapPixelToCoords(pixelPos, uiView);
         bool mouseInside = getGlobalBounds().contains(mousePos);
 
-        // Колесико мыши + сенсорное перетаскивание
+        // обработка колесика мыши и сенсорного перетаскивания
         if (scrollEnabled) {
-            // Колесико мыши
+            // прокрутка колесиком
             if (mouseInside) {
                 if (const auto* scroll = event.getIf<sf::Event::MouseWheelScrolled>()) {
                     if (scroll->wheel == sf::Mouse::Wheel::Vertical) {
@@ -278,7 +302,7 @@ namespace UI {
                 }
             }
 
-            // Сенсорное перетаскивание (Android)
+            // сенсорное управление
             if (const auto* touch = event.getIf<sf::Event::TouchBegan>()) {
                 sf::Vector2f touchPos = window.mapPixelToCoords(touch->position, uiView);
                 if (getGlobalBounds().contains(touchPos)) {
@@ -297,13 +321,13 @@ namespace UI {
                 isDragging = false;
             }
 
-            // Ограничение скролла
+            // ограничение диапазона прокрутки
             float maxScroll = std::max(0.f, maxContentHeight - size.y);
             if (scrollOffset < 0.f) scrollOffset = 0.f;
             if (scrollOffset > maxScroll) scrollOffset = maxScroll;
         }
 
-        // Если скролл включен, создаем скорректированный вид с вьюпортом для детей
+        // формирование вьюпорта для дочерних элементов
         if (scrollEnabled) {
             sf::View adjustedView(sf::FloatRect({ position.x, position.y + scrollOffset }, size));
             
@@ -337,9 +361,18 @@ namespace UI {
     void Container::render(sf::RenderWindow& window) const {
         if (!visible) return;
 
-        if (drawBackground) window.draw(background);
+        // отрисовка фона и рамки
+        if (drawBackground) {
+            if (backgroundSlice) {
+                window.draw(*backgroundSlice);
+            }
+            else {
+                window.draw(background);
+            }
+        }
         if (drawOutline) window.draw(outline);
 
+        // отрисовка содержимого
         if (scrollEnabled) {
             sf::View currentView = window.getView();
             sf::Vector2u winSize = window.getSize();

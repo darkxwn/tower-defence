@@ -19,7 +19,7 @@ public:
     static sf::Texture& get(const std::string& name);
 
     // Загрузка текстуры
-    static void load(const std::string& name, const std::string& path);
+    static void load(const std::string& name, const std::string& path, bool smooth = true);
 
     // Получение шрифта по имени
     static sf::Font& getFont(const std::string& name);

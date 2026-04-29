@@ -1,15 +1,13 @@
 #pragma once
+#include <SFML/Graphics.hpp>
 #include "SettingsManager.hpp"
-#include "UpgradeManager.hpp"
 #include "SaveManager.hpp"
+#include "UpgradeManager.hpp"
 #include "ui/Container.hpp"
 #include "ui/Text.hpp"
 #include "ui/Button.hpp"
-#include "ui/Slider.hpp"
-#include "ui/Image.hpp"
-#include <SFML/Graphics.hpp>
-#include <string>
 #include <vector>
+#include <string>
 #include <memory>
 
 ///////////////////////////////////////////////////////////////////////////
@@ -18,146 +16,136 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 
-// Состояния экранов меню
-enum class MenuState {
-    Main,
-    LevelSelect,
-    Upgrades,
-    Settings
-};
+namespace UI {
+    class Slider; // предварительное объявление
+}
 
-// Результат завершённой игровой сессии
-enum class SessionResult {
-    None,
-    Win,
-    Lose
-};
-
-// Информация об уровне из файла карты
-struct LevelInfo {
-    std::string filePath; // путь к файлу .map
-    std::string id;       // "levelXX"
-    std::string name; // название уровня
-    int index; // порядковый номер
-};
+// Результаты игровой сессии
+enum class SessionResult { None, Win, Lose };
 
 class Menu {
+public:
+    // Состояния меню (экраны)
+    enum class MenuState { Main, LevelSelect, Settings, Upgrades };
+
+    // Информация об уровне для списка выбора
+    struct LevelInfo {
+        std::string filePath; // путь к файлу карты
+        std::string name; // отображаемое название
+        std::string id; // идентификатор (имя файла)
+        int index = 0; // порядковый номер
+    };
+
 private:
-    sf::RenderWindow& window; // ссылка на окно отрисовки
-    SettingsManager& settings; // ссылка на менеджер настроек
-    SaveManager& saveManager; // ссылка на менеджер сохранений
-    UpgradeManager upgradeManager; // менеджер улучшений
-    MenuState state = MenuState::Main; // текущее состояние меню
+    sf::RenderWindow& window;
+    sf::View uiView;
+    float uiScale = 1.0f;
 
-    std::vector<LevelInfo> levels; // список доступных уровней
-    std::string selectedLevel; // путь к выбранной карте
-    bool levelChosen = false; // уровень выбран
+    SettingsManager& settings;
+    SaveManager& saveManager;
+    UpgradeManager upgradeManager;
 
-    sf::View worldView; // камера заднего плана
-    sf::View uiView; // камера интерфейса
-    float uiScale = 1.0f; // масштаб интерфейса
-    bool windowRecreationRequired = false; // запрос пересоздания окна
+    MenuState state = MenuState::Main;
+    std::vector<LevelInfo> levels;
+    std::string selectedLevel;
+    bool levelChosen = false;
 
-    std::unique_ptr<UI::Container> mainContainer; // контейнер главного меню
-    std::unique_ptr<UI::Container> levelContainer; // контейнер выбора уровня
-    std::unique_ptr<UI::Container> settingsContainer; // контейнер настроек
-    std::unique_ptr<UI::Container> upgradesContainer; // контейнер улучшений
-    std::unique_ptr<UI::Container> resultOverlay; // оверлей результата игры
+    // Контейнеры экранов
+    std::unique_ptr<UI::Container> mainContainer;
+    std::unique_ptr<UI::Container> levelContainer;
+    std::unique_ptr<UI::Container> settingsContainer;
+    std::unique_ptr<UI::Container> upgradesContainer;
+    std::unique_ptr<UI::Container> resultOverlay;
 
-    // Указатели для управления динамическим ресайзом
-    UI::Container* cardsArea = nullptr; // область карточек уровней
-    UI::Button* playBtnPtr = nullptr; // кнопка старта игры
-    UI::Container* headerContPtr = nullptr; // блок заголовка главного меню
-    UI::Container* btnsContPtr = nullptr; // блок кнопок главного меню
-    UI::Text* titleTextPtr = nullptr; // текст названия игры
-
-    // Указатели на виджеты настроек для синхронизации
+    // Указатели на виджеты для динамического обновления (без владения)
+    UI::Container* cardsArea = nullptr;
+    UI::Button* playBtnPtr = nullptr;
     UI::Slider* musicSliderPtr = nullptr;
     UI::Slider* sfxSliderPtr = nullptr;
     UI::Slider* sensSliderPtr = nullptr;
     UI::Slider* uiScaleSliderPtr = nullptr;
     UI::Button* fsBtnPtr = nullptr;
     UI::Button* vsyncBtnPtr = nullptr;
-    UI::Text* moneyTextPtr = nullptr; // текст валюты в подменю улучшений
-
-    // указатели на тексты статов в подменю улучшений (по башням и статам)
-    std::vector<std::vector<UI::Text*>> upgradeValuePtrs; // [towerIndex][statIndex]
+    UI::Container* headerContPtr = nullptr;
+    UI::Container* btnsContPtr = nullptr;
+    UI::Text* titleTextPtr = nullptr;
+    UI::Text* moneyTextPtr = nullptr;
     
-    // указатели на тексты цен улучшений
-    std::vector<std::vector<UI::Text*>> upgradeCostPtrs; // [towerIndex][statIndex]
+    // Списки указателей для меню улучшений
+    std::vector<std::vector<UI::Text*>> upgradeValuePtrs;
+    std::vector<std::vector<UI::Text*>> upgradeCostPtrs;
+    std::vector<std::vector<UI::Button*>> upgradeBtnPtrs;
 
-    // указатели на кнопки улучшений
-    std::vector<std::vector<UI::Button*>> upgradeBtnPtrs; // [towerIndex][statIndex]
-
-    SessionResult lastResult = SessionResult::None; // итог последней игры
-    std::string lastLevelPath; // путь к последней сыгранной карте
-
-    // Временные значения настроек до сохранения
+    // Временные настройки (до нажатия Сохранить)
     int tmpMusicVol = 100;
     int tmpSfxVol = 100;
     float tmpSensitivity = 1.0f;
     float tmpUiScale = 1.0f;
     bool tmpFullscreen = false;
     bool tmpVsync = true;
+    bool windowRecreationRequired = false;
 
-    // Синхронизация временных значений с текущими настройками
-    void syncSettingsToTmp();
+    SessionResult lastResult = SessionResult::None;
+    std::string lastLevelPath;
 
-    // Инициализация всех контейнеров и их содержимого
+    // Инициализация графического интерфейса
     void initUI();
 
-    // Создание типового подменю с заголовком и навигацией
-    std::unique_ptr<UI::Container> createSubMenu(const std::string& title, UI::Container** outContent, UI::Container** outNav = nullptr);
-
-    // Создание подменю улучшений
-    std::unique_ptr<UI::Container> createUpgradeMenu();
-
-    // Обновление внешнего вида карточек при изменении выбора
-    void updateCardsSelection();
-
-    // Сканирование папки с файлами уровней
+    // Сканирование директории уровней
     void scanLevels();
 
-    // Чтение названия уровня из метаданных файла
+    // Чтение метаданных уровня
     std::string readLevelName(const std::string& path) const;
 
-public:
-    // Конструктор инициализирует ресурсы и интерфейс
-    explicit Menu(sf::RenderWindow& window, SettingsManager& settings, SaveManager& saveManager);
+    // Обновление выделения выбранного уровня
+    void updateCardsSelection();
 
-    // Обработка системных событий меню и кликов
+    // Синхронизация временных значений с менеджером настроек
+    void syncSettingsToTmp();
+
+    // Вспомогательный метод для создания подменю
+    std::unique_ptr<UI::Container> createSubMenu(const std::string& title, UI::Container** outContent, UI::Container** outNav);
+
+    // Создание меню глобальных улучшений
+    std::unique_ptr<UI::Container> createUpgradeMenu();
+
+public:
+    // Конструктор инициализирует зависимости
+    Menu(sf::RenderWindow& window, SettingsManager& settings, SaveManager& saveManager);
+
+    // Обработка системных событий
     void handleEvents();
 
-    // Главный метод отрисовки текущего состояния
+    // Отрисовка текущего экрана
     void render();
 
-    // Получение факта выбора уровня
+    // Проверка выбора уровня
     bool isLevelChosen() const;
 
-    // Получение пути к выбранному файлу карты
+    // Получение пути к выбранному уровню
     std::string getChosenLevel() const;
 
-    // Сброс состояния выбора уровня
+    // Сброс выбора
     void resetChoice();
 
-    // Сброс результата последней игры
+    // Обновление размеров при изменении окна
+    void updateViewSizes(sf::Vector2u windowSize);
+
+    // Уведомление о завершении игры
+    void notifyResult(SessionResult result, const std::string& levelPath);
+
+    // Сброс результата сессии
     void resetLastResult();
 
     // Проверка необходимости пересоздания окна
     bool consumesWindowRecreationRequest();
 
-    // Обновление параметров камер и размеров контейнеров
-    void updateViewSizes(sf::Vector2u windowSize);
+    // Освобождение ресурсов
+    void cleanup();
 
-    // Принятие результата игры для отображения баннера
-    void notifyResult(SessionResult result, const std::string& levelPath);
-
-    // Получение количества денег
+    // Получение баланса игрока
     int getMoney() const;
 
-    // Получение менеджера улучшений
+    // Получение доступа к менеджеру улучшений
     UpgradeManager& getUpgradeManager();
-
-    // Очистка ресурсов интерфейса
-    void cleanup();
 };

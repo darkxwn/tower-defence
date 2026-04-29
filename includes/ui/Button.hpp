@@ -1,5 +1,6 @@
 #pragma once
 #include "ui/Widget.hpp"
+#include "ui/NineSlice.hpp"
 #include <SFML/Graphics.hpp>
 #include <string>
 #include <functional>
@@ -30,8 +31,15 @@ namespace UI {
         std::unique_ptr<sf::Sprite> sprite; // иконка
         std::unique_ptr<sf::Text> text; // текст
 
+        std::unique_ptr<NineSlice> backgroundSlice; // объект для отрисовки растягиваемого фона
+        const sf::Texture* texNormal = nullptr; // текстура обычного состояния
+        const sf::Texture* texHover = nullptr; // текстура состояния наведения
+        const sf::Texture* texPressed = nullptr; // текстура нажатого состояния
+        const sf::Texture* texDisabled = nullptr; // текстура выключенного состояния
+
         bool useHover; // эффект наведения
         bool isHovered = false; // состояние наведения
+        bool isPressed = false; // состояние нажатия
         bool transparent = false; // прозрачный фон
         bool hasCustomScale = false; // ручной масштаб иконки
         bool drawOutline = false; // отрисовка отладочной рамки
@@ -41,6 +49,9 @@ namespace UI {
 
         // Вычисляет внутреннее положение текста и иконки
         void updateLayout();
+
+        // Обновление текстуры фона в зависимости от состояния
+        void updateVisualState();
 
     public:
         // Конструктор пустой кнопки
@@ -80,6 +91,12 @@ namespace UI {
 
         // Изменение активности кнопки
         void setEnabled(bool enabled) override;
+
+        // Изменение текстур фона с индивидуальными отступами
+        void setBackgroundTextures(const sf::Texture* normal, const sf::Texture* hover, const sf::Texture* active, const sf::Texture* disabled, float left, float top, float right, float bottom);
+
+        // Изменение текстур фона с одинаковым отступом для всех сторон
+        void setBackgroundTextures(const sf::Texture* normal, const sf::Texture* hover, const sf::Texture* active, const sf::Texture* disabled, float edge);
 
         // Изменение текстуры спрайта
         void setTexture(const sf::Texture& texture);

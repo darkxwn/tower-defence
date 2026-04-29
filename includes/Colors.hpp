@@ -14,10 +14,15 @@ namespace Colors {
         inline const sf::Color Gray20{ 204, 204, 204 }; // 20% серого
         inline const sf::Color Gray30{ 179, 179, 179 }; // 30% серого
         inline const sf::Color Gray40{ 153, 153, 153 }; // 40% серого
+        inline const sf::Color Gray45{ 141, 141, 141 }; // 45% серого
         inline const sf::Color Gray50{ 128, 128, 128 }; // 50% серого
+        inline const sf::Color Gray55{ 115, 115, 115 }; // 55% серого
         inline const sf::Color Gray60{ 102, 102, 102 }; // 60% серого
+        inline const sf::Color Gray65{ 90, 90, 90 };    // 65% серого
         inline const sf::Color Gray70{ 77, 77, 77 };    // 70% серого
+        inline const sf::Color Gray75{ 64, 64, 64 };    // 75% серого
         inline const sf::Color Gray80{ 51, 51, 51 };    // 80% серого
+        inline const sf::Color Gray85{ 39, 39, 39 };    // 85% серого
         inline const sf::Color Gray90{ 26, 26, 26 };    // 90% серого
         inline const sf::Color Gray95{ 13, 13, 13 };    // 95% серого
 
@@ -35,9 +40,9 @@ namespace Colors {
         inline const sf::Color BackgroundDark = Palette::Black; // темный фон панелей
         inline const sf::Color Background = Palette::Gray90; // основной фон
 
-        inline const sf::Color Widget = Palette::Gray80; // фон виджетов
-        inline const sf::Color WidgetHover = Palette::Gray70; // фон при наведении
-        inline const sf::Color WidgetDisabled = Palette::Gray95; // фон выключенного виджета
+        inline const sf::Color Widget = Palette::Gray70; // фон виджетов
+        inline const sf::Color WidgetHover = Palette::Gray65; // фон при наведении
+        inline const sf::Color WidgetDisabled = Palette::Gray75; // фон выключенного виджета
 
         inline const sf::Color TextMain = Palette::White; // основной текст
         inline const sf::Color TextYellow = Palette::PastelYellow; // текст денег

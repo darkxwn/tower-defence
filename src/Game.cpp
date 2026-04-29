@@ -35,7 +35,7 @@ void Game::initOverlays() {
     pauseOverlay->setContentAlign(UI::Container::ContentAlign::Center);
     pauseOverlay->setItemAlign(UI::Container::ItemAlign::Center);
     pauseOverlay->setGap(10.f);
-    pauseOverlay->setDrawOutline(true);
+    pauseOverlay->setDrawOutline(false);
     pauseOverlay->setBackgroundColor(sf::Color(0, 0, 0, 150));
     pauseOverlay->setDrawBackground(true);
 
@@ -44,7 +44,7 @@ void Game::initOverlays() {
     pRoot->setContentAlign(UI::Container::ContentAlign::Center);
     pRoot->setItemAlign(UI::Container::ItemAlign::Center);
     pRoot->setGap(10.f);
-    pRoot->setDrawOutline(true);
+    pRoot->setDrawOutline(false);
     pauseModalPtr = pRoot.get();
 
     auto pTitle = std::make_unique<UI::Text>(font, "ПАУЗА", 96, sf::Vector2f(winSize.x * 0.9f, 100.f));
@@ -56,7 +56,7 @@ void Game::initOverlays() {
     pNav->setDirection(UI::Container::Direction::Row);
     pNav->setContentAlign(UI::Container::ContentAlign::Center);
     pNav->setGap(20.f);
-    pNav->setDrawOutline(true);
+    pNav->setDrawOutline(false);
 
     auto exitBtn = std::make_unique<UI::Button>(font, "В МЕНЮ", btnSize);
     exitBtn->setCallback([this]() { endReason = GameEndReason::ReturnToMenu; });
@@ -79,7 +79,7 @@ void Game::initOverlays() {
     endOverlay->setContentAlign(UI::Container::ContentAlign::Center);
     endOverlay->setItemAlign(UI::Container::ItemAlign::Center);
     endOverlay->setGap(10.f);
-    endOverlay->setDrawOutline(true);
+    endOverlay->setDrawOutline(false);
     endOverlay->setBackgroundColor(sf::Color(0, 0, 0, 200));
     endOverlay->setDrawBackground(true);
 
@@ -88,7 +88,7 @@ void Game::initOverlays() {
     eRoot->setContentAlign(UI::Container::ContentAlign::Center);
     eRoot->setItemAlign(UI::Container::ItemAlign::Center);
     eRoot->setGap(10.f);
-    eRoot->setDrawOutline(true);
+    eRoot->setDrawOutline(false);
     endModalPtr = eRoot.get();
 
     auto eTitle = std::make_unique<UI::Text>(font, "ФИНАЛ", 60, sf::Vector2f(winSize.x * 0.9f, 60.f));
@@ -105,7 +105,7 @@ void Game::initOverlays() {
     eNav->setDirection(UI::Container::Direction::Row);
     eNav->setContentAlign(UI::Container::ContentAlign::Center);
     eNav->setGap(20.f);
-    eNav->setDrawOutline(true);
+    eNav->setDrawOutline(false);
 
     auto eExitBtn = std::make_unique<UI::Button>(font, "В МЕНЮ", btnSize);
     eExitBtn->setCallback([this]() { endReason = GameEndReason::ReturnToMenu; });
@@ -383,7 +383,7 @@ void Game::update(float deltaTime) {
 
 // Отрисовка всех слоев игры
 void Game::render() {
-    window.clear(Colors::Palette::Gray90);
+    window.clear(Colors::Theme::Background);
     window.setView(worldView);
     bool slotSelected = hud.getSelectedSlot() != -1;
     map.render(window, !slotSelected);

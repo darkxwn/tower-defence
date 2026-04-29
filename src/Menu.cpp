@@ -28,8 +28,7 @@ Menu::Menu(sf::RenderWindow& window, SettingsManager& settings, SaveManager& sav
     std::vector<UpgradeManager::TowerUpgrade> data;
     if (saveManager.getTowerData(data)) {
         upgradeManager.setAllUpgrades(data);
-    }
-    else {
+    } else {
         // инициализация базовыми значениями из GameData
         upgradeManager.initDefaults();
     }
@@ -70,29 +69,31 @@ void Menu::initUI() {
     sf::Vector2f winSize = sf::Vector2f(window.getSize());
 
     // главное меню
-    mainContainer = std::make_unique<UI::Container>(winSize);
+    mainContainer = std::make_unique<UI::Container>(sf::Vector2f(winSize.x * 0.9f , winSize.y));
     mainContainer->setDirection(UI::Container::Direction::Column);
     mainContainer->setContentAlign(UI::Container::ContentAlign::Center);
     mainContainer->setItemAlign(UI::Container::ItemAlign::Center);
+    mainContainer->setBackgroundTexture(ResourceManager::get("main-layer"), 128.f);
     mainContainer->setPadding({ 20.f, 20.f });
     mainContainer->setGap(30.f);
-    mainContainer->setDrawOutline(true);
+    mainContainer->setDrawOutline(false);
 
     auto headerCont = std::make_unique<UI::Container>(sf::Vector2f(winSize.x * 0.9f, 125.f));
     headerCont->setDirection(UI::Container::Direction::Column);
-    headerCont->setContentAlign(UI::Container::ContentAlign::Center);
+    headerCont->setContentAlign(UI::Container::ContentAlign::End);
     headerCont->setItemAlign(UI::Container::ItemAlign::Center);
-    headerCont->setGap(20.f); 
-    headerCont->setDrawOutline(true);
+    headerCont->setGap(10.f); 
+    headerCont->setDrawOutline(false);
     headerContPtr = headerCont.get();
 
-    auto title = std::make_unique<UI::Text>(font, "TOWER DEFENCE", 96, sf::Vector2f(winSize.x * 0.9f, 80.f));
+    auto title = std::make_unique<UI::Text>(font, "PROJECT: Gyurza", 80, sf::Vector2f(winSize.x * 0.9f, 80.f));
     title->setAlignment(UI::Text::Align::Center);
     title->setColor(Colors::Theme::TextMain);
     titleTextPtr = title.get();
     headerCont->addChild(std::move(title));
 
     auto version = std::make_unique<UI::Text>(font, "v0.5a", 24);
+    version->setAlignment(UI::Text::Align::Center);
     version->setColor(Colors::Theme::TextDark);
     headerCont->addChild(std::move(version));
     mainContainer->addChild(std::move(headerCont));
@@ -102,46 +103,59 @@ void Menu::initUI() {
     btnsCont->setContentAlign(UI::Container::ContentAlign::Center);
     btnsCont->setItemAlign(UI::Container::ItemAlign::Center);
     btnsCont->setGap(15.f);
-    btnsCont->setDrawOutline(true);
+    btnsCont->setDrawOutline(false);
     btnsContPtr = btnsCont.get();
 
-    sf::Vector2f btnSize(275.f, 60.f);
-    auto playBtn = std::make_unique<UI::Button>(ResourceManager::get("icon-play"), font, "ИГРАТЬ", btnSize, UI::IconPlacement::Left);
-    playBtn->setIconScale({ 0.5f, 0.5f });
-    playBtn->setCallback([this]() { state = MenuState::LevelSelect; });
-    playBtn->setTextSize(20);
-    btnsCont->addChild(std::move(playBtn));
+    sf::Vector2f btnSize(250.f, 60.f);
+    
+    // Помощник для создания стилизованных кнопок меню
+    auto createMenuButton = [&](const sf::Texture& icon, const std::string& label, std::function<void()> onClick) {
+        auto btn = std::make_unique<UI::Button>(icon, font, label, btnSize, UI::IconPlacement::Left);
+        btn->setBackgroundTextures(
+            &ResourceManager::get("button"),
+            &ResourceManager::get("button-hover"),
+            &ResourceManager::get("button-active"),
+            &ResourceManager::get("button-disabled"),
+            32.0f
+        );
+        btn->setIconScale({ 0.5f, 0.5f });
+        btn->setTextSize(20);
+        btn->setCallback(std::move(onClick));
+        return btn;
+    };
 
-    auto upgBtn = std::make_unique<UI::Button>(ResourceManager::get("icon-upgrades"), font, "УЛУЧШЕНИЯ", btnSize, UI::IconPlacement::Left);
-    upgBtn->setIconScale({ 0.5f, 0.5f });
-    upgBtn->setCallback([this]() { state = MenuState::Upgrades; });
-    upgBtn->setTextSize(20);
-    btnsCont->addChild(std::move(upgBtn));
+    btnsCont->addChild(createMenuButton(ResourceManager::get("icon-play"), "ИГРАТЬ", [this]() { 
+        state = MenuState::LevelSelect; 
+    }));
 
-    auto setBtn = std::make_unique<UI::Button>(ResourceManager::get("icon-settings"), font, "НАСТРОЙКИ", btnSize, UI::IconPlacement::Left);
-    setBtn->setIconScale({ 0.5f, 0.5f });
-    setBtn->setCallback([this]() { syncSettingsToTmp(); state = MenuState::Settings; });
-    setBtn->setTextSize(20);
-    btnsCont->addChild(std::move(setBtn));
+    btnsCont->addChild(createMenuButton(ResourceManager::get("icon-upgrades"), "УЛУЧШЕНИЯ", [this]() { 
+        state = MenuState::Upgrades; 
+    }));
 
-    auto exitBtn = std::make_unique<UI::Button>(ResourceManager::get("icon-exit"), font, "ВЫХОД", btnSize, UI::IconPlacement::Left);
-    exitBtn->setIconScale({ 0.5f, 0.5f });
-    exitBtn->setCallback([this]() { window.close(); });
-    exitBtn->setTextSize(20);
-    btnsCont->addChild(std::move(exitBtn));
+    btnsCont->addChild(createMenuButton(ResourceManager::get("icon-settings"), "НАСТРОЙКИ", [this]() { 
+        syncSettingsToTmp(); 
+        state = MenuState::Settings; 
+    }));
+
+    btnsCont->addChild(createMenuButton(ResourceManager::get("icon-exit"), "ВЫХОД", [this]() { 
+        window.close(); 
+    }));
+    
     mainContainer->addChild(std::move(btnsCont));
 
     // экран выбора уровня
     UI::Container* navArea = nullptr;
     levelContainer = createSubMenu("ВЫБОР УРОВНЯ", &cardsArea, &navArea);
-    
+    levelContainer->setBackgroundTexture(ResourceManager::get("panel"), 128.f);
+
     if (cardsArea) {
         cardsArea->setDirection(UI::Container::Direction::Row);
         cardsArea->setContentAlign(UI::Container::ContentAlign::Center);
+        cardsArea-> setBackgroundTexture(ResourceManager::get("panel-light"), 128.f);
         cardsArea->setWrap(true);
         cardsArea->setGap(25.f);
         cardsArea->setPadding({ 20.f, 20.f });
-        cardsArea->setDrawOutline(true);
+        cardsArea->setDrawOutline(false);
         cardsArea->setScrollEnabled(true);
 
         for (const auto& level : levels) {
@@ -152,14 +166,14 @@ void Menu::initUI() {
             card->setItemAlign(UI::Container::ItemAlign::Center);
             card->setDrawBackground(true);
             card->setBackgroundColor(Colors::Theme::Widget);
-            card->setPadding({ 5.f, 5.f });
-            card->setDrawOutline(true);
+            card->setDrawOutline(false);
 
             auto numBlock = std::make_unique<UI::Container>(sf::Vector2f(cardSize.x, 45.f));
             numBlock->setDirection(UI::Container::Direction::Row);
             numBlock->setContentAlign(UI::Container::ContentAlign::Start);
             numBlock->setGap(20);
             numBlock->setItemAlign(UI::Container::ItemAlign::Center);
+            numBlock->setDrawOutline(false);
             auto icon = std::make_unique<UI::Image>(ResourceManager::get("icon-level"), sf::Vector2f(36.f, 36.f));
             numBlock->addChild(std::move(icon));
             auto numText = std::make_unique<UI::Text>(font, "УРОВЕНЬ " + std::to_string(level.index + 1), 26);
@@ -190,6 +204,13 @@ void Menu::initUI() {
 
     if (navArea) {
         auto startGameBtn = std::make_unique<UI::Button>(ResourceManager::get("icon-play"), font, "ИГРАТЬ", sf::Vector2f(220.f, 60.f),  UI::IconPlacement::Right);
+        startGameBtn->setBackgroundTextures(
+            &ResourceManager::get("button"),
+            &ResourceManager::get("button-hover"),
+            &ResourceManager::get("button-active"),
+            &ResourceManager::get("button-disabled"),
+            32.0f
+        );
         startGameBtn->setIconScale({ 0.5f, 0.5f });
         startGameBtn->setCallback([this]() { if (!selectedLevel.empty()) levelChosen = true; });
         startGameBtn->setEnabled(false);
@@ -201,12 +222,14 @@ void Menu::initUI() {
     UI::Container* settingsContent = nullptr;
     UI::Container* settingsNav = nullptr;
     settingsContainer = createSubMenu("НАСТРОЙКИ", &settingsContent, &settingsNav);
-    
+    settingsContainer->setBackgroundTexture(ResourceManager::get("panel"), 128.f);
+
     if (settingsContent) {
         settingsContent->setGap(20.f);
         settingsContent->setPadding({ 20.f, 20.f });
         settingsContent->setItemAlign(UI::Container::ItemAlign::Center);
         settingsContent->setContentAlign(UI::Container::ContentAlign::Center);
+        settingsContent->setBackgroundTexture(ResourceManager::get("panel-light"), 128.f);
         settingsContent->setScrollEnabled(true);
 
         // лямбда для создания строки меню с иконкой, заголовком и контролом
@@ -215,21 +238,17 @@ void Menu::initUI() {
             row->setDirection(UI::Container::Direction::Row);
             row->setContentAlign(UI::Container::ContentAlign::Center);
             row->setItemAlign(UI::Container::ItemAlign::Center);
+            row->setDrawOutline(false);
             row->setGap(10.f);
 
             // Добавление иконки настройки
             auto icon = std::make_unique<UI::Image>(iconTex, sf::Vector2f(48.f, 48.f));
             row->addChild(std::move(icon));
-
-            // Контейнер для текста заголовка (фиксированная ширина для выравнивания)
-            auto textCont = std::make_unique<UI::Container>(sf::Vector2f(350.f, 60.f));
-            textCont->setContentAlign(UI::Container::ContentAlign::Center);
-            textCont->setItemAlign(UI::Container::ItemAlign::Start);
-            auto text = std::make_unique<UI::Text>(font, label, 24);
+            // Добавление названия настройки
+            auto text = std::make_unique<UI::Text>(font, label, 24, sf::Vector2f(350.f, 60.f));
             text->setColor(Colors::Theme::TextMain);
-            textCont->addChild(std::move(text));
+            row->addChild(std::move(text));
 
-            row->addChild(std::move(textCont));
             row->addChild(std::move(control));
             if (valueText) {
                 row->addChild(std::move(valueText));
@@ -259,8 +278,8 @@ void Menu::initUI() {
 
         // Настройка: Масштаб интерфейса
 #ifdef __ANDROID__
-        float minScale = 0.7f;
-        float maxScale = 1.5f;
+        float minScale = 0.9f;
+        float maxScale = 1.4f;
 #else
         float minScale = 0.6f;
         float maxScale = 1.6f;
@@ -297,6 +316,13 @@ void Menu::initUI() {
     
     if (settingsNav) {
         auto saveBtn = std::make_unique<UI::Button>(ResourceManager::get("icon-save"), font, "СОХРАНИТЬ", sf::Vector2f(220.f, 60.f), UI::IconPlacement::Right);
+        saveBtn->setBackgroundTextures(
+            &ResourceManager::get("button"),
+            &ResourceManager::get("button-hover"),
+            &ResourceManager::get("button-active"),
+            &ResourceManager::get("button-disabled"),
+            32.0f
+        );
         saveBtn->setIconScale({ 0.5f, 0.5f });
         saveBtn->setTextSize(20);
         saveBtn->setCallback([this]() {
@@ -330,8 +356,9 @@ void Menu::initUI() {
     resultOverlay->setContentAlign(UI::Container::ContentAlign::Center);
     resultOverlay->setItemAlign(UI::Container::ItemAlign::Center);
     resultOverlay->setBackgroundColor(Colors::Theme::Overlay);
-    resultOverlay->setDrawBackground(true);
-    resultOverlay->setDrawOutline(true);
+    resultOverlay->setDrawBackground(false);
+    resultOverlay->setBackgroundTexture(ResourceManager::get("panel-light"), 128.f);
+    resultOverlay->setDrawOutline(false);
 }
 
 // Создание вложенного меню
@@ -341,11 +368,12 @@ std::unique_ptr<UI::Container> Menu::createSubMenu(const std::string& title, UI:
 
     auto root = std::make_unique<UI::Container>(winSize);
     root->setDirection(UI::Container::Direction::Column);
-    root->setContentAlign(UI::Container::ContentAlign::Start); 
+    root->setContentAlign(UI::Container::ContentAlign::Center); 
     root->setItemAlign(UI::Container::ItemAlign::Center);
+    root->setBackgroundTexture(ResourceManager::get("panel"), 128.f);
     root->setPadding({ 20.f, 5.f });
     root->setGap(20.f);
-    root->setDrawOutline(true);
+    root->setDrawOutline(false);
 
     auto header = std::make_unique<UI::Text>(font, title, 60, sf::Vector2f(winSize.x * 0.9f, 80.f));
     header->setAlignment(UI::Text::Align::Center);
@@ -356,7 +384,8 @@ std::unique_ptr<UI::Container> Menu::createSubMenu(const std::string& title, UI:
     content->setDirection(UI::Container::Direction::Column);
     content->setContentAlign(UI::Container::ContentAlign::Center); 
     content->setItemAlign(UI::Container::ItemAlign::Center);
-    content->setDrawOutline(true);
+    content->setBackgroundTexture(ResourceManager::get("panel-light"), 128.f);
+    content->setDrawOutline(false);
     if (outContent) *outContent = content.get();
     root->addChild(std::move(content));
 
@@ -364,8 +393,15 @@ std::unique_ptr<UI::Container> Menu::createSubMenu(const std::string& title, UI:
     nav->setDirection(UI::Container::Direction::Row);
     nav->setContentAlign(UI::Container::ContentAlign::Center);
     nav->setGap(30.f);
-    nav->setDrawOutline(true);
+    nav->setDrawOutline(false);
     auto back = std::make_unique<UI::Button>(ResourceManager::get("icon-back"), font, "НАЗАД", sf::Vector2f(220.f, 60.f), UI::IconPlacement::Left);
+    back->setBackgroundTextures(
+        &ResourceManager::get("button"),
+        &ResourceManager::get("button-hover"),
+        &ResourceManager::get("button-active"),
+        &ResourceManager::get("button-disabled"),
+        32.0f
+    );
     back->setIconScale({ 0.5f, 0.5f });
     back->setTextSize(20);
     back->setCallback([this]() { state = MenuState::Main; selectedLevel = ""; updateCardsSelection(); });
@@ -390,9 +426,10 @@ std::unique_ptr<UI::Container> Menu::createUpgradeMenu() {
     root->setDirection(UI::Container::Direction::Column);
     root->setContentAlign(UI::Container::ContentAlign::Center);
     root->setItemAlign(UI::Container::ItemAlign::Center);
+    root->setBackgroundTexture(ResourceManager::get("panel"), 128.f);
     root->setPadding({ 20.f, 5.f });
     root->setGap(10.f);
-    root->setDrawOutline(true);
+    root->setDrawOutline(false);
 
     // header
     auto header = std::make_unique<UI::Text>(font, "УЛУЧШЕНИЯ", 60, sf::Vector2f(winSize.x * 0.9f, headerHeight));
@@ -404,16 +441,17 @@ std::unique_ptr<UI::Container> Menu::createUpgradeMenu() {
     content->setDirection(UI::Container::Direction::Column);
     content->setContentAlign(UI::Container::ContentAlign::Center);
     content->setItemAlign(UI::Container::ItemAlign::Center);
+    content->setBackgroundTexture(ResourceManager::get("panel-light"), 128.f);
     content->setGap(10.f);
-    content->setDrawOutline(true);
+    content->setDrawOutline(false);
 
     // currency
     auto currency = std::make_unique<UI::Container>(sf::Vector2f(winSize.x * 0.9f, currencyHeight));
     currency->setDirection(UI::Container::Direction::Row);
     currency->setContentAlign(UI::Container::ContentAlign::Center);
     currency->setItemAlign(UI::Container::ItemAlign::Center);
+    currency->setDrawOutline(false);
     currency->setGap(15.f);
-    currency->setDrawOutline(true);
     currency->setDrawBackground(true);
     currency->setBackgroundColor(sf::Color::Transparent);
 
@@ -433,7 +471,7 @@ std::unique_ptr<UI::Container> Menu::createUpgradeMenu() {
     cards->setItemAlign(UI::Container::ItemAlign::Center);
     cards->setWrap(true);
     cards->setGap(15.f);
-    cards->setDrawOutline(true);
+    cards->setDrawOutline(false);
     cards->setDrawBackground(true);
     cards->setBackgroundColor(sf::Color::Transparent);
     cards->setScrollEnabled(true);
@@ -552,11 +590,18 @@ std::unique_ptr<UI::Container> Menu::createUpgradeMenu() {
     nav->setContentAlign(UI::Container::ContentAlign::Center);
     nav->setItemAlign(UI::Container::ItemAlign::Center);
     nav->setGap(30.f);
-    nav->setDrawOutline(true);
+    nav->setDrawOutline(false);
     nav->setDrawBackground(true);
     nav->setBackgroundColor(sf::Color::Transparent);
 
     auto back = std::make_unique<UI::Button>(ResourceManager::get("icon-back"), font, "НАЗАД", sf::Vector2f(220.f, 60.f), UI::IconPlacement::Left);
+    back->setBackgroundTextures(
+        &ResourceManager::get("button"),
+        &ResourceManager::get("button-hover"),
+        &ResourceManager::get("button-active"),
+        &ResourceManager::get("button-disabled"),
+        32.0f
+    );
     back->setIconScale({ 0.5f, 0.5f });
     back->setTextSize(20);
     back->setCallback([this]() { state = MenuState::Main; });
@@ -670,11 +715,11 @@ void Menu::updateViewSizes(sf::Vector2u windowSize) {
     float uiW = uiH * (sw / sh);
     uiView = sf::View(sf::FloatRect({ 0.f, 0.f }, { uiW, uiH }));
 
-    sf::Vector2f rootSize(uiW * 0.85f, uiH * 0.95f);
+    sf::Vector2f rootSize(uiW * 0.9f, uiH * 0.95f);
     sf::Vector2f rootPos((uiW - rootSize.x) / 2.f, (uiH - rootSize.y) / 2.f);
 
     if (mainContainer) {
-        if (headerContPtr) headerContPtr->setSize(sf::Vector2f(rootSize.x * 0.9f, 220.f));
+        if (headerContPtr) headerContPtr->setSize(sf::Vector2f(rootSize.x * 0.9f, 125.f));
         if (btnsContPtr) btnsContPtr->setSize(sf::Vector2f(rootSize.x * 0.6f, 320.f));
         if (titleTextPtr) titleTextPtr->setMaxWidth(rootSize.x * 0.8f);
         mainContainer->setSize(rootSize);
@@ -716,8 +761,12 @@ void Menu::updateViewSizes(sf::Vector2u windowSize) {
                         if (asContainer->getChildrenCount() >= 2) {
                             auto* currency = asContainer->getChild(0);
                             auto* cards = asContainer->getChild(1);
-                            if (currency) currency->setSize(sf::Vector2f(targetWidth, currency->getSize().y));
-                            if (cards) cards->setSize(sf::Vector2f(targetWidth, child->getSize().y - currency->getSize().y - 10.f));
+                            if (currency) {
+                                currency->setSize(sf::Vector2f(targetWidth, currency->getSize().y));
+                            }
+                            if (cards) {
+                                cards->setSize(sf::Vector2f(targetWidth, child->getSize().y - (currency ? currency->getSize().y : 0.f) - 10.f));
+                            }
                         }
                     }
                 }

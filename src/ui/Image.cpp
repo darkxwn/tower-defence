@@ -19,6 +19,10 @@ namespace UI {
         }
     }
 
+    // Обработка событий (не требуется)
+    void Image::handleEvent(const sf::Event&, const sf::RenderWindow&, const sf::View&) {
+    }
+
     // Получение фактических границ спрайта на экране
     sf::FloatRect Image::getGlobalBounds() const {
         return sprite.getGlobalBounds();

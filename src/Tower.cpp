@@ -156,7 +156,8 @@ void Tower::upgradeInGame(int cost) {
     if (inGameLevel < maxInGameLevel) {
         inGameLevel++;
         totalInvested += cost;
-        float bonus = 1.2f; // +20% к текущим
+        float bonus = 1.0f + (inGameLevel * IN_GAME_BONUS_STEP);
+
         stats.damage = (int)(stats.damage * bonus);
         stats.firerate *= bonus;
         stats.range *= bonus;

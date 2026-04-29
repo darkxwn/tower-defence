@@ -1,5 +1,6 @@
 #pragma once
 #include "ui/Widget.hpp"
+#include "ui/NineSlice.hpp"
 #include <SFML/Graphics.hpp>
 #include <vector>
 #include <memory>
@@ -37,6 +38,7 @@ namespace UI {
         sf::RectangleShape outline; // фигура отладочной рамки
         bool drawOutline = true; // флаг отрисовки рамки
 
+        std::unique_ptr<NineSlice> backgroundSlice; // объект для отрисовки растягиваемого фона
         std::vector<std::unique_ptr<Widget>> children; // список дочерних виджетов
 
         float scrollOffset = 0.f; // текущее смещение прокрутки по вертикали
@@ -81,6 +83,12 @@ namespace UI {
 
         // Изменение видимости фона
         void setDrawBackground(bool draw);
+
+        // Изменение текстуры фона с индивидуальными отступами
+        void setBackgroundTexture(const sf::Texture& tex, float left, float top, float right, float bottom);
+
+        // Изменение текстуры фона с одинаковым отступом для всех сторон
+        void setBackgroundTexture(const sf::Texture& tex, float edge);
 
         // Изменение видимости отладочной рамки
         void setDrawOutline(bool draw);

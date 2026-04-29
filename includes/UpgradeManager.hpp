@@ -15,9 +15,10 @@ using json = nlohmann::json;
 
 class UpgradeManager {
 public:
-    static const unsigned int MAX_TOWER_RANK = 10;
-    static const unsigned int MAX_INGAME_LEVEL = 10;
-    static const unsigned int UPGRADES_PER_RANK = 5; // Сколько уровней стата дает 1 ранг
+    static constexpr float RANK_BONUS = 0.02f;
+    static const unsigned int MAX_TOWER_RANK = 5;
+    static const unsigned int MAX_INGAME_LEVEL = 5;
+    static const unsigned int UPGRADES_PER_RANK = 3; // Сколько уровней стата дает 1 ранг
 
     static int moneyMin;
     static int moneyMax;

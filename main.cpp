@@ -82,6 +82,16 @@ static void loadResources() {
     ResourceManager::load("icon-upgrade", assetsPath + "icons/upgrade.png");
     ResourceManager::load("icon-upgrade2", assetsPath + "icons/upgrade2.png");
     ResourceManager::load("icon-money", assetsPath + "icons/money.png");
+
+    // СПРАЙТЫ ИНТЕРФЕЙСА
+    ResourceManager::load("button", assetsPath + "sprites/button.png", false);
+    ResourceManager::load("button-hover", assetsPath + "sprites/button-hover.png", false);
+    ResourceManager::load("button-active", assetsPath + "sprites/button-active.png", false);
+    ResourceManager::load("button-disabled", assetsPath + "sprites/button-disabled.png", false);
+    ResourceManager::load("panel", assetsPath + "sprites/panel.png", false);
+    ResourceManager::load("panel-light", assetsPath + "sprites/panel-light.png", false);
+    ResourceManager::load("main-layer", assetsPath + "sprites/main-layer.png", false);
+
 #ifdef __ANDROID__
     ResourceManager::load("icon-sensivity", assetsPath + "icons/sensivity-mobile.png");
     ResourceManager::load("icon-display", assetsPath + "icons/display-mobile.png");
@@ -126,7 +136,7 @@ int main() {
     settings.load();
     saveManager.load();
     
-    sf::RenderWindow window(sf::VideoMode({1280, 720}), "Tower Defence", settings.get<bool>("fullscreen", false) ? sf::State::Fullscreen : sf::State::Windowed);
+    sf::RenderWindow window(sf::VideoMode({1280, 720}), "Project: Gyurza", settings.get<bool>("fullscreen", false) ? sf::State::Fullscreen : sf::State::Windowed);
     window.setFramerateLimit(60);
     window.setMinimumSize(sf::Vector2u(1280, 720));
 

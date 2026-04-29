@@ -13,18 +13,18 @@ sf::Texture& ResourceManager::get(const std::string& name) {
         Logger::error("Текстура не найдена: {}", name);
         throw std::runtime_error("[ERROR]: Текстура не найдена: " + name);
     }
-    Logger::debug("Текстура получена: {}", name);
+    // Logger::debug("Текстура получена: {}", name);
     return it->second;
 }
 
 // Загрузка текстуры
-void ResourceManager::load(const std::string& name, const std::string& path) {
+void ResourceManager::load(const std::string& name, const std::string& path, bool smooth) {
     sf::Texture texture;
     if (!texture.loadFromFile(path)) {
         Logger::error("Ошибка загрузки текстуры: {}", path);
         throw std::runtime_error("[ERROR]: Ошибка загрузки текстуры: " + path);
     }
-    texture.setSmooth(true);
+    texture.setSmooth(smooth);
     textures[name] = std::move(texture);
     Logger::debug("Текстура загружена: {}", path);
 }
@@ -36,7 +36,7 @@ sf::Font& ResourceManager::getFont(const std::string& name) {
         Logger::error("Шрифт не найден: {}", name);
         throw std::runtime_error("[ERROR]: Шрифт не найден: " + name);
     }
-    Logger::debug("Шрифт получен: {}", name);
+    // Logger::debug("Шрифт получен: {}", name);
     return it->second;
 }
 

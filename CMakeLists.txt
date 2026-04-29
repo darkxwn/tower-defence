@@ -79,10 +79,12 @@ set(SOURCES
     src/utils/Logger.cpp
     src/ui/Text.cpp
     src/ui/Button.cpp
+    src/ui/NineSlice.cpp
     src/ui/Widget.cpp
     src/ui/Container.cpp
     src/ui/Slider.cpp
     src/ui/Image.cpp
+    src/ui/NineSlice.cpp
 )
 
 # Ресурсы для Windows и macOS

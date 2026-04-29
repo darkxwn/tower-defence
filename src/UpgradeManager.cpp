@@ -133,7 +133,7 @@ int UpgradeManager::getUpgradeCost(const std::string& towerType, int statIndex) 
         currentLvl = up->level;
     }
 
-    float price = baseCost * (1.0f + currentLvl * 0.5f);
+    float price = baseCost * (1.0f + currentLvl * 0.3f);
     return (int)price;
 }
 
@@ -198,9 +198,10 @@ void UpgradeManager::upgradeRank(const std::string& towerType) {
     for (auto& up : upgrades) {
         if (up.towerType == towerType && up.rank < (int)MAX_TOWER_RANK) {
             up.rank++;
-            up.damageMultiplier += 0.02f;
-            up.firerateMultiplier += 0.02f;
-            up.rangeMultiplier += 0.02f;
+            const float RANK_BONUS = 0.02f;
+            up.damageMultiplier += RANK_BONUS;
+            up.firerateMultiplier += RANK_BONUS;
+            up.rangeMultiplier += RANK_BONUS;
             if (onUpgradeChanged) onUpgradeChanged();
             break;
         }

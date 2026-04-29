@@ -27,7 +27,7 @@ namespace UI {
         Image(const sf::Texture& texture, sf::Vector2f size);
 
         // Обработка событий (не требуется)
-        void handleEvent(const sf::Event& event, const sf::RenderWindow& window, const sf::View& uiView) override {}
+        void handleEvent(const sf::Event& event, const sf::RenderWindow& window, const sf::View& uiView) override;
 
         // Отрисовка изображения в окно
         void render(sf::RenderWindow& window) const override;
