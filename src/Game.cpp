@@ -23,11 +23,26 @@ Game::Game(sf::RenderWindow& window, SettingsManager& settings, SaveManager& sav
     updateViewSizes(window.getSize());
 }
 
-// Построение иерархии контейнеров для оверлеев (в стиле подменюшек Menu)
+// Построение иерархии контейнеров для оверлеев
 void Game::initOverlays() {
     auto& font = ResourceManager::getFont("main");
     sf::Vector2f winSize = sf::Vector2f(window.getSize());
     sf::Vector2f btnSize(220.f, 60.f);
+
+    // помощник для создания стилизованных кнопок оверлеев
+    auto createOverlayButton = [&](const std::string& label, std::function<void()> onClick) {
+        auto btn = std::make_unique<UI::Button>(font, label, btnSize);
+        btn->setBackgroundTextures(
+            &ResourceManager::get("button"),
+            &ResourceManager::get("button-hover"),
+            &ResourceManager::get("button-active"),
+            &ResourceManager::get("button-disabled"),
+            32.0f
+        );
+        btn->setTextSize(20);
+        btn->setCallback(std::move(onClick));
+        return btn;
+    };
 
     // МЕНЮ ПАУЗЫ
     pauseOverlay = std::make_unique<UI::Container>(winSize);
@@ -35,7 +50,6 @@ void Game::initOverlays() {
     pauseOverlay->setContentAlign(UI::Container::ContentAlign::Center);
     pauseOverlay->setItemAlign(UI::Container::ItemAlign::Center);
     pauseOverlay->setGap(10.f);
-    pauseOverlay->setDrawOutline(false);
     pauseOverlay->setBackgroundColor(sf::Color(0, 0, 0, 150));
     pauseOverlay->setDrawBackground(true);
 
@@ -43,8 +57,8 @@ void Game::initOverlays() {
     pRoot->setDirection(UI::Container::Direction::Column);
     pRoot->setContentAlign(UI::Container::ContentAlign::Center);
     pRoot->setItemAlign(UI::Container::ItemAlign::Center);
+    pRoot->setBackgroundTexture(ResourceManager::get("panel"), 64.f);
     pRoot->setGap(10.f);
-    pRoot->setDrawOutline(false);
     pauseModalPtr = pRoot.get();
 
     auto pTitle = std::make_unique<UI::Text>(font, "ПАУЗА", 96, sf::Vector2f(winSize.x * 0.9f, 100.f));
@@ -56,19 +70,10 @@ void Game::initOverlays() {
     pNav->setDirection(UI::Container::Direction::Row);
     pNav->setContentAlign(UI::Container::ContentAlign::Center);
     pNav->setGap(20.f);
-    pNav->setDrawOutline(false);
 
-    auto exitBtn = std::make_unique<UI::Button>(font, "В МЕНЮ", btnSize);
-    exitBtn->setCallback([this]() { endReason = GameEndReason::ReturnToMenu; });
-    pNav->addChild(std::move(exitBtn));
-
-    auto restBtn = std::make_unique<UI::Button>(font, "ЗАНОВО", btnSize);
-    restBtn->setCallback([this]() { endReason = GameEndReason::Restart; });
-    pNav->addChild(std::move(restBtn));
-
-    auto contBtn = std::make_unique<UI::Button>(font, "ПРОДОЛЖИТЬ", btnSize);
-    contBtn->setCallback([this]() { state = GameState::Playing; });
-    pNav->addChild(std::move(contBtn));
+    pNav->addChild(createOverlayButton("В МЕНЮ", [this]() { endReason = GameEndReason::ReturnToMenu; }));
+    pNav->addChild(createOverlayButton("ЗАНОВО", [this]() { endReason = GameEndReason::Restart; }));
+    pNav->addChild(createOverlayButton("ПРОДОЛЖИТЬ", [this]() { state = GameState::Playing; }));
 
     pRoot->addChild(std::move(pNav));
     pauseOverlay->addChild(std::move(pRoot));
@@ -79,7 +84,6 @@ void Game::initOverlays() {
     endOverlay->setContentAlign(UI::Container::ContentAlign::Center);
     endOverlay->setItemAlign(UI::Container::ItemAlign::Center);
     endOverlay->setGap(10.f);
-    endOverlay->setDrawOutline(false);
     endOverlay->setBackgroundColor(sf::Color(0, 0, 0, 200));
     endOverlay->setDrawBackground(true);
 
@@ -87,8 +91,8 @@ void Game::initOverlays() {
     eRoot->setDirection(UI::Container::Direction::Column);
     eRoot->setContentAlign(UI::Container::ContentAlign::Center);
     eRoot->setItemAlign(UI::Container::ItemAlign::Center);
+    eRoot->setBackgroundTexture(ResourceManager::get("panel"), 64.f);
     eRoot->setGap(10.f);
-    eRoot->setDrawOutline(false);
     endModalPtr = eRoot.get();
 
     auto eTitle = std::make_unique<UI::Text>(font, "ФИНАЛ", 60, sf::Vector2f(winSize.x * 0.9f, 60.f));
@@ -105,15 +109,10 @@ void Game::initOverlays() {
     eNav->setDirection(UI::Container::Direction::Row);
     eNav->setContentAlign(UI::Container::ContentAlign::Center);
     eNav->setGap(20.f);
-    eNav->setDrawOutline(false);
 
-    auto eExitBtn = std::make_unique<UI::Button>(font, "В МЕНЮ", btnSize);
-    eExitBtn->setCallback([this]() { endReason = GameEndReason::ReturnToMenu; });
-    eNav->addChild(std::move(eExitBtn));
 
-    auto eRestBtn = std::make_unique<UI::Button>(font, "ЗАНОВО", btnSize);
-    eRestBtn->setCallback([this]() { endReason = GameEndReason::Restart; });
-    eNav->addChild(std::move(eRestBtn));
+    eNav->addChild(createOverlayButton("В МЕНЮ", [this]() { endReason = GameEndReason::ReturnToMenu; }));
+    eNav->addChild(createOverlayButton("ЗАНОВО", [this]() { endReason = GameEndReason::Restart; }));
 
     eRoot->addChild(std::move(eNav));
     endOverlay->addChild(std::move(eRoot));
@@ -233,7 +232,6 @@ void Game::handleEvents() {
                 });
 
                 if (it != towers.end()) {
-                    // Возвращаем 100% только если ПЕРВАЯ волна еще не запущена (состояние Idle)
                     float refundPercent = (waveSystem.getState() == WaveState::Idle) ? 1.0f : 0.65f;
                     money += static_cast<int>(it->getTotalValue() * refundPercent);
                     towers.erase(it);
@@ -281,7 +279,7 @@ void Game::handleEvents() {
                     clampView();
                 }
             }
-            // ... (остальной ввод без изменений) ...
+            
             if (const auto* touch = event->getIf<sf::Event::TouchBegan>()) {
                 if (touch->finger == 0) { isPanning = true; hasMoved = false; startTouchPos = touch->position; lastInputPos = touch->position; }
                 if (touch->finger == 1 && sf::Touch::isDown(0)) {

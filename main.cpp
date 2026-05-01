@@ -90,7 +90,10 @@ static void loadResources() {
     ResourceManager::load("button-disabled", assetsPath + "sprites/button-disabled.png", false);
     ResourceManager::load("panel", assetsPath + "sprites/panel.png", false);
     ResourceManager::load("panel-light", assetsPath + "sprites/panel-light.png", false);
-    ResourceManager::load("main-layer", assetsPath + "sprites/main-layer.png", false);
+    ResourceManager::load("main-layer", assetsPath + "sprites/main-layer.png");
+    ResourceManager::load("card", assetsPath + "sprites/card.png", false);
+    ResourceManager::load("card-light", assetsPath + "sprites/card-light.png", false);
+    ResourceManager::load("card-dark", assetsPath + "sprites/card-dark.png", false);
 
 #ifdef __ANDROID__
     ResourceManager::load("icon-sensivity", assetsPath + "icons/sensivity-mobile.png");

@@ -13,17 +13,16 @@
 ///////////////////////////////////////////////////////////////////////////
 
 namespace UI {
-    // Варианты расположения иконки относительно текста
-    enum class IconPlacement {
-        Left, // иконка слева, текст справа
-        Right, // текст слева, иконка справа
-        Top // иконка сверху, текст снизу
-    };
-
     class Button : public Widget {
     public:
         enum class ContentType { TextOnly, ImageOnly, ImageAndText };
 
+        // Варианты расположения иконки относительно текста
+        enum class IconPlacement {
+            Left, // иконка слева, текст справа
+            Right, // текст слева, иконка справа
+            Top // иконка сверху, текст снизу
+        };
     private:
         ContentType type; // тип содержимого кнопки
         IconPlacement placement = IconPlacement::Left; // расположение иконки

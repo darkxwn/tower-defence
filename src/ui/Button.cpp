@@ -120,14 +120,11 @@ void Button::updateVisualState() {
 
     if (!enabled && texDisabled) {
         backgroundSlice->swapTexture(texDisabled);
-    }
-    else if (isPressed && texPressed) {
+    } else if (isPressed && texPressed) {
         backgroundSlice->swapTexture(texPressed);
-    }
-    else if (isHovered && useHover && texHover) {
+    } else if (isHovered && useHover && texHover) {
         backgroundSlice->swapTexture(texHover);
-    }
-    else if (texNormal) {
+    } else if (texNormal) {
         backgroundSlice->swapTexture(texNormal);
     }
 }
@@ -204,11 +201,10 @@ void Button::render(sf::RenderWindow& window) const {
     if (!transparent) {
         if (backgroundSlice) {
             window.draw(*backgroundSlice);
-        }
-        else {
+        } else {
             sf::RectangleShape drawShape = shape;
             if (!enabled) drawShape.setFillColor(Colors::Theme::WidgetDisabled);
-            else if (isPressed) drawShape.setFillColor(sf::Color(100, 100, 100)); 
+            else if (isPressed) drawShape.setFillColor(Colors::Theme::WidgetActive);
             else if (isHovered && useHover) drawShape.setFillColor(Colors::Theme::WidgetHover);
             else drawShape.setFillColor(Colors::Theme::Widget);
             window.draw(drawShape);
@@ -273,8 +269,7 @@ void Button::setBackgroundTextures(const sf::Texture* n, const sf::Texture* h, c
     if (texNormal) {
         if (!backgroundSlice) {
             backgroundSlice = std::make_unique<NineSlice>(*texNormal, l, t, r, b);
-        }
-        else {
+        } else {
             backgroundSlice->setTexture(*texNormal, l, t, r, b);
         }
         backgroundSlice->setSize(size);

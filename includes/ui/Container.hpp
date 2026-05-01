@@ -36,7 +36,7 @@ namespace UI {
         sf::Color bgColor = sf::Color(30, 30, 30, 200); // цвет заливки фона
 
         sf::RectangleShape outline; // фигура отладочной рамки
-        bool drawOutline = true; // флаг отрисовки рамки
+        bool drawOutline = false; // флаг отрисовки рамки
 
         std::unique_ptr<NineSlice> backgroundSlice; // объект для отрисовки растягиваемого фона
         std::vector<std::unique_ptr<Widget>> children; // список дочерних виджетов

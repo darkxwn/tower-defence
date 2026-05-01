@@ -36,7 +36,7 @@ HUD::HUD() {
     });
 
     // Инициализация кнопок управления башней
-    upgradeBtn = UI::Button(ResourceManager::get("icon-upgrade"), *mainFont, "", sf::Vector2f(48.f, 48.f), UI::IconPlacement::Top);
+    upgradeBtn = UI::Button(ResourceManager::get("icon-upgrade"), *mainFont, "", sf::Vector2f(48.f, 48.f), UI::Button::IconPlacement::Top);
     upgradeBtn.setIconScale({ 0.32f, 0.32f }); 
     upgradeBtn.setTextSize(11);
     upgradeBtn.setCallback([this]() { 
@@ -53,7 +53,7 @@ HUD::HUD() {
         }
     });
 
-    sellBtn = UI::Button(ResourceManager::get("icon-sell"), *mainFont, "", sf::Vector2f(48.f, 48.f), UI::IconPlacement::Top);
+    sellBtn = UI::Button(ResourceManager::get("icon-sell"), *mainFont, "", sf::Vector2f(48.f, 48.f), UI::Button::IconPlacement::Top);
     sellBtn.setIconScale({ 0.32f, 0.32f });
     sellBtn.setTextSize(11);
     sellBtn.setCallback([this]() { 
@@ -75,15 +75,15 @@ HUD::HUD() {
     towerSlots.reserve((int)towerNames.size());
     for (int i = 0; i < (int)towerNames.size(); i++) {
         int cost = GameData::getTower(towerNames[i]).cost;
-        UI::Button slot(ResourceManager::get("tower-" + towerNames[i] + "-preview"), *mainFont, std::to_string(cost) + "$", sf::Vector2f(90.f, 100.f), UI::IconPlacement::Top);
+        UI::Button slot(ResourceManager::get("tower-" + towerNames[i] + "-preview"), *mainFont, std::to_string(cost) + "$", sf::Vector2f(90.f, 100.f), UI::Button::IconPlacement::Top);
         
-        // Установка фона карточки (9-slice)
+        // Установка фона карточки (9-slice на основе panel 128x128)
         slot.setBackgroundTextures(
             &ResourceManager::get("panel"),
             &ResourceManager::get("panel-light"),
             &ResourceManager::get("panel-light"),
             &ResourceManager::get("panel"),
-            24.0f
+            32.0f
         );
 
         slot.setIconScale(sf::Vector2f(0.15625f, 0.15625f));
@@ -171,7 +171,7 @@ void HUD::render(sf::RenderWindow& window, int money, int lives, int wave, WaveS
     float panelBottom = ws.y;
     float panelTop = ws.y - std::round(120.f * s);
 
-    // Подложка всей панели
+    // Восстановленный шестиугольник подложки
     sf::ConvexShape hexagon(6);
     hexagon.setPoint(0, { startX, panelBottom });
     hexagon.setPoint(1, { startX - 25.f * s, ws.y - 60.f * s });

@@ -365,8 +365,7 @@ namespace UI {
         if (drawBackground) {
             if (backgroundSlice) {
                 window.draw(*backgroundSlice);
-            }
-            else {
+            } else {
                 window.draw(background);
             }
         }

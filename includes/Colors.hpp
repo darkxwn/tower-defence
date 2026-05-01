@@ -41,7 +41,8 @@ namespace Colors {
         inline const sf::Color Background = Palette::Gray90; // основной фон
 
         inline const sf::Color Widget = Palette::Gray70; // фон виджетов
-        inline const sf::Color WidgetHover = Palette::Gray65; // фон при наведении
+        inline const sf::Color WidgetActive = Palette::Gray65; // фон виджетов
+        inline const sf::Color WidgetHover = Palette::Gray60; // фон при наведении
         inline const sf::Color WidgetDisabled = Palette::Gray75; // фон выключенного виджета
 
         inline const sf::Color TextMain = Palette::White; // основной текст
