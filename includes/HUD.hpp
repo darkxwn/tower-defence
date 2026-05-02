@@ -39,6 +39,8 @@ private:
     bool skipRequested = false; // запрос старта волны
     int selectedTowerSlot = -1; // индекс выбранной башни
 
+    UI::Text scoreText; // отображение очков
+
     const sf::Texture* coinTex = nullptr; // иконка монет
     const sf::Texture* heartTex = nullptr; // иконка жизней
     const sf::Font* mainFont = nullptr; // основной шрифт
@@ -49,7 +51,7 @@ public:
     HUD();
 
     // Отрисовывает все элементы интерфейса
-    void render(sf::RenderWindow& window, int money, int lives, int wave, WaveState state);
+    void render(sf::RenderWindow& window, int money, int lives, int wave, WaveState state, int currentScore);
 
     // Обновляет позиции элементов при изменении размеров экрана
     void updateLayout(sf::Vector2f viewSize, float uiScale = 1.0f);

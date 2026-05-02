@@ -30,4 +30,10 @@ public:
 
     // Проверка состояния жизни
     bool isAlive() const;
+
+    // Получение цели
+    const Enemy* getTarget() const { return target; }
+
+    // Принудительное уничтожение
+    void kill() { alive = false; }
 };

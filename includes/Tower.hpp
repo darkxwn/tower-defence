@@ -15,7 +15,7 @@
 
 class Tower {
 public:
-    static constexpr float IN_GAME_BONUS_STEP = 0.1f;
+    static constexpr float IN_GAME_BONUS_STEP = 0.2f;
 
 private:
     std::string typeSlug; // slug типа башни

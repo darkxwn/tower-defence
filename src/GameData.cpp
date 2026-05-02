@@ -32,7 +32,7 @@ void GameData::load() {
     std::string line;
     while (std::getline(ssFile, line)) {
         if (!line.empty() && line.back() == '\r') line.pop_back();
-        if (line.empty() || line[0] == '#') continue; // игнорируем пустые строки и комментарии
+        if (line.empty() || line[0] == '#' || line[0] == '\r') continue; // игнорируем пустые строки и комментарии
 
         std::istringstream ss(line);
         std::string typeName;
@@ -44,12 +44,18 @@ void GameData::load() {
             size_t eq = token.find('=');
             if (eq == std::string::npos) continue;
             std::string key = token.substr(0, eq);
-            int value = std::stoi(token.substr(eq + 1));
+            std::string valStr = token.substr(eq + 1);
 
-            if (key == "health")  stats.health = value;
-            else if (key == "speed")   stats.speed = value;
-            else if (key == "damage")  stats.damage = value;
-            else if (key == "reward")  stats.reward = value;
+            if (key == "health")  stats.health = std::stoi(valStr);
+            else if (key == "speed")   stats.speed = std::stoi(valStr);
+            else if (key == "damage")  stats.damage = std::stoi(valStr);
+            else if (key == "reward")  stats.reward = std::stoi(valStr);
+            else if (key == "points")  stats.points = std::stoi(valStr);
+            else if (key == "armor")   stats.armor = std::stoi(valStr);
+            else if (key == "spawnInterval") {
+                std::replace(valStr.begin(), valStr.end(), ',', '.');
+                stats.spawnInterval = std::stof(valStr);
+            }
         }
 
         // Автоматически добавляем новый тип врага в мапу и список имен

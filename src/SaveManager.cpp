@@ -2,6 +2,7 @@
 #include "utils/Logger.hpp"
 #include <fstream>
 #include <iostream>
+#include <algorithm>
 
 #ifdef __ANDROID__
 #include <SFML/System/NativeActivity.hpp>
@@ -27,9 +28,12 @@ std::string SaveManager::getSavePath() {
 
 void SaveManager::setDefaults() {
     money = 0;
-    moneyMultiplier = 1.0f;
+    globalCoinsLvl = 0;
+    globalMoneyLvl = 0;
+    globalBaseHpLvl = 0;
     levels.clear();
-    levels["level01"] = { 0, true };
+    // Первый уровень всегда открыт
+    levels["level01"] = { 0, 0, 0, true };
     towerDataBlob = json::object();
 }
 
@@ -44,8 +48,28 @@ void SaveManager::load() {
         json j;
         file >> j;
 
+        // Anti-Tamper Check
+        if constexpr (ENABLE_ANTI_TAMPER) {
+            size_t savedHash = j.value("hashChecksum", 0ULL);
+            if (savedHash != 0ULL) {
+                json checkJ = j;
+                checkJ.erase("hashChecksum");
+                std::string dataDump = checkJ.dump();
+                size_t calculatedHash = std::hash<std::string>{}(dataDump + "GyurzaSecretSalt");
+
+                if (savedHash != calculatedHash) {
+                    Logger::error("Anti-Tamper: Файл сохранения изменен вручную! Сброс прогресса.");
+                    setDefaults();
+                    return;
+                }
+            }
+        }
+
+        // Читаем в camelCase согласно PLAN.md
         money = j.value("money", 0);
-        moneyMultiplier = j.value("money_multiplier", 1.0f);
+        globalCoinsLvl = j.value("globalCoinsLvl", 0);
+        globalMoneyLvl = j.value("globalMoneyLvl", 0);
+        globalBaseHpLvl = j.value("globalBaseHpLvl", 0);
 
         if (j.contains("levels")) {
             levels = j["levels"].get<std::map<std::string, LevelProgress>>();
@@ -65,10 +89,19 @@ void SaveManager::load() {
 void SaveManager::save() {
     try {
         json j;
+        // Пишем в camelCase согласно PLAN.md
         j["money"] = money;
-        j["money_multiplier"] = moneyMultiplier;
+        j["globalCoinsLvl"] = globalCoinsLvl;
+        j["globalMoneyLvl"] = globalMoneyLvl;
+        j["globalBaseHpLvl"] = globalBaseHpLvl;
         j["levels"] = levels;
         j["towers"] = towerDataBlob;
+        if constexpr (ENABLE_ANTI_TAMPER) {
+            // Anti-Tamper Hash
+            std::string dataDump = j.dump();
+            size_t hashChecksum = std::hash<std::string>{}(dataDump + "GyurzaSecretSalt_2025");
+            j["hashChecksum"] = hashChecksum;
+        }
 
         std::ofstream file(savePath);
         if (file.is_open()) {
@@ -96,19 +129,30 @@ bool SaveManager::spendMoney(int amount) {
     return false;
 }
 
-float SaveManager::getMoneyMultiplier() const { return moneyMultiplier; }
-
-void SaveManager::setMoneyMultiplier(float multiplier) { moneyMultiplier = multiplier; }
+float SaveManager::getMoneyMultiplier() const { 
+    return 1.0f + (globalMoneyLvl * 0.1f); 
+}
 
 int SaveManager::getStars(const std::string& levelId) const {
     if (levels.count(levelId)) return levels.at(levelId).stars;
     return 0;
 }
 
-void SaveManager::setStars(const std::string& levelId, int stars) {
-    if (levels[levelId].stars < stars) {
-        levels[levelId].stars = stars;
-    }
+int SaveManager::getBestScore(const std::string& levelId) const {
+    if (levels.count(levelId)) return levels.at(levelId).bestScore;
+    return 0;
+}
+
+int SaveManager::getMaxWave(const std::string& levelId) const {
+    if (levels.count(levelId)) return levels.at(levelId).maxWave;
+    return 0;
+}
+
+void SaveManager::updateLevelRecord(const std::string& levelId, int stars, int score, int wave) {
+    auto& p = levels[levelId];
+    p.stars = std::max(p.stars, stars);
+    p.bestScore = std::max(p.bestScore, score);
+    p.maxWave = std::max(p.maxWave, wave);
 }
 
 bool SaveManager::isUnlocked(const std::string& levelId) const {

@@ -26,6 +26,9 @@ namespace UI {
         void applyWrapping();
 
     public:
+        // Конструктор по умолчанию
+        Text();
+
         // Конструктор текста
         Text(const sf::Font& font, const std::string& utf8Text = "", unsigned int fontSize = 24);
 
@@ -40,6 +43,9 @@ namespace UI {
 
         // Изменение текстового содержимого
         void setText(const std::string& utf8Text);
+
+        // Изменение шрифта
+        void setFont(const sf::Font& font);
 
         // Изменение лимита ширины переноса
         void setMaxWidth(float width);

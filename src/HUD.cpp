@@ -36,9 +36,9 @@ HUD::HUD() {
     });
 
     // Инициализация кнопок управления башней
-    upgradeBtn = UI::Button(ResourceManager::get("icon-upgrade"), *mainFont, "", sf::Vector2f(48.f, 48.f), UI::Button::IconPlacement::Top);
-    upgradeBtn.setIconScale({ 0.32f, 0.32f }); 
-    upgradeBtn.setTextSize(11);
+    upgradeBtn = UI::Button(ResourceManager::get("icon-upgrade"), *mainFont, "", sf::Vector2f(64.f, 64.f), UI::Button::IconPlacement::Top);
+    upgradeBtn.setIconScale({ 0.5f, 0.5f }); 
+    upgradeBtn.setTextSize(12);
     upgradeBtn.setCallback([this]() { 
         float elapsed = doubleClickClock.getElapsedTime().asSeconds();
         if (lastClickedBtnId == 1 && elapsed < doubleClickTime) {
@@ -53,9 +53,9 @@ HUD::HUD() {
         }
     });
 
-    sellBtn = UI::Button(ResourceManager::get("icon-sell"), *mainFont, "", sf::Vector2f(48.f, 48.f), UI::Button::IconPlacement::Top);
-    sellBtn.setIconScale({ 0.32f, 0.32f });
-    sellBtn.setTextSize(11);
+    sellBtn = UI::Button(ResourceManager::get("icon-sell"), *mainFont, "", sf::Vector2f(64.f, 64.f), UI::Button::IconPlacement::Top);
+    sellBtn.setIconScale({ 0.5f, 0.5f });
+    sellBtn.setTextSize(12);
     sellBtn.setCallback([this]() { 
         float elapsed = doubleClickClock.getElapsedTime().asSeconds();
         if (lastClickedBtnId == 2 && elapsed < doubleClickTime) {
@@ -70,6 +70,11 @@ HUD::HUD() {
         }
     });
 
+    scoreText.setFont(*mainFont);
+    scoreText.setText("Очки: 0");
+    scoreText.setFontSize(22);
+    scoreText.setAlignment(UI::Text::Align::Center);
+
     // Создание слотов для башен
     auto towerNames = GameData::getTowerNames();
     towerSlots.reserve((int)towerNames.size());
@@ -77,13 +82,13 @@ HUD::HUD() {
         int cost = GameData::getTower(towerNames[i]).cost;
         UI::Button slot(ResourceManager::get("tower-" + towerNames[i] + "-preview"), *mainFont, std::to_string(cost) + "$", sf::Vector2f(90.f, 100.f), UI::Button::IconPlacement::Top);
         
-        // Установка фона карточки (9-slice на основе panel 128x128)
+        // Установка фона карточки (используем спрайты карточек вместо 9-slice для чистоты)
         slot.setBackgroundTextures(
-            &ResourceManager::get("panel"),
-            &ResourceManager::get("panel-light"),
-            &ResourceManager::get("panel-light"),
-            &ResourceManager::get("panel"),
-            32.0f
+            &ResourceManager::get("card"),
+            &ResourceManager::get("card-light"),
+            &ResourceManager::get("card-dark"),
+            &ResourceManager::get("card-dark"),
+            16.0f
         );
 
         slot.setIconScale(sf::Vector2f(0.15625f, 0.15625f));
@@ -130,7 +135,7 @@ void HUD::setUiScale(float scale) {
 }
 
 // Отрисовывает интерфейс: панели, ресурсы, волны и кнопки
-void HUD::render(sf::RenderWindow& window, int money, int lives, int wave, WaveState state) {
+void HUD::render(sf::RenderWindow& window, int money, int lives, int wave, WaveState state, int currentScore) {
     if (!mainFont || !coinTex || !heartTex) return;
 
     sf::Vector2f ws = window.getView().getSize();
@@ -156,6 +161,12 @@ void HUD::render(sf::RenderWindow& window, int money, int lives, int wave, WaveS
     waveText.setOrigin({ wtB.position.x + wtB.size.x / 2.f, 0.f });
     waveText.setPosition({ cx, std::round(topPanelHeight / 2.f - wtB.size.y) });
     window.draw(waveText);
+
+    // Очки
+    scoreText.setText("Очки: " + std::to_string(currentScore));
+    scoreText.setFontSize(static_cast<unsigned int>(20 * s));
+    scoreText.setPosition({ cx, waveText.getPosition().y + 35.f * s });
+    scoreText.render(window);
 
     if (state == WaveState::Waiting || state == WaveState::Idle) {
         skipBtn.setSize({ 48.f * s, 48.f * s });
@@ -185,40 +196,45 @@ void HUD::render(sf::RenderWindow& window, int money, int lives, int wave, WaveS
     // Ресурсы (в первой ячейке панели)
     sf::Sprite coins(*coinTex);
     coins.setScale({ 0.625f * s, 0.625f * s });
-    coins.setPosition({ startX + 15.f * s, ws.y - std::round(105.f * s) });
+    float coinsIconW = 96.f * 0.625f * s;
+    coins.setPosition({ startX + (slotW - coinsIconW) / 2.f, ws.y - std::round(105.f * s) });
     window.draw(coins);
 
-    sf::Text mText(*mainFont, std::to_string(money) + "$", static_cast<unsigned int>(26 * s));
+    sf::Text mText(*mainFont, std::to_string(money) + "$", static_cast<unsigned int>(24 * s));
     mText.setFillColor(Colors::Theme::TextYellow);
     sf::FloatRect mtB = mText.getLocalBounds();
-    mText.setPosition({ std::round(startX + (slotW - mtB.size.x) / 2.f), ws.y - std::round(40.f * s) });
+    mText.setOrigin({ mtB.position.x + mtB.size.x / 2.f, mtB.position.y + mtB.size.y / 2.f });
+    mText.setPosition({ startX + slotW / 2.f, ws.y - std::round(35.f * s) });
     window.draw(mText);
 
     // Магазин башен
     for (int i = 0; i < (int)towerSlots.size(); i++) {
-        towerSlots[i].render(window);
-
+        // Подсветка выбранного слота (скругленная, по форме карточки)
         if (i == selectedTowerSlot) {
-            sf::RectangleShape highlight(towerSlots[i].getSize());
-            highlight.setPosition(towerSlots[i].getPosition());
-            highlight.setFillColor(sf::Color::Transparent);
-            highlight.setOutlineColor(Colors::Theme::TextYellow);
-            highlight.setOutlineThickness(2.f * s);
+            sf::Sprite highlight(ResourceManager::get("card-light"));
+            sf::Vector2f btnSize = towerSlots[i].getSize();
+            highlight.setScale({ (btnSize.x + 8.f * s) / 128.f, (btnSize.y + 8.f * s) / 128.f });
+            highlight.setColor(sf::Color(255, 255, 0, 180)); // Желтое свечение
+            highlight.setPosition(towerSlots[i].getPosition() - sf::Vector2f(4.f * s, 4.f * s));
             window.draw(highlight);
         }
+        
+        towerSlots[i].render(window);
     }
 
     // Состояние базы (в последней ячейке панели)
     float heartStartX = startX + (slotsCount + 1) * slotW;
     sf::Sprite heart(*heartTex);
     heart.setScale({ 0.625f * s, 0.625f * s });
-    heart.setPosition({ heartStartX + 15.f * s, ws.y - std::round(105.f * s) });
+    float heartIconW = 96.f * 0.625f * s;
+    heart.setPosition({ heartStartX + (slotW - heartIconW) / 2.f, ws.y - std::round(105.f * s) });
     window.draw(heart);
 
-    sf::Text lText(*mainFont, std::to_string(lives), static_cast<unsigned int>(26 * s));
+    sf::Text lText(*mainFont, std::to_string(lives), static_cast<unsigned int>(24 * s));
     lText.setFillColor(Colors::Theme::TextRed);
     sf::FloatRect ltB = lText.getLocalBounds();
-    lText.setPosition({ std::round(heartStartX + (slotW - ltB.size.x) / 2.f), ws.y - std::round(40.f * s) });
+    lText.setOrigin({ ltB.position.x + ltB.size.x / 2.f, ltB.position.y + ltB.size.y / 2.f });
+    lText.setPosition({ heartStartX + slotW / 2.f, ws.y - std::round(35.f * s) });
     window.draw(lText);
 
     speedBtn.render(window);
@@ -311,7 +327,7 @@ void HUD::showTowerControls(sf::Vector2f screenPos, int sellPrice, int upgradePr
     targetScale = std::clamp(targetScale, 0.6f, 1.4f);
 #endif
 
-    float targetIconScale = 0.32f * targetScale;
+    float targetIconScale = 0.35f * targetScale;
     upgradeBtn.setIconScale({ targetIconScale, targetIconScale });
     sellBtn.setIconScale({ targetIconScale, targetIconScale });
 
@@ -322,7 +338,7 @@ void HUD::showTowerControls(sf::Vector2f screenPos, int sellPrice, int upgradePr
     sellBtn.setTextSize(static_cast<unsigned int>(11 * targetScale));
 
     float towerHeightOffset = 32.f * invZoom; 
-    float gap = 8.f * targetScale; 
+    float gap = 6.f * targetScale; 
     float totalOffsetY = towerHeightOffset + gap;
 
     float horizontalGap = 8.f * targetScale;

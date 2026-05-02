@@ -2,55 +2,25 @@
 #include "GameData.hpp"
 #include "utils/FileReader.hpp"
 #include "Enemy.hpp"
+#include "utils/Math.hpp"
 #include <fstream>
 #include <sstream>
+#include <cmath>
 
-// Интервал спавна по типу врага (динамический расчет или по идентификатору)
-float WaveSystem::getSpawnInterval(const std::string& type) const {
-    if (type == "fast")   return 0.6f;
-    if (type == "strong") return 1.2f;
-    return 0.8f; // базовый интервал
-}
-
-// Загрузка волн из файла карты
-void WaveSystem::loadWaves(const std::string& path) {
-    waves.clear();
+void WaveSystem::init(const std::vector<std::string>& allowedEnemies) {
+    mapAllowedEnemies = allowedEnemies;
+    // Если список пуст, используем всех доступных врагов из GameData
+    if (mapAllowedEnemies.empty()) {
+        mapAllowedEnemies = GameData::getEnemyTypes();
+    }
+    
     currentWave = 0;
     state = WaveState::Idle;
-
-    auto content = readFile(path);
-    if (!content) return;
-
-    std::istringstream file(content.value());
-    std::string line;
-    bool parsingWaves = false;
-
-    while (std::getline(file, line)) {
-        if (!line.empty() && line.back() == '\r') line.pop_back();
-        if (line.empty() || line[0] == '#') continue;
-
-        if (line.find("waves=") != std::string::npos) {
-            parsingWaves = true;
-            continue;
-        }
-
-        if (parsingWaves) {
-            size_t colon = line.find(':');
-            if (colon != std::string::npos) {
-                std::string typeStr = line.substr(0, colon);
-                int count = std::stoi(line.substr(colon + 1));
-                
-                // Просто сохраняем тип как строку (id должен совпадать с enemies.cfg)
-                waves.push_back({ typeStr, count });
-            }
-        }
-    }
+    wavesUntilTypeChange = 0;
 }
 
 // Обновление системы волн
 void WaveSystem::update(float deltaTime, std::vector<std::unique_ptr<Enemy>>& enemies, const std::vector<sf::Vector2i>& path) {
-    if (currentWave >= (int)waves.size()) return;
-
     if (state == WaveState::Idle) return;
 
     // Пауза между волнами
@@ -64,37 +34,38 @@ void WaveSystem::update(float deltaTime, std::vector<std::unique_ptr<Enemy>>& en
     // Ожидание уничтожения всех врагов текущей волны
     if (state == WaveState::Fighting) {
         if (enemies.empty()) {
-            // Если есть следующая волна — увеличиваем счетчик и ждем
-            if (currentWave + 1 < (int)waves.size()) {
-                currentWave++;
-                state = WaveState::Waiting;
-                waitTimer = waitInterval;
-            } else {
-                // Иначе помечаем как "завершено" (currentWave остается на последней)
-                // Важно: isFinished теперь должен проверять не только индекс, но и состояние
-                state = WaveState::Finished; 
-            }
+            state = WaveState::Waiting;
+            waitTimer = waitInterval;
         }
         return;
     }
 
     // Постепенный спавн врагов
     if (state == WaveState::Spawning) {
-        Wave& wave = waves[currentWave];
+        auto stats = GameData::getEnemy(currentEnemyType);
 
         spawnTimer += deltaTime;
-        if (spawnTimer < getSpawnInterval(wave.type)) return;
+        if (spawnTimer < stats.spawnInterval) return;
         spawnTimer = 0.f;
 
-        // Получаем статы врага из GameData по строковому типу
-        auto stats = GameData::getEnemy(wave.type);
-        enemies.push_back(std::make_unique<Enemy>(wave.type, stats.health, stats.speed, stats.reward, path));
+        // Экспоненциальное масштабирование HP (броня не масштабируется!)
+        int scaledHp = static_cast<int>(stats.health * std::pow(1.06f, currentWave - 1));
+        
+        enemies.push_back(std::make_unique<Enemy>(
+            currentEnemyType, 
+            scaledHp, 
+            stats.speed, 
+            stats.reward, 
+            stats.points, 
+            stats.armor, 
+            path
+        ));
 
-        spawned++;
+        spawnedCount++;
 
         // Если заспавнили всех, переходим в режим боя
-        if (spawned >= wave.count) {
-            spawned = 0;
+        if (spawnedCount >= totalInWave) {
+            spawnedCount = 0;
             state = WaveState::Fighting;
         }
     }
@@ -103,13 +74,40 @@ void WaveSystem::update(float deltaTime, std::vector<std::unique_ptr<Enemy>>& en
 // Запуск волны
 void WaveSystem::startWave() {
     if (state != WaveState::Idle && state != WaveState::Waiting) return;
+    
+    currentWave++;
+    
+    // 1. Смена типа врага
+    if (currentWave <= 10) {
+        auto it = std::find(mapAllowedEnemies.begin(), mapAllowedEnemies.end(), "basic");
+        if (it != mapAllowedEnemies.end()) {
+            currentEnemyType = "basic";
+        } else if (!mapAllowedEnemies.empty()) {
+            currentEnemyType = mapAllowedEnemies[0];
+        }
+        wavesUntilTypeChange = 0; 
+    }
+    else if (wavesUntilTypeChange <= 0) {
+        if (!mapAllowedEnemies.empty()) {
+            int idx = Math::Random::getInt(0, (int)mapAllowedEnemies.size() - 1);
+            currentEnemyType = mapAllowedEnemies[idx];
+            wavesUntilTypeChange = Math::Random::getInt(2, 4); // Держим тип от 2 до 4 волн
+        }
+    }
+    wavesUntilTypeChange--;
+
+    // 2. Расчет количества
+    totalInWave = (8 + (currentWave / 3) * 5) + Math::Random::getInt(-3, 3);
+    if (totalInWave < 1) totalInWave = 1;
+    
+    spawnedCount = 0;
     state = WaveState::Spawning;
-    spawnTimer = 0.f;
+    spawnTimer = 100.f; // Чтобы первый враг спавнился сразу
 }
 
-// Проверка завершения всех волн
+// Проверка завершения (бесконечный режим)
 bool WaveSystem::isFinished() const {
-    return state == WaveState::Finished;
+    return false;
 }
 
 // Получение текущего состояния
@@ -125,11 +123,4 @@ float WaveSystem::getWaitTimer() const {
 // Получение индекса текущей волны
 int WaveSystem::getCurrentWave() const {
     return currentWave;
-}
-
-// Получение данных волны по индексу
-Wave WaveSystem::getWave(int waveIndex) const {
-    if (waveIndex < 0 || waveIndex >= (int)waves.size())
-        throw std::runtime_error("[Ошибка]: Неверный индекс волны ");
-    return waves[waveIndex];
 }

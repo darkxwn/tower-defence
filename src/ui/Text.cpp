@@ -4,6 +4,9 @@
 
 namespace UI {
 
+// Конструктор по умолчанию
+Text::Text() : text(nullptr), alignment(Align::Left) {}
+
 // Конструктор текста инициализирует базовые параметры
 Text::Text(const sf::Font& font, const std::string& utf8Text, unsigned int fontSize) {
     text = std::make_unique<sf::Text>(font);
@@ -43,6 +46,17 @@ void Text::setText(const std::string& utf8Text) {
     applyWrapping();
 }
 
+// Изменение шрифта
+void Text::setFont(const sf::Font& font) {
+    if (!text) {
+        text = std::make_unique<sf::Text>(font);
+        text->setFillColor(Colors::Theme::TextMain);
+    } else {
+        text->setFont(font);
+    }
+    applyWrapping();
+}
+
 // Изменение лимита ширины
 void Text::setMaxWidth(float width) {
     maxWidth = width;
@@ -61,8 +75,7 @@ void Text::applyAlignment() const {
     
     sf::FloatRect bounds = text->getLocalBounds();
 
-    // 1. Находим центр самого текста (его пикселей)
-    // В SFML 3.0 используем position.x/y и size.x/y
+    // 1. Устанавливаем Origin (точка внутри текста, которая будет совмещена с position)
     float originX = bounds.position.x;
     if (alignment == Align::Center) {
         originX += bounds.size.x / 2.f;
@@ -71,21 +84,24 @@ void Text::applyAlignment() const {
         originX += bounds.size.x;
     }
 
-    // Центрируем Origin по вертикали (середина высоты букв)
+    // Origin Y всегда по центру для удобства
     float originY = bounds.position.y + (bounds.size.y / 2.f);
-
     text->setOrigin({ originX, originY });
 
-    // 2. Устанавливаем позицию в геометрический центр контейнера 'size'
+    // 2. Устанавливаем позицию. 
+    // Теперь 'position' - это точка привязки.
+    // Если нам нужно вписать текст в "коробку" (size), тогда учитываем её.
     float targetX = position.x;
-    if (alignment == Align::Center) {
-        targetX += size.x / 2.f;
-    }
-    else if (alignment == Align::Right) {
-        targetX += size.x;
-    }
+    float targetY = position.y;
 
-    float targetY = position.y + (size.y / 2.f);
+    // Если задан размер контейнера (например, ширина кнопки), центрируем ВНУТРИ него
+    if (size.x > 0.f) {
+        if (alignment == Align::Center) targetX += size.x / 2.f;
+        else if (alignment == Align::Right) targetX += size.x;
+    }
+    if (size.y > 0.f) {
+        targetY += size.y / 2.f;
+    }
 
     text->setPosition({ targetX, targetY });
 }

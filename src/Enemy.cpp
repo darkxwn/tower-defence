@@ -7,8 +7,8 @@
 using Engine::Logger;
 
 // Конструктор врага
-Enemy::Enemy(const std::string& type, int health, int speed, int reward, const std::vector<sf::Vector2i>& path)
-    : type(type), health(health), maxHealth(health), speed(speed), reward(reward), alive(true), path(&path), texture(ResourceManager::get("enemy-" + type))
+Enemy::Enemy(const std::string& type, int health, int speed, int reward, int points, int armor, const std::vector<sf::Vector2i>& path)
+    : type(type), health(health), maxHealth(health), speed(speed), reward(reward), points(points), armor(armor), alive(true), path(&path), texture(ResourceManager::get("enemy-" + type))
 {
     if (path.empty()) {
         Logger::error("[Enemy]: Путь для врагов пуст!");
@@ -35,12 +35,15 @@ void Enemy::update(float deltaTime) {
     // движение к следующей точке
     sf::Vector2f target = sf::Vector2f((*path)[pathIndex] * 64);
     float distSq = Math::getDistSq(pos, target);
+    float moveDist = (float)speed * deltaTime;
 
-    if (distSq < 4.f) {
+    if (distSq <= moveDist * moveDist) {
+        // если расстояние меньше шага - "примагничиваемся" к точке и идем к следующей
+        pos = target;
         pathIndex++;
     } else {
         sf::Vector2f dir = Math::normalize(target - pos);
-        pos += dir * (float)speed * deltaTime;
+        pos += dir * moveDist;
     }
 }
 
@@ -73,7 +76,9 @@ void Enemy::render(sf::RenderWindow& window, sf::Vector2f mapOffset) {
 
 // Получение урона
 void Enemy::takeDamage(int damage) {
-    health -= damage;
+    // Минимальный урон всегда 1, чтобы башни не становились полностью бесполезными
+    int finalDamage = std::max(1, damage - armor);
+    health -= finalDamage;
     if (health <= 0) {
         alive = false;
     }
@@ -120,6 +125,11 @@ std::string Enemy::getType() const {
 // Получение награды
 int Enemy::getReward() const {
     return reward;
+}
+
+// Получение очков
+int Enemy::getPoints() const {
+    return points;
 }
 
 // Получение текущей позиции

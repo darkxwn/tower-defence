@@ -78,16 +78,22 @@ static void loadResources() {
     ResourceManager::load("icon-audio", assetsPath + "icons/audio.png");
     ResourceManager::load("icon-music", assetsPath + "icons/music.png");
     ResourceManager::load("icon-level", assetsPath + "icons/level.png");
+    ResourceManager::load("icon-chart", assetsPath + "icons/chart.png");
     ResourceManager::load("icon-sell", assetsPath + "icons/sell.png");
     ResourceManager::load("icon-upgrade", assetsPath + "icons/upgrade.png");
     ResourceManager::load("icon-upgrade2", assetsPath + "icons/upgrade2.png");
     ResourceManager::load("icon-money", assetsPath + "icons/money.png");
+    ResourceManager::load("icon-star-empty", assetsPath + "icons/star-empty.png");
+    ResourceManager::load("icon-star-filled", assetsPath + "icons/star-filled.png");
 
     // СПРАЙТЫ ИНТЕРФЕЙСА
     ResourceManager::load("button", assetsPath + "sprites/button.png", false);
     ResourceManager::load("button-hover", assetsPath + "sprites/button-hover.png", false);
     ResourceManager::load("button-active", assetsPath + "sprites/button-active.png", false);
     ResourceManager::load("button-disabled", assetsPath + "sprites/button-disabled.png", false);
+    ResourceManager::load("button-flat", assetsPath + "sprites/button-flat.png", false);
+    ResourceManager::load("button-flat-hover", assetsPath + "sprites/button-flat-hover.png", false);
+    ResourceManager::load("button-flat-disabled", assetsPath + "sprites/button-flat-disabled.png", false);
     ResourceManager::load("panel", assetsPath + "sprites/panel.png", false);
     ResourceManager::load("panel-light", assetsPath + "sprites/panel-light.png", false);
     ResourceManager::load("main-layer", assetsPath + "sprites/main-layer.png");

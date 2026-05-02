@@ -2,6 +2,10 @@ cmake_minimum_required(VERSION 3.15...3.30)
 
 project(tower-defence LANGUAGES CXX)
 
+if(MSVC)
+    add_compile_options(/utf-8)
+endif()
+
 if(ANDROID)
     set(CMAKE_CXX_STANDARD 20 CACHE STRING "" FORCE)
     set(CMAKE_CXX_STANDARD_REQUIRED ON CACHE BOOL "" FORCE)

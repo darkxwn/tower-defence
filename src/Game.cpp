@@ -3,9 +3,12 @@
 #include "GameData.hpp"
 #include "ResourceManager.hpp"
 #include "utils/Math.hpp"
+#include "utils/Logger.hpp"
 #include <SFML/Graphics.hpp>
 #include <algorithm>
 #include <cmath>
+
+using Engine::Logger;
 
 // Конструктор инициализирует игру и системы
 Game::Game(sf::RenderWindow& window, SettingsManager& settings, SaveManager& saveManager, 
@@ -15,9 +18,22 @@ Game::Game(sf::RenderWindow& window, SettingsManager& settings, SaveManager& sav
 
     map.load(levelPath);
     map.centerOnScreen(window.getSize(), 75.f, 120.f);
-    money = map.getStartMoney();
-    base = Base(map.getBasePos());
-    waveSystem.loadWaves(levelPath);
+    
+    // Применяем мета-бонусы из SaveManager
+    money = map.getStartCoins() + (saveManager.getGlobalCoinsLvl() * 15);
+    base = Base(map.getBasePos(), 20 + (saveManager.getGlobalBaseHpLvl() * 2));
+    
+    currentScore = 0;
+    waveSystem.init(map.getAllowedEnemies());
+
+    // Извлекаем ID уровня из пути (data/levels/levelXX.map -> levelXX)
+    size_t lastSlash = levelPath.find_last_of("/\\");
+    size_t lastDot = levelPath.find_last_of(".");
+    if (lastSlash != std::string::npos && lastDot != std::string::npos) {
+        levelId = levelPath.substr(lastSlash + 1, lastDot - lastSlash - 1);
+    } else {
+        levelId = "unknown";
+    }
 
     initOverlays();
     updateViewSizes(window.getSize());
@@ -122,41 +138,31 @@ void Game::initOverlays() {
 void Game::updateViewSizes(sf::Vector2u windowSize) {
     float sw = static_cast<float>(windowSize.x);
     float sh = static_cast<float>(windowSize.y);
-    float baseScale = sh / 1080.f;
 
-    uiScale = baseScale * settings.get<float>("ui_scale", 1.0f);
+    // 1. uiScale теперь только от настроек пользователя (базовая единица = 1.0)
+    uiScale = settings.get<float>("ui_scale", 1.0f);
     if (uiScale <= 0.1f) uiScale = 1.0f;
 
-    const float minVisibleHeight = 80.f;
-    const float maxVisibleHeight = 1200.f;
-    
-    minZoom = minVisibleHeight / sh;
-    maxZoom = maxVisibleHeight / sh;
-    
-    if (sh > 1440.f) {
-        float scale = sh / 1440.f;
-        maxZoom *= (1.0f + 0.2f * (scale - 1.0f));
-    }
-    
-    if (minZoom > 0.5f) minZoom = 0.5f;
-    if (minZoom < 0.35f) minZoom = 0.35f;
-    if (maxZoom < 1.0f) maxZoom = 1.0f;
-    if (maxZoom > 2.5f) maxZoom = 2.5f;
+    // 2. Задаем фиксированную логическую высоту. 
+    // SFML сам отмасштабирует этот "виртуальный 1080p" под текущее окно.
+    float logicalH = 1080.f;
+    float logicalW = logicalH * (sw / sh);
+    sf::Vector2f logicalSize(logicalW, logicalH);
 
-    float uiH = sh / uiScale;
-    float uiW = uiH * (sw / sh);
-    sf::Vector2f logicalSize(uiW, uiH);
-
-    uiView = sf::View(sf::Vector2f(uiW / 2.f, uiH / 2.f), logicalSize);
+    uiView = sf::View(sf::Vector2f(logicalW / 2.f, logicalH / 2.f), logicalSize);
+    
+    // Игровой мир (worldView) оставляем зависимым от физических пикселей для четкости
     worldView = sf::View(sf::Vector2f(sw / 2.f, sh / 2.f), sf::Vector2f(sw, sh));
     
-    if (currentZoom < minZoom) currentZoom = minZoom;
+    const float minVisibleHeight = 80.f;
+// ...
     if (currentZoom > maxZoom) currentZoom = maxZoom;
 
     worldView.zoom(currentZoom);
     
-    hud.updateLayout(logicalSize, uiScale * 0.85f);
-    hud.setUiScale(uiScale * 0.85f);
+    // В HUD передаем логический размер и чистый uiScale
+    hud.updateLayout(logicalSize, uiScale);
+    hud.setUiScale(uiScale);
 
     auto updateOverlay = [&](std::unique_ptr<UI::Container>& overlay) {
         if (!overlay) return;
@@ -359,23 +365,63 @@ void Game::update(float deltaTime) {
         if (e->hasReachedBase()) base.takeDamage(1);
         if (e->isKilled()) {
             money += e->getReward();
+            currentScore += e->getPoints();
             accumulatedGlobalMoney += upgradeManager.getRandomMoney(saveManager.getMoneyMultiplier());
         }
     }
 
     enemies.erase(std::remove_if(enemies.begin(), enemies.end(), [](const std::unique_ptr<Enemy>& e) { return !e->isAlive(); }), enemies.end());
 
-    if (base.isDestroyed()) {
-        state = GameState::GameOver;
-        if (endTitlePtr) { endTitlePtr->setText("ПОРАЖЕНИЕ"); endTitlePtr->setColor(sf::Color::Red); }
-        if (endSubTitlePtr) endSubTitlePtr->setText("Ваша база уничтожена");
+    // ЗАЩИТА: Снаряды не должны лететь в удаленные объекты
+    for (auto& p : projectiles) {
+        bool targetExists = false;
+        for (auto& e : enemies) {
+            if (e.get() == p.getTarget()) {
+                targetExists = true;
+                break;
+            }
+        }
+        if (!targetExists) p.kill();
     }
-    else if (waveSystem.isFinished() && enemies.empty()) {
-        state = GameState::Victory;
+
+    if (base.isDestroyed() || (waveSystem.isFinished() && enemies.empty())) {
+        bool victory = !base.isDestroyed();
+        state = victory ? GameState::Victory : GameState::GameOver;
+        
+        // 1. Расчет звезд на основе достигнутой волны
+        int stars = 0;
+        const auto& thresholds = map.getStarThresholds();
+        int achievedWave = waveSystem.getCurrentWave();
+        for (int i = 0; i < (int)thresholds.size(); ++i) {
+            if (achievedWave >= thresholds[i]) stars = i + 1;
+        }
+
+        // 2. Сохранение рекордов
+        saveManager.updateLevelRecord(levelId, stars, currentScore, achievedWave);
         saveManager.addMoney(accumulatedGlobalMoney);
+        accumulatedGlobalMoney = 0;
+
+        // 3. Разблокировка следующего уровня (если текущий пройден хотя бы на 1 звезду)
+        if (stars >= 1) {
+            // level01 -> level02
+            if (levelId.size() >= 7 && levelId.substr(0, 5) == "level") {
+                int num = std::stoi(levelId.substr(5));
+                char nextId[16];
+                snprintf(nextId, sizeof(nextId), "level%02d", num + 1);
+                saveManager.unlockLevel(nextId);
+            }
+        }
         saveManager.save();
-        if (endTitlePtr) { endTitlePtr->setText("ПОБЕДА!"); endTitlePtr->setColor(Colors::Theme::TextMain); }
-        if (endSubTitlePtr) endSubTitlePtr->setText("Все волны отражены");
+
+        if (endTitlePtr) { 
+            endTitlePtr->setText(victory ? "ПОБЕДА!" : "ПОРАЖЕНИЕ"); 
+            endTitlePtr->setColor(victory ? Colors::Theme::TextMain : sf::Color::Red); 
+        }
+        if (endSubTitlePtr) {
+            std::string res = victory ? "Все волны отражены! " : "Ваша база уничтожена. ";
+            res += "Звезды: " + std::to_string(stars) + " | Очки: " + std::to_string(currentScore);
+            endSubTitlePtr->setText(res);
+        }
     }
 }
 
@@ -416,7 +462,7 @@ void Game::render() {
     }
 
     window.setView(uiView);
-    hud.render(window, money, base.getLives(), waveSystem.getCurrentWave(), waveSystem.getState());
+    hud.render(window, money, base.getLives(), waveSystem.getCurrentWave(), waveSystem.getState(), currentScore);
 
     if (state == GameState::Paused && pauseOverlay) pauseOverlay->render(window);
     else if ((state == GameState::GameOver || state == GameState::Victory) && endOverlay) endOverlay->render(window);
@@ -491,6 +537,12 @@ void Game::processInput(sf::Vector2i pixelPos) {
 GameEndReason Game::getEndReason() const { return endReason; }
 
 void Game::cleanup() {
+    if (accumulatedGlobalMoney > 0) {
+        Engine::Logger::debug("Сохранение мета-валюты при выходе: {}", accumulatedGlobalMoney);
+        saveManager.addMoney(accumulatedGlobalMoney);
+        saveManager.save();
+        accumulatedGlobalMoney = 0;
+    }
     if (pauseOverlay) pauseOverlay.reset();
     if (endOverlay) endOverlay.reset();
     pauseModalPtr = nullptr; endModalPtr = nullptr; endTitlePtr = nullptr; endSubTitlePtr = nullptr;

@@ -76,6 +76,11 @@ private:
     std::vector<std::vector<UI::Text*>> upgradeCostPtrs;
     std::vector<std::vector<UI::Button*>> upgradeBtnPtrs;
 
+    // Указатели для мета-улучшений (Стратегический отдел)
+    std::vector<UI::Text*> metaValuePtrs;
+    std::vector<UI::Text*> metaCostPtrs;
+    std::vector<UI::Button*> metaBtnPtrs;
+
     // Временные настройки (до нажатия Сохранить)
     int tmpMusicVol = 100;
     int tmpSfxVol = 100;

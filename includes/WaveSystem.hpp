@@ -4,6 +4,7 @@
 #include <vector>
 #include <string>
 #include <list>
+#include <memory>
 
 ///////////////////////////////////////////////////////////////////////////
 //
@@ -11,27 +12,20 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 
-// Структура волны
-struct Wave {
-    std::string type; // идентификатор типа врага (строка)
-    int count; // количество врагов в группе
-};
-
 // Состояния системы волн
 enum class WaveState {
     Idle, // ожидание запуска первой волны
     Waiting, // пауза между волнами
     Spawning, // спавн врагов
     Fighting, // все заспавнены, ожидание завершения
-    Finished // все волны завершены
+    Finished // все волны завершены (не используется в бесконечном режиме)
 };
 
 class WaveSystem {
 private:
-    std::vector<Wave> waves; // список всех волн
-
     int currentWave = 0; // индекс текущей волны
-    int spawned = 0; // количество заспавненных врагов
+    int spawnedCount = 0; // сколько заспавнено в текущей волне
+    int totalInWave = 0; // сколько всего в текущей волне
 
     float spawnTimer = 0.f; // таймер спавна
     float waitTimer = 0.f; // таймер паузы
@@ -39,12 +33,14 @@ private:
 
     WaveState state = WaveState::Idle; // текущее состояние
 
-    // Интервал спавна по типу врага
-    float getSpawnInterval(const std::string& type) const;
+    // Данные для процедурной генерации
+    std::string currentEnemyType;
+    int wavesUntilTypeChange = 0;
+    std::vector<std::string> mapAllowedEnemies;
 
 public:
-    // Загрузка волн из файла
-    void loadWaves(const std::string& path);
+    // Инициализация системы под карту (список разрешенных врагов)
+    void init(const std::vector<std::string>& allowedEnemies);
 
     // Обновление системы волн
     void update(float deltaTime, std::vector<std::unique_ptr<Enemy>>& enemies, const std::vector<sf::Vector2i>& path);
@@ -52,7 +48,7 @@ public:
     // Запуск волны
     void startWave();
 
-    // Проверка завершения всех волн
+    // Проверка завершения (в бесконечном режиме всегда false)
     bool isFinished() const;
 
     // Получение текущего состояния
@@ -63,7 +59,7 @@ public:
 
     // Получение индекса текущей волны
     int getCurrentWave() const;
-
-    // Получение данных волны по индексу
-    Wave getWave(int waveIndex) const;
+    
+    // Метод заглушка для обратной совместимости (если нужно)
+    void loadWaves(const std::string& path) {}
 };

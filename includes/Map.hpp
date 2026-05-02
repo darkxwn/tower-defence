@@ -13,7 +13,10 @@ class Map {
 private:
     int width = 0; // ширина карты в тайлах
     int height = 0; // высота карты в тайлах
-    int startMoney = 0; // стартовые деньги
+    int startCoins = 0; // стартовые деньги (монеты)
+    std::string levelName = "Без названия"; // название уровня
+    std::vector<std::string> allowedEnemies; // типы врагов на уровне
+    std::vector<int> starThresholds; // пороги очков/волн для звезд
 
     std::vector<std::vector<Tile>> tiles; // сетка тайлов
     Tile* selectedTile = nullptr; // выбранный тайл
@@ -64,7 +67,16 @@ public:
     sf::Vector2i getBasePos() const;
 
     // Получение стартовых денег
-    int getStartMoney() const;
+    int getStartCoins() const;
+
+    // Получение названия уровня
+    std::string getName() const;
+
+    // Получение списка врагов
+    const std::vector<std::string>& getAllowedEnemies() const;
+
+    // Получение порогов звезд
+    const std::vector<int>& getStarThresholds() const;
 
     // Получение смещения карты
     sf::Vector2f getMapOffset() const;

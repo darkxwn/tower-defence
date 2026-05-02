@@ -16,8 +16,11 @@ void Map::load(const std::string& filePath) {
     // сброс данных перед загрузкой
     tiles.clear();
     path.clear();
+    allowedEnemies.clear();
+    starThresholds.clear();
     selectedTile = nullptr;
-    width = height = startMoney = 0;
+    width = height = startCoins = 0;
+    levelName = "Без названия";
     portalPos = { -1, -1 };
     basePos = { -1, -1 };
 
@@ -34,11 +37,23 @@ void Map::load(const std::string& filePath) {
     // чтение метаданных
     while (std::getline(file, line)) {
         if (!line.empty() && line.back() == '\r') line.pop_back();
-        if (line.empty()) continue;
+        if (line.empty() || line[0] == '#' || line[0] == '\r') continue;
 
-        if (line.rfind("width=", 0) == 0) width = std::stoi(line.substr(6));
+        if (line.rfind("name=", 0) == 0) levelName = line.substr(5);
+        else if (line.rfind("width=", 0) == 0) width = std::stoi(line.substr(6));
         else if (line.rfind("height=", 0) == 0) height = std::stoi(line.substr(7));
-        else if (line.rfind("money=", 0) == 0) startMoney = std::stoi(line.substr(6));
+        else if (line.rfind("coins=", 0) == 0) startCoins = std::stoi(line.substr(6));
+        else if (line.rfind("money=", 0) == 0) startCoins = std::stoi(line.substr(6)); // совместимость
+        else if (line.rfind("enemies=", 0) == 0) {
+            std::stringstream ss(line.substr(8));
+            std::string type;
+            while (ss >> type) allowedEnemies.push_back(type);
+        }
+        else if (line.rfind("stars=", 0) == 0) {
+            std::stringstream ss(line.substr(6));
+            int val;
+            while (ss >> val) starThresholds.push_back(val);
+        }
         else if (line == "tiles=") break;
     }
 
@@ -179,10 +194,16 @@ void Map::buildPath() {
     }
 
     // восстановление пути от базы к порталу
+    if (from[basePos.y][basePos.x] == sf::Vector2i{ -1, -1 }) {
+        Logger::error("КРИТИЧЕСКАЯ ОШИБКА: Путь от портала до базы не найден!");
+        return;
+    }
+
     sf::Vector2i cur = basePos;
     while (cur != portalPos) {
         path.push_back(cur);
         cur = from[cur.y][cur.x];
+        if (cur == sf::Vector2i{ -1, -1 }) break; // на всякий случай
     }
     path.push_back(portalPos);
     std::reverse(path.begin(), path.end());
@@ -212,8 +233,23 @@ sf::Vector2i Map::getBasePos() const {
 }
 
 // Получение стартовых денег
-int Map::getStartMoney() const {
-    return startMoney;
+int Map::getStartCoins() const {
+    return startCoins;
+}
+
+// Получение названия уровня
+std::string Map::getName() const {
+    return levelName;
+}
+
+// Получение списка врагов
+const std::vector<std::string>& Map::getAllowedEnemies() const {
+    return allowedEnemies;
+}
+
+// Получение порогов звезд
+const std::vector<int>& Map::getStarThresholds() const {
+    return starThresholds;
 }
 
 // Получение смещения карты

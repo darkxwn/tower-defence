@@ -1,17 +1,11 @@
+name=Пыльный Тракт
+stars=5 15 30
+coins=250
 width=10
-height=6
-money=250
-name=Начало
+height=4
 tiles=
-0 0 0 0 0 0 0 0 0 0
-0 1 2 2 0 0 0 0 0 0
-0 0 4 2 0 0 0 3 0 0
-0 0 4 2 4 4 4 2 0 0
-0 0 4 2 2 2 2 2 4 0
-0 0 0 0 0 0 0 0 0 0
-waves=
-basic:4
-basic:4
-basic:8
-basic:8
-basic:12
+1 2 2 2 4 0 0 0 0 0
+0 0 0 2 4 0 4 2 2 3
+0 4 0 2 2 2 2 2 4 0
+0 0 0 0 0 4 0 0 0 0
+enemies=basic

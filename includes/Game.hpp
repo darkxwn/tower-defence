@@ -64,7 +64,9 @@ private:
     bool isPinching = false;
     bool hasMoved = false;
     int money = 0;
+    int currentScore = 0;
     int accumulatedGlobalMoney = 0; // накопленные глобальные деньги за уровень
+    std::string levelId; // идентификатор текущего уровня
 
     GameState state = GameState::Playing;
     GameEndReason endReason = GameEndReason::None;

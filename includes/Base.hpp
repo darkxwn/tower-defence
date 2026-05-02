@@ -14,7 +14,7 @@ private:
 	bool destroyed = false; // состояние разрушения
 
 public:
-	Base(sf::Vector2i pos);
+	Base(sf::Vector2i pos, int lives = 20);
 
 	// Получение урона
 	void takeDamage(int damage);
