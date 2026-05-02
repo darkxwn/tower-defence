@@ -161,12 +161,25 @@ void HUD::render(sf::RenderWindow& window, int money, int lives, int wave, WaveS
     waveText.setOrigin({ wtB.position.x + wtB.size.x / 2.f, 0.f });
     waveText.setPosition({ cx, std::round(topPanelHeight / 2.f - wtB.size.y) });
     window.draw(waveText);
-
+    
     // Очки
     scoreText.setText("Очки: " + std::to_string(currentScore));
     scoreText.setFontSize(static_cast<unsigned int>(20 * s));
-    scoreText.setPosition({ cx, waveText.getPosition().y + 35.f * s });
+
+    // Задаем ширину контейнера для текста (например, 400 пикселей, масштабируемых)
+    float scoreBoxWidth = 400.f * s;
+    scoreText.setSize({ scoreBoxWidth, 30.f * s });
+
+    // Позиционируем так, чтобы центр BoxWidth был на cx
+    // (отнимаем половину ширины бокса от центра экрана)
+    scoreText.setPosition({ cx - scoreBoxWidth / 2.f, waveText.getPosition().y + 30.f * s });
     scoreText.render(window);
+
+    // Очки
+    //scoreText.setText("Очки: " + std::to_string(currentScore));
+    //scoreText.setFontSize(static_cast<unsigned int>(20 * s));
+    //scoreText.setPosition({ cx, waveText.getPosition().y + 35.f * s });
+    //scoreText.render(window);
 
     if (state == WaveState::Waiting || state == WaveState::Idle) {
         skipBtn.setSize({ 48.f * s, 48.f * s });

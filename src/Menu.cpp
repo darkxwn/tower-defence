@@ -87,7 +87,7 @@ void Menu::initUI() {
     titleTextPtr = title.get();
     headerCont->addChild(std::move(title));
 
-    auto version = std::make_unique<UI::Text>(font, "v0.6b", 24);
+    auto version = std::make_unique<UI::Text>(font, "v0.6.1b", 24);
     version->setAlignment(UI::Text::Align::Center);
     version->setColor(Colors::Theme::TextDark);
     headerCont->addChild(std::move(version));
@@ -665,15 +665,61 @@ void Menu::updateViewSizes(sf::Vector2u windowSize) {
 
 void Menu::scanLevels() {
     levels.clear();
+#ifdef __ANDROID__
+    // Логика для Android: используем AssetManager
+    ANativeActivity* activity = sf::getNativeActivity();
+    AAssetDir* assetDir = AAssetManager_openDir(activity->assetManager, "levels");
+    if (!assetDir) {
+        Logger::error("[Menu]: Не удалось открыть папку levels в assets");
+        return;
+    }
+
+    const char* fileName = nullptr;
+    while ((fileName = AAssetDir_getNextFileName(assetDir)) != nullptr) {
+        std::string sName = fileName;
+        if (sName.size() > 4 && sName.substr(sName.size() - 4) == ".map") {
+            LevelInfo info;
+            info.filePath = "levels/" + sName; // Путь внутри assets
+            info.id = sName.substr(0, sName.find_last_of('.'));
+            info.name = readLevelName(info.filePath);
+            levels.push_back(info);
+        }
+    }
+    AAssetDir_close(assetDir);
+
+    // Сортируем уровни по ID (имени файла)
+    std::sort(levels.begin(), levels.end(), [](const LevelInfo& a, const LevelInfo& b) {
+        return a.id < b.id;
+        });
+
+    for (int i = 0; i < (int)levels.size(); i++) levels[i].index = i;
+
+#else
+    // Логика для Desktop: используем std::filesystem
     const std::string dirPath = "data/levels/";
-    if (!fs::exists(dirPath)) return;
+    if (!fs::exists(dirPath) || !fs::is_directory(dirPath)) {
+        Logger::error("[Menu]: Папка уровней не найдена: {}", dirPath);
+        return;
+    }
+
     std::vector<fs::path> mapPaths;
-    for (const auto& entry : fs::directory_iterator(dirPath)) if (entry.is_regular_file() && entry.path().extension() == ".map") mapPaths.push_back(entry.path());
+    for (const auto& entry : fs::directory_iterator(dirPath)) {
+        if (entry.is_regular_file() && entry.path().extension() == ".map") {
+            mapPaths.push_back(entry.path());
+        }
+    }
+
     std::sort(mapPaths.begin(), mapPaths.end());
+
     for (int i = 0; i < (int)mapPaths.size(); ++i) {
-        LevelInfo info; info.filePath = mapPaths[i].string(); info.id = mapPaths[i].stem().string(); info.name = readLevelName(info.filePath); info.index = i;
+        LevelInfo info;
+        info.filePath = mapPaths[i].string();
+        info.id = mapPaths[i].stem().string();
+        info.name = readLevelName(info.filePath);
+        info.index = i;
         levels.push_back(info);
     }
+#endif
 }
 
 std::string Menu::readLevelName(const std::string& path) const {
