@@ -23,7 +23,7 @@ public:
     Projectile(sf::Vector2f startPos, Enemy* targetEnemy, int dmg, float spd, int splash, std::string slug);
 
     // Обновление снаряда
-    void update(float deltaTime, std::vector<std::unique_ptr<Enemy>>& enemies);
+    Enemy* update(float deltaTime, std::vector<std::unique_ptr<Enemy>>& enemies);
 
     // Отрисовка снаряда
     void render(sf::RenderWindow& window, sf::Vector2f mapOffset);
@@ -33,6 +33,8 @@ public:
 
     // Получение цели
     const Enemy* getTarget() const { return target; }
+
+    sf::Vector2f getPos() { return pos; }
 
     // Принудительное уничтожение
     void kill() { alive = false; }

@@ -5,6 +5,7 @@
 #include "Map.hpp"
 #include "SettingsManager.hpp"
 #include "SaveManager.hpp"
+#include "VFXManager.hpp"
 #include "UpgradeManager.hpp"
 #include "Tower.hpp"
 #include "WaveSystem.hpp"
@@ -78,6 +79,7 @@ private:
     WaveSystem waveSystem;
     UpgradeManager& upgradeManager;
     SaveManager& saveManager;
+    Engine::VFXManager vfx;
 
     // Коллекции объектов
     std::vector<std::unique_ptr<Enemy>> enemies;
@@ -89,6 +91,7 @@ private:
     UI::Container* endModalPtr = nullptr;
     UI::Text* endTitlePtr = nullptr;
     UI::Text* endSubTitlePtr = nullptr;
+    UI::Container* endStarsContainerPtr = nullptr;
 
     // Основной цикл обновления логики
     void update(float deltaTime);
@@ -111,7 +114,7 @@ private:
 public:
     // Конструктор загружает уровень и инициализирует игру
     Game(sf::RenderWindow& window, SettingsManager& settings, SaveManager& saveManager, 
-        UpgradeManager& upgradeManager, const std::string& levelPath);
+        UpgradeManager& upgradeManager, Engine::VFXManager vfxManager, const std::string& levelPath);
     
     // Запускает выполнение игровой сессии
     void run();

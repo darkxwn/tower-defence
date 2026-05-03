@@ -8,6 +8,7 @@
 #include "ui/Button.hpp"
 #include "ui/Image.hpp"
 #include "Colors.hpp"
+#include "Version.hpp"
 #include <filesystem>
 #include <algorithm>
 
@@ -45,23 +46,47 @@ Menu::Menu(sf::RenderWindow& window, SettingsManager& settings, SaveManager& sav
 
 // Синхронизация временных значений с текущими настройками
 void Menu::syncSettingsToTmp() {
-    tmpMusicVol = settings.get<int>("music_volume", 100);
-    tmpSfxVol = settings.get<int>("sfx_volume", 100);
-    tmpSensitivity = settings.get<float>("sensitivity", 1.0f);
-    tmpUiScale = settings.get<float>("ui_scale", 1.0f);
-    tmpFullscreen = settings.get<bool>("fullscreen", false);
-    tmpVsync = settings.get<bool>("vsync", true);
+    tmpMusicVol     = settings.get<int>("music_volume", 100);
+    tmpSfxVol       = settings.get<int>("sfx_volume", 100);
+    tmpSensitivity  = settings.get<float>("sensitivity", 1.0f);
+    tmpUiScale      = settings.get<float>("ui_scale", 1.0f);
+    tmpFullscreen   = settings.get<bool>("fullscreen", false);
+    tmpVsync        = settings.get<bool>("vsync", true);
+    tmpVfxHit       = settings.get<bool>("vfx_hit", true);
+    tmpVfxTrail     = settings.get<bool>("vfx_trail", true);
+    tmpVfxDeath     = settings.get<bool>("vfx_death", true);
+    tmpAnimation    = settings.get<bool>("animation", true);
 
-    if (musicSliderPtr) musicSliderPtr->setValue((float)tmpMusicVol);
-    if (sfxSliderPtr) sfxSliderPtr->setValue((float)tmpSfxVol);
-    if (sensSliderPtr) sensSliderPtr->setValue(tmpSensitivity);
-    if (uiScaleSliderPtr) uiScaleSliderPtr->setValue(tmpUiScale);
-    if (fsBtnPtr) fsBtnPtr->setText(tmpFullscreen ? "ВКЛ" : "ВЫКЛ");
-    if (vsyncBtnPtr) vsyncBtnPtr->setText(tmpVsync ? "ВКЛ" : "ВЫКЛ");
+    if (musicSliderPtr)     musicSliderPtr->setValue((float)tmpMusicVol);
+    if (sfxSliderPtr)       sfxSliderPtr->setValue((float)tmpSfxVol);
+    if (sensSliderPtr)      sensSliderPtr->setValue(tmpSensitivity);
+    if (uiScaleSliderPtr)   uiScaleSliderPtr->setValue(tmpUiScale);
+    if (fsBtnPtr)           fsBtnPtr->setText(tmpFullscreen ? "ВКЛ" : "ВЫКЛ");
+    if (vsyncBtnPtr)        vsyncBtnPtr->setText(tmpVsync ? "ВКЛ" : "ВЫКЛ");
 }
 
 // Построение иерархии контейнеров
 void Menu::initUI() {
+    mainContainer.reset();
+    settingsContainer.reset();
+    vfxSettingsContainer.reset();
+    levelContainer.reset();
+    upgradesContainer.reset();
+
+    cardsArea           = nullptr;
+    playBtnPtr          = nullptr;
+    musicSliderPtr      = nullptr;
+    sfxSliderPtr        = nullptr;
+    sensSliderPtr       = nullptr;
+    uiScaleSliderPtr    = nullptr;
+    fsBtnPtr            = nullptr;
+    vsyncBtnPtr         = nullptr;
+    vfxBtnPtr           = nullptr;
+    headerContPtr       = nullptr;
+    btnsContPtr         = nullptr;
+    titleTextPtr        = nullptr;
+    moneyTextPtr        = nullptr;
+
     auto& font = ResourceManager::getFont("main");
     sf::Vector2f winSize = sf::Vector2f(window.getSize());
 
@@ -87,7 +112,7 @@ void Menu::initUI() {
     titleTextPtr = title.get();
     headerCont->addChild(std::move(title));
 
-    auto version = std::make_unique<UI::Text>(font, "v0.6.1b", 24);
+    auto version = std::make_unique<UI::Text>(font, std::string(GAME_VERSION), 24);
     version->setAlignment(UI::Text::Align::Center);
     version->setColor(Colors::Theme::TextDark);
     headerCont->addChild(std::move(version));
@@ -300,21 +325,85 @@ void Menu::initUI() {
         fsBtn->setCallback([this]() { tmpFullscreen = !tmpFullscreen; if (fsBtnPtr) fsBtnPtr->setText(tmpFullscreen ? "ВКЛ" : "ВЫКЛ"); });
         settingsContent->addChild(createRow(ResourceManager::get("icon-fullscreen"), "ПОЛНОЭКРАННЫЙ РЕЖИМ", std::move(fsBtn)));
 #endif
+        auto vfxPageBtn = std::make_unique<UI::Button>(font, "НАСТРОИТЬ", sf::Vector2f(350.f, 45.f));
+        vfxPageBtn->setBackgroundTextures(&ResourceManager::get("card"), &ResourceManager::get("card-light"), nullptr, nullptr, 12.f);
+        vfxPageBtn->setCallback([this]() { state = MenuState::VfxSettings; }); // Предполагается наличие нового стейта
+        settingsContent->addChild(createRow(ResourceManager::get("icon-effect"), "ГРАФИКА", std::move(vfxPageBtn)));
     }
-    
+
+    // НАСТРОЙКИ ЭФФЕКТОВ (VFX)
+    UI::Container* vfxContent = nullptr;
+    UI::Container* vfxNav = nullptr;
+    vfxSettingsContainer = createSubMenu("ЭФФЕКТЫ", &vfxContent, &vfxNav);
+
+    if (vfxContent) {
+        vfxContent->setDirection(UI::Container::Direction::Column);
+        vfxContent->setContentAlign(UI::Container::ContentAlign::Center);
+        vfxContent->setItemAlign(UI::Container::ItemAlign::Center);
+        vfxContent->setGap(20.f);
+        vfxContent->setPadding({ 20.f, 20.f });
+
+        // Помощник для создания строк-переключателей VFX
+        auto createVfxRow = [&](const std::string& label, bool& tmpVar) {
+            auto row = std::make_unique<UI::Container>(sf::Vector2f(950.f, 60.f));
+            row->setDirection(UI::Container::Direction::Row);
+            row->setContentAlign(UI::Container::ContentAlign::Center);
+            row->setItemAlign(UI::Container::ItemAlign::Center);
+            row->setGap(10.f);
+
+            auto text = std::make_unique<UI::Text>(font, label, 24, sf::Vector2f(400.f, 60.f));
+            text->setColor(Colors::Theme::TextMain);
+            row->addChild(std::move(text));
+
+            auto toggleBtn = std::make_unique<UI::Button>(font, tmpVar ? "ВКЛ" : "ВЫКЛ", sf::Vector2f(350.f, 45.f));
+            auto* btnPtr = toggleBtn.get();
+            toggleBtn->setBackgroundTextures(&ResourceManager::get("card"), &ResourceManager::get("card-light"), nullptr, nullptr, 12.f);
+            toggleBtn->setCallback([btnPtr, &tmpVar]() {
+                tmpVar = !tmpVar;
+                btnPtr->setText(tmpVar ? "ВКЛ" : "ВЫКЛ");
+                });
+            row->addChild(std::move(toggleBtn));
+            return row;
+            };
+
+        vfxContent->addChild(createVfxRow("ЭФФЕКТЫ ПОПАДАНИЯ", tmpVfxHit));
+        vfxContent->addChild(createVfxRow("ТРАССЕРЫ СНАРЯДОВ", tmpVfxTrail));
+        vfxContent->addChild(createVfxRow("ВЗРЫВЫ ПРИ СМЕРТИ", tmpVfxDeath));
+        vfxContent->addChild(createVfxRow("АНИМАЦИИ", tmpAnimation));
+    }
+
+    if (vfxNav && vfxNav->getChildrenCount() > 0) {
+        auto* backBtn = dynamic_cast<UI::Button*>(vfxNav->getChild(vfxNav->getChildrenCount() - 1));
+        if (backBtn) {
+            backBtn->setCallback([this]() { state = MenuState::Settings; });
+        }
+    }
+
     if (settingsNav) {
         auto saveBtn = std::make_unique<UI::Button>(ResourceManager::get("icon-save"), font, "СОХРАНИТЬ", sf::Vector2f(220.f, 60.f), UI::Button::IconPlacement::Right);
         saveBtn->setBackgroundTextures(&ResourceManager::get("button"), &ResourceManager::get("button-hover"), &ResourceManager::get("button-active"), nullptr, 32.0f);
         saveBtn->setIconScale({ 0.5f, 0.5f });
         saveBtn->setCallback([this]() {
+            bool oldFullscreen = settings.get<bool>("fullscreen", false);
+            bool fullscreenChanged = (oldFullscreen != tmpFullscreen);
+
             settings.set<int>("music_volume", tmpMusicVol); settings.set<int>("sfx_volume", tmpSfxVol);
             settings.set<float>("sensitivity", tmpSensitivity); settings.set<float>("ui_scale", tmpUiScale);
-            settings.set<bool>("fullscreen", tmpFullscreen); settings.set<bool>("vsync", tmpVsync);
+            settings.set<bool>("fullscreen", tmpFullscreen);
+            settings.set<bool>("vsync", tmpVsync);
+            settings.set<bool>("vfx_hit", tmpVfxHit);
+            settings.set<bool>("vfx_trail", tmpVfxTrail);
+            settings.set<bool>("vfx_death", tmpVfxDeath);
+            settings.set<bool>("animation", tmpAnimation);
             settings.save();
+            if (fullscreenChanged) {
+                windowRecreationRequired = true;
+                Engine::Logger::info("Запрошено пересоздание окна (смена режима на {})", tmpFullscreen ? "Fullscreen" : "Windowed");
+            }
             window.setVerticalSyncEnabled(tmpVsync);
             updateViewSizes(window.getSize());
             state = MenuState::Main;
-        });
+            });
         settingsNav->addChild(std::move(saveBtn));
     }
 
@@ -564,6 +653,7 @@ void Menu::handleEvents() {
         if (state == MenuState::Main) current = mainContainer.get();
         else if (state == MenuState::LevelSelect) current = levelContainer.get();
         else if (state == MenuState::Settings) current = settingsContainer.get();
+        else if (state == MenuState::VfxSettings) current = vfxSettingsContainer.get();
         else if (state == MenuState::Upgrades) current = upgradesContainer.get();
         if (current) current->handleEvent(*event, window, uiView);
     }
@@ -576,6 +666,7 @@ void Menu::render() {
     if (state == MenuState::Main) current = mainContainer.get();
     else if (state == MenuState::LevelSelect) current = levelContainer.get();
     else if (state == MenuState::Settings) current = settingsContainer.get();
+    else if (state == MenuState::VfxSettings) current = vfxSettingsContainer.get();
     else if (state == MenuState::Upgrades) current = upgradesContainer.get();
     if (current) current->render(window);
     
@@ -659,7 +750,7 @@ void Menu::updateViewSizes(sf::Vector2u windowSize) {
             cont->setSize(rootSize); cont->setPosition(rootPos); cont->rebuild();
         }
     };
-    updateSub(levelContainer); updateSub(settingsContainer); updateSub(upgradesContainer);
+    updateSub(levelContainer); updateSub(settingsContainer); updateSub(upgradesContainer); updateSub(vfxSettingsContainer);
     if (resultOverlay) { resultOverlay->setSize(rootSize); resultOverlay->setPosition(rootPos); resultOverlay->rebuild(); }
 }
 

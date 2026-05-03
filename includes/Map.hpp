@@ -2,6 +2,7 @@
 #include <vector>
 #include <string>
 #include "Tile.hpp"
+#include <SettingsManager.hpp>
 
 ///////////////////////////////////////////////////////////////////////////
 //
@@ -18,22 +19,24 @@ private:
     std::vector<std::string> allowedEnemies; // типы врагов на уровне
     std::vector<int> starThresholds; // пороги очков/волн для звезд
 
+    bool animationIsEnabled = true; // Для отключения анимации портала
+
     std::vector<std::vector<Tile>> tiles; // сетка тайлов
     Tile* selectedTile = nullptr; // выбранный тайл
 
     float portalAngle = 0.f; // угол вращения слоя портала
 
-    const sf::Texture* portalLayer1Tex = nullptr; // слой портала 1
-    const sf::Texture* portalLayer2Tex = nullptr; // слой портала 2
-    const sf::Texture* activeTex = nullptr;        // текстура выделения
+    const sf::Texture* portalLayer1Tex  = nullptr; // слой портала 1
+    const sf::Texture* portalLayer2Tex  = nullptr; // слой портала 2
+    const sf::Texture* activeTex        = nullptr; // текстура выделения
     
     // вспомогательный метод для назначения текстур тайлам
     void assignTileTexture(Tile& tile);
 
     std::vector<sf::Vector2i> path; // путь врагов
-    sf::Vector2i portalPos; // позиция портала
-    sf::Vector2i basePos; // позиция базы
-    sf::Vector2f mapOffset; // смещение карты
+    sf::Vector2i portalPos;         // позиция портала
+    sf::Vector2i basePos;           // позиция базы
+    sf::Vector2f mapOffset;         // смещение карты
 
     // Построение пути от портала к базе
     void buildPath();
@@ -86,4 +89,7 @@ public:
 
     // Получение высоты карты
     int getHeight() const;
+
+    // Статус анимации (определяется извне)
+    void setAnimationIsEnabled(bool choice);
 };

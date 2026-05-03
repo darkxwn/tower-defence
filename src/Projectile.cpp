@@ -8,11 +8,11 @@ Projectile::Projectile(sf::Vector2f startPos, Enemy* targetEnemy, int dmg, float
 }
 
 // Обновление снаряда
-void Projectile::update(float deltaTime, std::vector<std::unique_ptr<Enemy>>& enemies) {
+Enemy* Projectile::update(float deltaTime, std::vector<std::unique_ptr<Enemy>>& enemies) {
     // цель погибла до прилёта
     if (!target || !target->isAlive()) {
         alive = false;
-        return;
+        return nullptr;
     }
 
     // вектор к центру врага
@@ -43,10 +43,12 @@ void Projectile::update(float deltaTime, std::vector<std::unique_ptr<Enemy>>& en
             target->takeDamage(damage);
         }
         alive = false;
+        return target;
     } else {
         // движение к цели
         sf::Vector2f dir = diff / dist;
         pos += dir * moveStep;
+        return nullptr;
     }
 }
 

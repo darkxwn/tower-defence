@@ -7,15 +7,16 @@
 #include <SFML/Graphics.hpp>
 #include <algorithm>
 #include <cmath>
+#include <ui/Image.hpp>
 
 using Engine::Logger;
 
 // Конструктор инициализирует игру и системы
 Game::Game(sf::RenderWindow& window, SettingsManager& settings, SaveManager& saveManager, 
-           UpgradeManager& upgradeManager, const std::string& levelPath) :
+           UpgradeManager& upgradeManager, Engine::VFXManager vfxManager, const std::string& levelPath) :
     window(window), settings(settings), saveManager(saveManager), 
-    upgradeManager(upgradeManager), base({ 0, 0 }) {
-
+    upgradeManager(upgradeManager), vfx(vfxManager), base({0, 0}) {
+    
     map.load(levelPath);
     map.centerOnScreen(window.getSize(), 75.f, 120.f);
     
@@ -103,12 +104,13 @@ void Game::initOverlays() {
     endOverlay->setBackgroundColor(sf::Color(0, 0, 0, 200));
     endOverlay->setDrawBackground(true);
 
-    auto eRoot = std::make_unique<UI::Container>(sf::Vector2f(winSize.x * 0.9f, 300.f));
+    auto eRoot = std::make_unique<UI::Container>(sf::Vector2f(winSize.x * 0.9f, 400.f));
     eRoot->setDirection(UI::Container::Direction::Column);
     eRoot->setContentAlign(UI::Container::ContentAlign::Center);
     eRoot->setItemAlign(UI::Container::ItemAlign::Center);
     eRoot->setBackgroundTexture(ResourceManager::get("panel"), 64.f);
     eRoot->setGap(10.f);
+    eRoot->setPadding({ 60.f, 40.f });
     endModalPtr = eRoot.get();
 
     auto eTitle = std::make_unique<UI::Text>(font, "ФИНАЛ", 60, sf::Vector2f(winSize.x * 0.9f, 60.f));
@@ -120,6 +122,14 @@ void Game::initOverlays() {
     eSub->setAlignment(UI::Text::Align::Center);
     endSubTitlePtr = eSub.get();
     eRoot->addChild(std::move(eSub));
+
+    auto starsRow = std::make_unique<UI::Container>(sf::Vector2f(winSize.x * 0.9f, 90.f));
+    starsRow->setDirection(UI::Container::Direction::Row);
+    starsRow->setContentAlign(UI::Container::ContentAlign::Center);
+    starsRow->setItemAlign(UI::Container::ItemAlign::Center);
+    starsRow->setGap(20.f);
+    endStarsContainerPtr = starsRow.get(); // сохранение указателя для динамического обновления
+    eRoot->addChild(std::move(starsRow));
 
     auto eNav = std::make_unique<UI::Container>(sf::Vector2f(winSize.x * 0.9f, 80.f));
     eNav->setDirection(UI::Container::Direction::Row);
@@ -354,16 +364,37 @@ void Game::update(float deltaTime) {
     float scaledDt = deltaTime * hud.getGameSpeed();
     map.update(scaledDt);
     waveSystem.update(scaledDt, enemies, map.getPath());
+    vfx.update(scaledDt);
 
     for (auto& e : enemies) e->update(scaledDt);
     for (auto& t : towers) t.update(scaledDt, enemies, projectiles, map.getMapOffset());
-    for (auto& p : projectiles) p.update(scaledDt, enemies);
+
+    bool vfxHitEnabled = settings.get<bool>("vfx_hit", true);
+    bool vfxTrailEnabled = settings.get<bool>("vfx_trail", true);
+    bool vfxDeathEnabled = settings.get<bool>("vfx_death", true);
+
+    for (auto& p : projectiles) {
+        if (!p.isAlive()) continue;
+
+        if (vfxTrailEnabled) {
+            vfx.createTrailUnit(p.getPos() + map.getMapOffset(), sf::Color::White);
+        }
+
+        if (Enemy* hitEnemy = p.update(scaledDt, enemies)) {
+            if (vfxHitEnabled) {
+                vfx.createHitEffect(p.getPos() + map.getMapOffset(), hitEnemy->getColor(), 5);
+            }
+        }
+    }
 
     projectiles.erase(std::remove_if(projectiles.begin(), projectiles.end(), [](const Projectile& p) { return !p.isAlive(); }), projectiles.end());
 
     for (auto& e : enemies) {
         if (e->hasReachedBase()) base.takeDamage(1);
         if (e->isKilled()) {
+            if (vfxDeathEnabled) {
+                vfx.createDeathExplosion(e->getPos() + map.getMapOffset() + sf::Vector2f(32.f, 32.f), e->getColor());
+            }
             money += e->getReward();
             currentScore += e->getPoints();
             accumulatedGlobalMoney += upgradeManager.getRandomMoney(saveManager.getMoneyMultiplier());
@@ -396,6 +427,26 @@ void Game::update(float deltaTime) {
             if (achievedWave >= thresholds[i]) stars = i + 1;
         }
 
+        // Визуализация звёзд
+        if (endStarsContainerPtr) {
+            endStarsContainerPtr->clearChildren(); // очистка от старых иконок
+            for (int i = 0; i < 3; ++i) {
+                bool isEarned = (i < stars);
+                const auto& tex = isEarned ? ResourceManager::get("icon-star-filled") : ResourceManager::get("icon-star-empty");
+
+                auto starImg = std::make_unique<UI::Image>(tex, sf::Vector2f(80.f, 80.f));
+
+                // визуальное отличие полученных звезд от пропущенных
+                if (!isEarned) {
+                    starImg->setColor(sf::Color(100, 100, 100, 120)); // затемнение серым
+                }
+
+                endStarsContainerPtr->addChild(std::move(starImg));
+            }
+            // принудительное обновление макета оверлея
+            endOverlay->rebuild();
+        }
+
         // 2. Сохранение рекордов
         saveManager.updateLevelRecord(levelId, stars, currentScore, achievedWave);
         saveManager.addMoney(accumulatedGlobalMoney);
@@ -419,7 +470,7 @@ void Game::update(float deltaTime) {
         }
         if (endSubTitlePtr) {
             std::string res = victory ? "Все волны отражены! " : "Ваша база уничтожена. ";
-            res += "Звезды: " + std::to_string(stars) + " | Очки: " + std::to_string(currentScore);
+            res += "\nОчки: " + std::to_string(currentScore);
             endSubTitlePtr->setText(res);
         }
     }
@@ -430,6 +481,8 @@ void Game::render() {
     window.clear(Colors::Theme::Background);
     window.setView(worldView);
     bool slotSelected = hud.getSelectedSlot() != -1;
+    // Определяем, нужна ли анимация портала
+    map.setAnimationIsEnabled(settings.get<bool>("animation", true));
     map.render(window, !slotSelected);
 
     Tile* selected = map.getSelectedTile();
@@ -439,6 +492,8 @@ void Game::render() {
     }
     for (auto& e : enemies) e->render(window, map.getMapOffset());
     for (auto& p : projectiles) p.render(window, map.getMapOffset());
+
+    vfx.render(window);
 
     if (selected && selected->type == TileType::Platform && hud.getSelectedSlot() == -1) {
         auto it = std::find_if(towers.begin(), towers.end(), [&](const Tower& t) {

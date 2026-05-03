@@ -7,6 +7,22 @@ if (localPropertiesFile.exists()) {
     localPropertiesFile.inputStream().use { localProperties.load(it) }
 }
 
+fun getProjectVersionFull(): String {
+    val cmakeFile = File(project.rootDir, "../CMakeLists.txt")
+    // Ищем строку set(GAME_VERSION_FULL "...")
+    val regex = "set\\s*\\(GAME_VERSION_FULL\\s+\"([^\"]+)\"\\)".toRegex(RegexOption.IGNORE_CASE)
+    val match = regex.find(cmakeFile.readText())
+    return match?.groupValues?.get(1) ?: "1.0.0"
+}
+
+fun getVersionCode(versionName: String): Int {
+    // Удаляем все буквы, оставляем только цифры для кода версии (0.6.5b -> 0.6.5 -> 605)
+    val numericPart = versionName.filter { it.isDigit() || it == '.' }
+    return numericPart.split(".").joinToString("") { it.padStart(2, '0') }.toInt()
+}
+
+val fullVersion = getProjectVersionFull()
+
 // Хелпер для получения пропсов (сначала из командной строки -P, потом из local.properties)
 fun getSignProperty(key: String, localKey: String): String {
     val value = project.findProperty(key)?.toString() ?: localProperties.getProperty(localKey)
@@ -72,8 +88,8 @@ android {
         applicationId = "com.darkxwn.billvlad.towerdefence"
         minSdk = 26
         targetSdk = 36
-        versionCode = 3
-        versionName = "0.3a"
+        versionCode = getVersionCode(fullVersion)
+        versionName = fullVersion   
 
         externalNativeBuild {
 			cmake {

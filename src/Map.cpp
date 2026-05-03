@@ -113,8 +113,10 @@ void Map::assignTileTexture(Tile& tile) {
 
 // Обновление анимации портала
 void Map::update(float dt) {
-    portalAngle += 75.f * dt;
-    if (portalAngle >= 360.f) portalAngle -= 360.f;
+    if (animationIsEnabled) {
+        portalAngle += 75.f * dt;
+        if (portalAngle >= 360.f) portalAngle -= 360.f;
+    }
 }
 
 // Отрисовка карты
@@ -270,4 +272,9 @@ int Map::getWidth() const {
 // Получение высоты карты
 int Map::getHeight() const {
     return height;
+}
+
+// Сеттер переключения анимации
+void Map::setAnimationIsEnabled(bool choice) {
+    Map::animationIsEnabled = choice;
 }
