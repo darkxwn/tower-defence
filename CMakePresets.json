@@ -7,6 +7,9 @@
       "description": "Сборка .exe для Windows (MSVC)",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/out/build/${presetName}",
+      "environment": {
+        "VSLANG": "1033"
+      },
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "CMAKE_INSTALL_PREFIX": "${sourceDir}/out/install/${presetName}"

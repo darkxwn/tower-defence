@@ -1,9 +1,20 @@
 cmake_minimum_required(VERSION 3.15...3.30)
 
-project(tower-defence LANGUAGES CXX)
+set(GAME_VERSION_FULL "0.6.2b")
+
+project(tower-defence 
+    VERSION 0.6.2
+    LANGUAGES CXX
+)
+
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/includes/Version.hpp.in"
+    "${CMAKE_CURRENT_SOURCE_DIR}/includes/Version.hpp"
+)
 
 if(MSVC)
     add_compile_options(/utf-8)
+    set(ENV{VSLANG} "1033")
 endif()
 
 if(ANDROID)
@@ -43,7 +54,7 @@ FetchContent_Declare(json
 # SFML - ИСПРАВЛЕНО: имя в нижнем регистре для Linux
 FetchContent_Declare(sfml
     GIT_REPOSITORY https://github.com/SFML/SFML.git
-    GIT_TAG 3.0.2
+    GIT_TAG 3.1.0
     GIT_SHALLOW ON
     SYSTEM
 )
@@ -73,6 +84,7 @@ set(SOURCES
     src/SaveManager.cpp
     src/WaveSystem.cpp
     src/UpgradeManager.cpp
+    src/VFXManager.cpp
     src/utils/FileReader.cpp
     src/utils/Logger.cpp
     src/ui/Text.cpp
@@ -82,7 +94,6 @@ set(SOURCES
     src/ui/Container.cpp
     src/ui/Slider.cpp
     src/ui/Image.cpp
-    src/ui/NineSlice.cpp
 )
 
 # Ресурсы для Windows и macOS
@@ -123,7 +134,7 @@ endif()
 
 if(WIN32)
     # Точка входа для графического приложения (отключает консоль)
-    set_target_properties(${PROJECT_NAME} PROPERTIES LINK_FLAGS "/ENTRY:mainCRTStartup")
+    set_target_properties(${PROJECT_NAME} PROPERTIES VERSION ${PROJECT_VERSION} LINK_FLAGS "/ENTRY:mainCRTStartup")
 endif()
 
 # ИНКЛУДЫ И ЛИНКОВКА

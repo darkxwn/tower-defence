@@ -15,6 +15,8 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 
+using namespace Engine;
+
 #ifdef __ANDROID__
 #include <android/native_activity.h>
 #include <SFML/System/NativeActivity.hpp>
@@ -110,6 +112,7 @@ static void loadResources() {
     ResourceManager::load("icon-vsync", assetsPath + "icons/vsync.png");
     ResourceManager::load("icon-fullscreen", assetsPath + "icons/fullscreen.png");
 #endif
+    ResourceManager::load("icon-effect", assetsPath + "icons/effect.png");
 
     // ТАЙЛЫ
     ResourceManager::load("road", assetsPath + "sprites/tile-road.png");
@@ -139,8 +142,8 @@ static void loadResources() {
 int main() {
     Engine::Logger::init("logs/latest.log");
     SettingsManager settings;
-    // НУЖНО ДАЛЬШЕ СДЕЛАТЬ ЗАГРУЗКУ ПРОГРЕССА
     SaveManager saveManager;
+    Engine::VFXManager vfxManager;
 
     settings.load();
     saveManager.load();
@@ -172,19 +175,19 @@ int main() {
                 // При полноэкранном режиме используем текущее разрешение экрана
                 sf::VideoMode videoMode; 
                 if (fs) {
-                    videoMode = sf::VideoMode::getFullscreenModes()[0]; // берём первое доступное
+                    // Используем текущее разрешение рабочего стола для полноэкранного режима
+                    videoMode = sf::VideoMode::getDesktopMode();
                 } else {
                     videoMode = sf::VideoMode({ 1280, 720 });
                 }
-                window.create(videoMode, "Tower Defence", fs ? sf::State::Fullscreen : sf::State::Windowed); 
-                window.setVerticalSyncEnabled(true);
-                window.setMinimumSize(sf::Vector2u(1280, 720));
+                window.create(videoMode, "Project: Gyurza", fs ? sf::State::Fullscreen : sf::State::Windowed);
+                window.setVerticalSyncEnabled(settings.get<bool>("vsync", true));
+                window.setMinimumSize(lastWindowSize);
 
-                // Сохраняем фактический размер окна
-                lastWindowSize = window.getSize();
-
+                sf::Vector2u actualSize = window.getSize();
                 menu = std::make_unique<Menu>(window, settings, saveManager);
                 menu->updateViewSizes(lastWindowSize);
+                Logger::info("Окно пересоздано: {}x{}, Fullscreen: {}", actualSize.x, actualSize.y, fs);
             }
 
             menu->render();
@@ -198,7 +201,7 @@ int main() {
         
         bool keepPlaying = true;
         while (keepPlaying && window.isOpen()) {
-            Game game(window, settings, saveManager, menu->getUpgradeManager(), levelPath);
+            Game game(window, settings, saveManager, menu->getUpgradeManager(), vfxManager, levelPath);
             game.run();
 
             GameEndReason reason = game.getEndReason();

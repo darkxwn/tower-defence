@@ -69,4 +69,7 @@ public:
 
 	// Индекс текущей точки пути
 	int getPathIndex() const;
+
+	// Получение цвета с противника
+	sf::Color getColor() const;
 };

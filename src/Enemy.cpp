@@ -134,7 +134,7 @@ int Enemy::getPoints() const {
 
 // Получение текущей позиции
 sf::Vector2f Enemy::getPos() const {
-    return pos;
+    return pos + offset;
 }
 
 // Проверка гибели от урона
@@ -145,4 +145,12 @@ bool Enemy::isKilled() const {
 // Получение индекса текущего узла пути
 int Enemy::getPathIndex() const {
     return pathIndex;
+}
+
+sf::Color Enemy::getColor() const {
+    if (type == "basic")   return sf::Color::Green;
+    if (type == "fast")    return sf::Color::Yellow;
+    if (type == "strong")  return sf::Color::Red;
+    if (type == "armored") return sf::Color(150, 150, 150); // Серый
+    return sf::Color::White;
 }

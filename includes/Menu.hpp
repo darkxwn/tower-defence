@@ -26,7 +26,7 @@ enum class SessionResult { None, Win, Lose };
 class Menu {
 public:
     // Состояния меню (экраны)
-    enum class MenuState { Main, LevelSelect, Settings, Upgrades };
+    enum class MenuState { Main, LevelSelect, Settings, VfxSettings, Upgrades };
 
     // Информация об уровне для списка выбора
     struct LevelInfo {
@@ -54,22 +54,24 @@ private:
     std::unique_ptr<UI::Container> mainContainer;
     std::unique_ptr<UI::Container> levelContainer;
     std::unique_ptr<UI::Container> settingsContainer;
+    std::unique_ptr<UI::Container> vfxSettingsContainer;
     std::unique_ptr<UI::Container> upgradesContainer;
     std::unique_ptr<UI::Container> resultOverlay;
 
     // Указатели на виджеты для динамического обновления (без владения)
-    UI::Container* cardsArea = nullptr;
-    UI::Button* playBtnPtr = nullptr;
-    UI::Slider* musicSliderPtr = nullptr;
-    UI::Slider* sfxSliderPtr = nullptr;
-    UI::Slider* sensSliderPtr = nullptr;
-    UI::Slider* uiScaleSliderPtr = nullptr;
-    UI::Button* fsBtnPtr = nullptr;
-    UI::Button* vsyncBtnPtr = nullptr;
-    UI::Container* headerContPtr = nullptr;
-    UI::Container* btnsContPtr = nullptr;
-    UI::Text* titleTextPtr = nullptr;
-    UI::Text* moneyTextPtr = nullptr;
+    UI::Container*  cardsArea        = nullptr;
+    UI::Button*     playBtnPtr       = nullptr;
+    UI::Slider*     musicSliderPtr   = nullptr;
+    UI::Slider*     sfxSliderPtr     = nullptr;
+    UI::Slider*     sensSliderPtr    = nullptr;
+    UI::Slider*     uiScaleSliderPtr = nullptr;
+    UI::Button*     fsBtnPtr         = nullptr;
+    UI::Button*     vsyncBtnPtr      = nullptr;
+    UI::Button*     vfxBtnPtr        = nullptr;
+    UI::Container*  headerContPtr    = nullptr;
+    UI::Container*  btnsContPtr      = nullptr;
+    UI::Text*       titleTextPtr     = nullptr;
+    UI::Text*       moneyTextPtr     = nullptr;
     
     // Списки указателей для меню улучшений
     std::vector<std::vector<UI::Text*>> upgradeValuePtrs;
@@ -82,13 +84,17 @@ private:
     std::vector<UI::Button*> metaBtnPtrs;
 
     // Временные настройки (до нажатия Сохранить)
-    int tmpMusicVol = 100;
-    int tmpSfxVol = 100;
-    float tmpSensitivity = 1.0f;
-    float tmpUiScale = 1.0f;
-    bool tmpFullscreen = false;
-    bool tmpVsync = true;
-    bool windowRecreationRequired = false;
+    int     tmpMusicVol     = 100;
+    int     tmpSfxVol       = 100;
+    float   tmpSensitivity  = 1.0f;
+    float   tmpUiScale      = 1.0f;
+    bool    tmpFullscreen   = false;
+    bool    tmpVsync        = true;
+    bool    tmpVfxHit       = true;
+    bool    tmpVfxTrail     = true;
+    bool    tmpVfxDeath     = true;
+    bool    tmpAnimation    = true;
+    bool    windowRecreationRequired = false;
 
     SessionResult lastResult = SessionResult::None;
     std::string lastLevelPath;

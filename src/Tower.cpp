@@ -39,7 +39,7 @@ void Tower::update(float deltaTime, std::vector<std::unique_ptr<Enemy>>& enemies
 
     // поиск ближайшей цели в радиусе
     for (auto& e : enemies) {
-        float dSq = Math::getDistSq(e->getPos(), towerMapPos);
+        float dSq = Math::getDistSq(e->getPos() + sf::Vector2f(32.f, 32.f), towerMapPos);
 
         if (dSq <= rangeSq && e->getPathIndex() > maxPathIndex) {
             maxPathIndex = e->getPathIndex();

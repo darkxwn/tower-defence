@@ -43,6 +43,10 @@ void SettingsManager::setDefaults() {
 #endif  
     settings["fullscreen"] = "0";
     settings["vsync"] = "1";
+    settings["vfx_hit"] = "1";
+    settings["vfx_trail"] = "1";
+    settings["vfx_death"] = "1";
+    settings["animation"] = "1";
 }
 
 // Загрузка настроек из файла
