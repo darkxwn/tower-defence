@@ -54,7 +54,7 @@ FetchContent_Declare(json
 # SFML - ИСПРАВЛЕНО: имя в нижнем регистре для Linux
 FetchContent_Declare(sfml
     GIT_REPOSITORY https://github.com/SFML/SFML.git
-    GIT_TAG 3.0.2
+    GIT_TAG 3.1.0
     GIT_SHALLOW ON
     SYSTEM
 )
