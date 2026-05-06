@@ -3,8 +3,8 @@
 #include "utils/Math.hpp"
 
 // Конструктор снаряда
-Projectile::Projectile(sf::Vector2f startPos, Enemy* targetEnemy, int dmg, float spd, int splash, std::string slug)
-    : pos(startPos), target(targetEnemy), damage(dmg), speed(spd), splashRadius(splash), typeSlug(slug) {
+Projectile::Projectile(sf::Vector2f startPos, Enemy* targetEnemy, int dmg, int prc, float spd, int splash, std::string slug)
+    : pos(startPos), target(targetEnemy), damage(dmg), pierce(prc), speed(spd), splashRadius(splash), typeSlug(slug) {
 }
 
 // Обновление снаряда
@@ -34,13 +34,13 @@ Enemy* Projectile::update(float deltaTime, std::vector<std::unique_ptr<Enemy>>& 
             for (auto& e : enemies) {
                 if (e && e->isAlive()) {
                     if (Math::getDistSq(e->getPos(), explosionPos) <= splashSq) {
-                        e->takeDamage(damage);
+                        e->takeDamage(damage, pierce);
                     }
                 }
             }
         } else {
             // одиночный урон
-            target->takeDamage(damage);
+            target->takeDamage(damage, pierce);
         }
         alive = false;
         return target;

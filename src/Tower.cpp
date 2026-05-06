@@ -97,14 +97,14 @@ void Tower::update(float deltaTime, std::vector<std::unique_ptr<Enemy>>& enemies
                 muzzlePos.x = towerMapPos.x + std::cos(rad) * muzzleOffset;
                 muzzlePos.y = towerMapPos.y + std::sin(rad) * muzzleOffset;
 
-                projectiles.emplace_back(muzzlePos, targetPtr, stats.damage, 600.f, stats.splash, typeSlug);
+                projectiles.emplace_back(muzzlePos, targetPtr, stats.damage, stats.pierce, 600.f, stats.splash, typeSlug);
             }
         }
     }
 }
 
 // Отрисовка башни
-void Tower::render(sf::RenderWindow& window, sf::Vector2f mapOffset, bool showRadius) {
+void Tower::render(sf::RenderWindow& window, sf::Vector2f mapOffset, bool showRadius, bool showLevel) {
     sf::Vector2f pixelPos = sf::Vector2f(gridPos * 64) + mapOffset;
 
     // радиус атаки при наведении
@@ -122,6 +122,7 @@ void Tower::render(sf::RenderWindow& window, sf::Vector2f mapOffset, bool showRa
     sf::Sprite base(*textureBase);
     base.setScale({ 0.125f, 0.125f });
     base.setPosition(pixelPos);
+    if (showLevel) base.setColor(Colors::Palette::Gray30); // Затемняем спрайт
     window.draw(base);
 
     // турель с поворотом
@@ -130,7 +131,23 @@ void Tower::render(sf::RenderWindow& window, sf::Vector2f mapOffset, bool showRa
     turret.setOrigin({ 256.f, 256.f });
     turret.setPosition(pixelPos + sf::Vector2f(32.f, 32.f));
     turret.setRotation(sf::degrees(currentAngle));
+    if (showLevel) turret.setColor(Colors::Palette::Gray30); // Затемняем спрайт
     window.draw(turret);
+
+    // Отрисовка внутриигрового уровня поверх затемненной башни
+    if (showLevel) {
+        // Получаем основной шрифт игры (он уже загружен)
+        const sf::Font& font = ResourceManager::getFont("main");
+        sf::Text lvlText(font, std::to_string(inGameLevel - 1), 20); 
+        lvlText.setFillColor(sf::Color::White);
+        
+        // Центрируем текст
+        sf::FloatRect bounds = lvlText.getLocalBounds();
+        lvlText.setOrigin({ bounds.position.x + bounds.size.x / 2.f, bounds.position.y + bounds.size.y / 2.f });
+        lvlText.setPosition(pixelPos + sf::Vector2f(32.f, 32.f));
+        
+        window.draw(lvlText);
+    }
 }
 
 // Получение позиции на сетке
@@ -159,6 +176,7 @@ void Tower::upgradeInGame(int cost) {
         float bonus = 1.0f + (inGameLevel * IN_GAME_BONUS_STEP);
 
         stats.damage = (int)(stats.damage * bonus);
+        stats.pierce = (int)(stats.pierce * bonus);
         stats.firerate *= bonus;
         stats.range *= bonus;
     }

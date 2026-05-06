@@ -56,7 +56,7 @@ public:
 	sf::Vector2f getPos() const;
 
 	// Нанесение урона врагу
-	void takeDamage(int damage);
+	void takeDamage(int damage, int pierce);
 
 	// Получение идентификатора типа
 	std::string getType() const;

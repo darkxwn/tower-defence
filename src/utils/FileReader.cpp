@@ -3,7 +3,6 @@
 
 std::optional<std::string> readFile(const std::string& path) {
     sf::FileInputStream stream;
-    // Делаем много проверок, чтобы "очень ворчливые" системы не ругались
     if (!stream.open(path)) return std::nullopt;
 
     auto sizeOptional = stream.getSize();

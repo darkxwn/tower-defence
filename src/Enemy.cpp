@@ -75,9 +75,10 @@ void Enemy::render(sf::RenderWindow& window, sf::Vector2f mapOffset) {
 }
 
 // Получение урона
-void Enemy::takeDamage(int damage) {
+void Enemy::takeDamage(int damage, int pierce) {
+    int effectiveArmor = std::max(0, armor - pierce);
     // Минимальный урон всегда 1, чтобы башни не становились полностью бесполезными
-    int finalDamage = std::max(1, damage - armor);
+    int finalDamage = std::max(1, damage - effectiveArmor);
     health -= finalDamage;
     if (health <= 0) {
         alive = false;

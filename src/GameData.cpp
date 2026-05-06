@@ -80,6 +80,7 @@ void GameData::load() {
         stats.level = 0;
         stats.costRank = 200;
         stats.costDamage = 50;
+        stats.costPierce = 100;
         stats.costFirerate = 80;
         stats.costRange = 100;
         stats.costLevel = 250;
@@ -91,6 +92,7 @@ void GameData::load() {
             std::string valStr = token.substr(eq + 1);
 
             if (key == "damage")   stats.damage = std::stoi(valStr);
+            else if (key == "pierce")   stats.pierce = std::stoi(valStr);
             else if (key == "firerate") {
                 std::replace(valStr.begin(), valStr.end(), ',', '.');
                 stats.firerate = std::stof(valStr);
@@ -102,6 +104,7 @@ void GameData::load() {
             else if (key == "level")    stats.level = std::stoi(valStr);
             else if (key == "costRank")     stats.costRank = std::stoi(valStr);
             else if (key == "costDamage")   stats.costDamage = std::stoi(valStr);
+            else if (key == "costPierce")   stats.costPierce = std::stoi(valStr);
             else if (key == "costFirerate")  stats.costFirerate = std::stoi(valStr);
             else if (key == "costRange")    stats.costRange = std::stoi(valStr);
             else if (key == "costLevel")    stats.costLevel = std::stoi(valStr);

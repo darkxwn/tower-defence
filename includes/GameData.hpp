@@ -24,6 +24,7 @@ struct EnemyStats {
 // Характеристики башни
 struct TowerStats {
 	int damage;     // урон одного выстрела
+	int pierce;     // пробитие брони
 	float range;    // радиус поражения
 	float firerate; // частота стрельбы
 	int cost;       // стоимость постройки
@@ -32,6 +33,7 @@ struct TowerStats {
 	int level;      // макс. уровень башни в игре
 	int costRank;        // цена повышения ранга
 	int costDamage;      // цена улучшения урона
+	int costPierce;      // цена улучшения пробития
 	int costFirerate;    // цена улучшения скорости стрельбы
 	int costRange;       // цена улучшения дальности
 	int costLevel;       // цена повышения макс. уровня (в игре)

@@ -17,6 +17,7 @@ private:
     UI::Button pauseBtn; // кнопка вызова паузы
     UI::Button skipBtn; // кнопка старта волны
     UI::Button speedBtn; // кнопка переключения скорости
+    UI::Button showLevelsBtn; // кнопка переключения отображения уровней
 
     // Управление выбранной башней
     UI::Button upgradeBtn; // кнопка улучшения
@@ -24,6 +25,7 @@ private:
     bool showTowerMenu = false; // флаг отображения меню управления башней
     bool sellRequested = false; // флаг запроса продажи
     bool upgradeRequested = false; // флаг запроса улучшения
+    bool showTowerLevels = false; // флаг отображения уровней башен
 
     int currentSellPrice = 0;
     int currentUpgradePrice = 0;
@@ -46,9 +48,13 @@ private:
     const sf::Font* mainFont = nullptr; // основной шрифт
     const sf::Texture* speedTexs[3]; // массив текстур для режимов скорости
 
+    class SettingsManager* settingsManager = nullptr; // указатель на менеджер настроек
+
 public:
     // Конструктор инициализирует элементы интерфейса
     HUD();
+
+    void setSettings(class SettingsManager* sm);
 
     // Отрисовывает все элементы интерфейса
     void render(sf::RenderWindow& window, int money, int lives, int wave, WaveState state, int currentScore);
@@ -92,4 +98,7 @@ public:
 
     // Получение индекса выбранного слота
     int getSelectedSlot() const;
+
+    // Получение состояния отображения уровней
+    bool getShowTowerLevels() const;
 };

@@ -43,7 +43,14 @@ void UpgradeManager::initDefaults() {
         up.damage.baseValue = (float)stats.damage;
         up.damage.cost = stats.costDamage;
 
+        up.pierce.level = 0;
+        up.pierce.maxLevel = up.rank.level * UPGRADES_PER_RANK;
+        up.pierce.value = 1.0f; // multiplier
+        up.pierce.baseValue = (float)stats.pierce;
+        up.pierce.cost = stats.costPierce;
+
         up.firerate.level = 0;
+
         up.firerate.maxLevel = up.rank.level * UPGRADES_PER_RANK;
         up.firerate.value = 1.0f; // multiplier
         up.firerate.baseValue = stats.firerate;
@@ -70,6 +77,13 @@ const std::vector<UpgradeManager::TowerUpgrade>& UpgradeManager::getAllUpgrades(
 
 void UpgradeManager::setAllUpgrades(const std::vector<TowerUpgrade>& data) {
     upgrades = data;
+    // Принудительный пересчет лимитов, чтобы исправить старые сохранения
+    for (auto& up : upgrades) {
+        up.damage.maxLevel = up.rank.level * UPGRADES_PER_RANK;
+        up.pierce.maxLevel = up.rank.level * UPGRADES_PER_RANK;
+        up.firerate.maxLevel = up.rank.level * UPGRADES_PER_RANK;
+        up.range.maxLevel = up.rank.level * UPGRADES_PER_RANK;
+    }
 }
 
 const std::vector<UpgradeManager::MetaUpgrade>& UpgradeManager::getAllMetaUpgrades() const {
@@ -99,6 +113,11 @@ float UpgradeManager::getDamage(const std::string& towerType) const {
     return 35.f;
 }
 
+float UpgradeManager::getPierce(const std::string& towerType) const {
+    if (const auto* up = getUpgrade(towerType)) return up->pierce.baseValue * up->pierce.value;
+    return 0.f;
+}
+
 float UpgradeManager::getFirerate(const std::string& towerType) const {
     if (const auto* up = getUpgrade(towerType)) return up->firerate.baseValue * up->firerate.value;
     return 1.0f;
@@ -124,6 +143,7 @@ bool UpgradeManager::isStatAtLimit(const std::string& towerType, const std::stri
     if (!up) return true;
 
     if (statKey == "damage") return up->damage.level >= up->damage.maxLevel;
+    else if (statKey == "pierce") return up->pierce.level >= up->pierce.maxLevel;
     else if (statKey == "firerate") return up->firerate.level >= up->firerate.maxLevel;
     else if (statKey == "range") return up->range.level >= up->range.maxLevel;
     else if (statKey == "rank") return up->rank.level >= up->rank.maxLevel;
@@ -153,15 +173,19 @@ int UpgradeManager::getUpgradeCost(const std::string& towerType, int statIndex) 
         baseCost = up->damage.cost;
         currentLvl = up->damage.level;
     }
-    else if (statIndex == 2) { // Firerate
+    else if (statIndex == 2) { // Pierce
+        baseCost = up->pierce.cost;
+        currentLvl = up->pierce.level;
+    }
+    else if (statIndex == 3) { // Firerate
         baseCost = up->firerate.cost;
         currentLvl = up->firerate.level;
     }
-    else if (statIndex == 3) { // Range
+    else if (statIndex == 4) { // Range
         baseCost = up->range.cost;
         currentLvl = up->range.level;
     }
-    else if (statIndex == 4) { // Max Level
+    else if (statIndex == 5) { // Max Level
         baseCost = up->level.cost;
         currentLvl = up->level.level;
     }
@@ -174,9 +198,10 @@ int UpgradeManager::getUpgradeCost(const std::string& towerType, const std::stri
     static const std::unordered_map<std::string, int> keyToIndex = {
         {"rank", 0},
         {"damage", 1},
-        {"firerate", 2},
-        {"range", 3},
-        {"level", 4}
+        {"pierce", 2},
+        {"firerate", 3},
+        {"range", 4},
+        {"level", 5}
     };
     auto it = keyToIndex.find(statKey);
     if (it != keyToIndex.end()) return getUpgradeCost(towerType, it->second);
@@ -200,6 +225,19 @@ void UpgradeManager::upgradeDamage(const std::string& towerType, float increment
             if (up.damage.level < up.damage.maxLevel) {
                 up.damage.level++;
                 up.damage.value += increment;
+                if (onUpgradeChanged) onUpgradeChanged();
+            }
+            break;
+        }
+    }
+}
+
+void UpgradeManager::upgradePierce(const std::string& towerType, float increment) {
+    for (auto& up : upgrades) {
+        if (up.towerType == towerType) {
+            if (up.pierce.level < up.pierce.maxLevel) {
+                up.pierce.level++;
+                up.pierce.value += increment;
                 if (onUpgradeChanged) onUpgradeChanged();
             }
             break;
@@ -240,11 +278,13 @@ void UpgradeManager::upgradeRank(const std::string& towerType) {
             
             // Увеличиваем капы для других статов
             up.damage.maxLevel = up.rank.level * UPGRADES_PER_RANK;
+            up.pierce.maxLevel = up.rank.level * UPGRADES_PER_RANK;
             up.firerate.maxLevel = up.rank.level * UPGRADES_PER_RANK;
             up.range.maxLevel = up.rank.level * UPGRADES_PER_RANK;
 
             const float RANK_BONUS = 0.01f;
             up.damage.value += RANK_BONUS;
+            up.pierce.value += RANK_BONUS;
             up.firerate.value += RANK_BONUS;
             up.range.value += RANK_BONUS;
 

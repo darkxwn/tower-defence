@@ -15,12 +15,13 @@ private:
     Enemy* target = nullptr; // цель снаряда
     float speed; // скорость полёта
     int damage; // урон
+    int pierce; // пробитие брони
     int splashRadius; // радиус урона по области
     bool alive = true; // состояние жизни
     std::string typeSlug; // slug типа башни
 
 public:
-    Projectile(sf::Vector2f startPos, Enemy* targetEnemy, int dmg, float spd, int splash, std::string slug);
+    Projectile(sf::Vector2f startPos, Enemy* targetEnemy, int dmg, int prc, float spd, int splash, std::string slug);
 
     // Обновление снаряда
     Enemy* update(float deltaTime, std::vector<std::unique_ptr<Enemy>>& enemies);

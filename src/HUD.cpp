@@ -2,6 +2,7 @@
 #include "ResourceManager.hpp"
 #include "GameData.hpp"
 #include "Colors.hpp"
+#include "SettingsManager.hpp"
 #include <SFML/Graphics.hpp>
 #include <cmath>
 
@@ -22,6 +23,18 @@ HUD::HUD() {
     pauseBtn.setIconScale({ 0.666f, 0.666f });
     pauseBtn.setTransparent(true);
     pauseBtn.setCallback([this]() { pauseRequested = true; });
+
+    showLevelsBtn = UI::Button(ResourceManager::get("icon-brush"), sf::Vector2f(64.f, 64.f));
+    showLevelsBtn.setIconScale({ 0.666f, 0.666f });
+    showLevelsBtn.setTransparent(true);
+    showLevelsBtn.setCallback([this]() {
+        showTowerLevels = !showTowerLevels;
+        showLevelsBtn.setTexture(ResourceManager::get(showTowerLevels ? "icon-brush-active" : "icon-brush"));
+        if (settingsManager) {
+            settingsManager->set<bool>("show_tower_levels", showTowerLevels);
+            settingsManager->save();
+        }
+    });
 
     skipBtn = UI::Button(ResourceManager::get("icon-start"), sf::Vector2f(48.f, 48.f));
     skipBtn.setIconScale({ 0.5f, 0.5f });
@@ -101,6 +114,15 @@ HUD::HUD() {
     }
 }
 
+void HUD::setSettings(SettingsManager* sm) {
+    settingsManager = sm;
+    if (settingsManager) {
+        showTowerLevels = settingsManager->get<bool>("show_tower_levels", false);
+        // Правило: ВКЛ (true) = icon-brush-active, ВЫКЛ (false) = icon-brush
+        showLevelsBtn.setTexture(ResourceManager::get(showTowerLevels ? "icon-brush-active" : "icon-brush"));
+    }
+}
+
 // Расставляет элементы интерфейса согласно размеру логического экрана
 void HUD::updateLayout(sf::Vector2f viewSize, float uiScale) {
     this->uiScale = uiScale;
@@ -110,9 +132,17 @@ void HUD::updateLayout(sf::Vector2f viewSize, float uiScale) {
     float margin = std::round(20.f * s);
     pauseBtn.setPosition({ margin, margin });
     pauseBtn.setSize({ std::round(64.f * s), std::round(64.f * s) });
+    pauseBtn.setIconScale({ 0.666f * s, 0.666f * s });
     
     speedBtn.setPosition({ std::round(15.0f * s), viewSize.y - std::round(111.0f * s) });
     speedBtn.setSize({ std::round(96.f * s), std::round(96.f * s) });
+
+    showLevelsBtn.setPosition({ viewSize.x - std::round(111.0f * s), viewSize.y - std::round(111.0f * s) });
+    showLevelsBtn.setSize({ std::round(96.f * s), std::round(96.f * s) });
+    showLevelsBtn.setIconScale({ 0.6f * s, 0.6f * s });
+
+    // skipBtn позиционируется в render динамически, но масштаб иконки можно задать тут
+    skipBtn.setIconScale({ 0.5f * s, 0.5f * s });
 
     float slotW = 100.f * s;
     float panelWidth = (2 + (int)towerSlots.size()) * slotW;
@@ -127,6 +157,7 @@ void HUD::updateLayout(sf::Vector2f viewSize, float uiScale) {
         float posX = startX + slotW + i * slotW + (slotW - slotSizeW) / 2.f;
         towerSlots[i].setPosition({ std::round(posX), std::round(slotY) });
         towerSlots[i].setTextSize(static_cast<unsigned int>(16 * s));
+        towerSlots[i].setIconScale(sf::Vector2f(0.15625f * s, 0.15625f * s));
     }
 }
 
@@ -143,6 +174,7 @@ void HUD::render(sf::RenderWindow& window, int money, int lives, int wave, WaveS
     float s = uiScale;
 
     pauseBtn.render(window);
+    showLevelsBtn.render(window);
 
     // Верхняя панель волн
     float topPanelHeight = std::round(85.f * s);
@@ -296,6 +328,7 @@ bool HUD::handleEvent(const sf::Event& event, const sf::RenderWindow& window, co
 
     bool hitUI = false;
     if (hit(pauseBtn)) hitUI = true;
+    if (hit(showLevelsBtn)) hitUI = true;
     if (hit(skipBtn)) hitUI = true;
     if (hit(speedBtn)) hitUI = true;
     if (showTowerMenu) {
@@ -305,6 +338,7 @@ bool HUD::handleEvent(const sf::Event& event, const sf::RenderWindow& window, co
     for (auto& slot : towerSlots) if (hit(slot)) hitUI = true;
 
     pauseBtn.handleEvent(event, window, uiView);
+    showLevelsBtn.handleEvent(event, window, uiView);
     skipBtn.handleEvent(event, window, uiView);
     speedBtn.handleEvent(event, window, uiView);
     if (showTowerMenu) {
@@ -386,4 +420,5 @@ float HUD::getGameSpeed() const {
 int HUD::getSelectedSlot() const { return selectedTowerSlot; }
 bool HUD::isPauseRequested() const { return pauseRequested; }
 bool HUD::isSkipRequested() const { return skipRequested; }
+bool HUD::getShowTowerLevels() const { return showTowerLevels; }
 void HUD::resetSelectedSlot() { selectedTowerSlot = -1; }

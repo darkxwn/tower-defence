@@ -36,6 +36,7 @@ public:
         Upgrade level;
         Upgrade rank;
         Upgrade damage;
+        Upgrade pierce;
         Upgrade firerate;
         Upgrade range;
     };
@@ -65,6 +66,7 @@ public:
 
     // Геттеры статов
     float getDamage(const std::string& towerType) const;
+    float getPierce(const std::string& towerType) const;
     float getFirerate(const std::string& towerType) const;
     float getRange(const std::string& towerType) const;
     int getRank(const std::string& towerType) const;
@@ -83,6 +85,7 @@ public:
 
     // Методы улучшения
     void upgradeDamage(const std::string& towerType, float increment);
+    void upgradePierce(const std::string& towerType, float increment);
     void upgradeFirerate(const std::string& towerType, float increment);
     void upgradeRange(const std::string& towerType, float increment);
     void upgradeRank(const std::string& towerType);
@@ -99,6 +102,6 @@ public:
 
 // Сериализация
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(UpgradeManager::Upgrade, level, maxLevel, value, baseValue, cost)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(UpgradeManager::TowerUpgrade, towerType, level, rank, damage, firerate, range)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(UpgradeManager::TowerUpgrade, towerType, level, rank, damage, pierce, firerate, range)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(UpgradeManager::MetaUpgrade, id, upgrade)
 

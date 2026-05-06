@@ -36,6 +36,8 @@ Game::Game(sf::RenderWindow& window, SettingsManager& settings, SaveManager& sav
         levelId = "unknown";
     }
 
+    hud.setSettings(&settings);
+
     initOverlays();
     updateViewSizes(window.getSize());
 }
@@ -70,7 +72,7 @@ void Game::initOverlays() {
     pauseOverlay->setBackgroundColor(sf::Color(0, 0, 0, 150));
     pauseOverlay->setDrawBackground(true);
 
-    auto pRoot = std::make_unique<UI::Container>(sf::Vector2f(winSize.x * 0.9f, 300.f));
+    auto pRoot = std::make_unique<UI::Container>(sf::Vector2f(winSize.x * 0.6f, 300.f));
     pRoot->setDirection(UI::Container::Direction::Column);
     pRoot->setContentAlign(UI::Container::ContentAlign::Center);
     pRoot->setItemAlign(UI::Container::ItemAlign::Center);
@@ -78,12 +80,12 @@ void Game::initOverlays() {
     pRoot->setGap(10.f);
     pauseModalPtr = pRoot.get();
 
-    auto pTitle = std::make_unique<UI::Text>(font, "ПАУЗА", 96, sf::Vector2f(winSize.x * 0.9f, 100.f));
+    auto pTitle = std::make_unique<UI::Text>(font, "ПАУЗА", 96, sf::Vector2f(winSize.x * 0.6f, 100.f));
     pTitle->setAlignment(UI::Text::Align::Center);
     pTitle->setColor(Colors::Theme::TextMain);
     pRoot->addChild(std::move(pTitle));
 
-    auto pNav = std::make_unique<UI::Container>(sf::Vector2f(winSize.x * 0.9f, 80.f));
+    auto pNav = std::make_unique<UI::Container>(sf::Vector2f(winSize.x * 0.6f, 80.f));
     pNav->setDirection(UI::Container::Direction::Row);
     pNav->setContentAlign(UI::Container::ContentAlign::Center);
     pNav->setGap(20.f);
@@ -105,7 +107,7 @@ void Game::initOverlays() {
     endOverlay->setBackgroundColor(sf::Color(0, 0, 0, 200));
     endOverlay->setDrawBackground(true);
 
-    auto eRoot = std::make_unique<UI::Container>(sf::Vector2f(winSize.x * 0.9f, 400.f));
+    auto eRoot = std::make_unique<UI::Container>(sf::Vector2f(winSize.x * 0.6f, 400.f));
     eRoot->setDirection(UI::Container::Direction::Column);
     eRoot->setContentAlign(UI::Container::ContentAlign::Center);
     eRoot->setItemAlign(UI::Container::ItemAlign::Center);
@@ -114,17 +116,17 @@ void Game::initOverlays() {
     eRoot->setPadding({ 60.f, 40.f });
     endModalPtr = eRoot.get();
 
-    auto eTitle = std::make_unique<UI::Text>(font, "РЕЗУЛЬТАТ", 60, sf::Vector2f(winSize.x * 0.9f, 60.f));
+    auto eTitle = std::make_unique<UI::Text>(font, "РЕЗУЛЬТАТ", 60, sf::Vector2f(winSize.x * 0.6f, 60.f));
     eTitle->setAlignment(UI::Text::Align::Center);
     endTitlePtr = eTitle.get();
     eRoot->addChild(std::move(eTitle));
 
-    auto eSub = std::make_unique<UI::Text>(font, "Результат уровня", 32, sf::Vector2f(winSize.x * 0.9f, 60.f));
+    auto eSub = std::make_unique<UI::Text>(font, "Результат уровня", 32, sf::Vector2f(winSize.x * 0.6f, 60.f));
     endSubTitlePtr = eSub.get();
     eSub->setAlignment(UI::Text::Align::Center);
     eRoot->addChild(std::move(eSub));
 
-    auto starsRow = std::make_unique<UI::Container>(sf::Vector2f(winSize.x * 0.9f, 90.f));
+    auto starsRow = std::make_unique<UI::Container>(sf::Vector2f(winSize.x * 0.6f, 90.f));
     starsRow->setDirection(UI::Container::Direction::Row);
     starsRow->setContentAlign(UI::Container::ContentAlign::Center);
     starsRow->setItemAlign(UI::Container::ItemAlign::Center);
@@ -132,7 +134,7 @@ void Game::initOverlays() {
     endStarsContainerPtr = starsRow.get(); // сохранение указателя для динамического обновления
     eRoot->addChild(std::move(starsRow));
 
-    auto eNav = std::make_unique<UI::Container>(sf::Vector2f(winSize.x * 0.9f, 80.f));
+    auto eNav = std::make_unique<UI::Container>(sf::Vector2f(winSize.x * 0.75f, 80.f));
     eNav->setDirection(UI::Container::Direction::Row);
     eNav->setContentAlign(UI::Container::ContentAlign::Center);
     eNav->setGap(20.f);
@@ -150,12 +152,11 @@ void Game::updateViewSizes(sf::Vector2u windowSize) {
     float sw = static_cast<float>(windowSize.x);
     float sh = static_cast<float>(windowSize.y);
 
-    // 1. uiScale теперь только от настроек пользователя (базовая единица = 1.0)
+    // uiScale от настроек пользователя
     uiScale = settings.get<float>("ui_scale", 1.0f);
     if (uiScale <= 0.1f) uiScale = 1.0f;
 
-    // 2. Задаем фиксированную логическую высоту. 
-    // SFML сам отмасштабирует этот "виртуальный 1080p" под текущее окно.
+    // Задаем фиксированную логическую высоту. 
     float logicalH = 1080.f;
     float logicalW = logicalH * (sw / sh);
     sf::Vector2f logicalSize(logicalW, logicalH);
@@ -165,9 +166,19 @@ void Game::updateViewSizes(sf::Vector2u windowSize) {
     // Игровой мир (worldView) оставляем зависимым от физических пикселей для четкости
     worldView = sf::View(sf::Vector2f(sw / 2.f, sh / 2.f), sf::Vector2f(sw, sh));
     
-    const float minVisibleHeight = 80.f;
+    // Пересчет лимитов зума
+    float mapW = map.getWidth() * 64.f;
+    float mapH = map.getHeight() * 64.f;
+    maxZoom = std::min(mapW / sw, mapH / sh);
+    if (maxZoom < 0.8f) maxZoom = 0.8f;
+    if (maxZoom > 2.0f) maxZoom = 2.0f;
+
+    minZoom = 500.f / sh; 
+    if (minZoom < 0.2f) minZoom = 0.2f;
+    if (minZoom > 0.8f) minZoom = 0.8f;
 
     if (currentZoom > maxZoom) currentZoom = maxZoom;
+    if (currentZoom < minZoom) currentZoom = minZoom;
 
     worldView.zoom(currentZoom);
     
@@ -179,7 +190,7 @@ void Game::updateViewSizes(sf::Vector2u windowSize) {
         if (!overlay) return;
         overlay->setSize(logicalSize);
         overlay->setPosition({ 0, 0 });
-        float rootW = logicalSize.x * 0.9f;
+        float rootW = logicalSize.x * 0.6f;
 
         for (size_t i = 0; i < overlay->getChildrenCount(); ++i) {
             auto* child = overlay->getChild(i);
@@ -492,9 +503,10 @@ void Game::render() {
     map.render(window, !slotSelected);
 
     Tile* selected = map.getSelectedTile();
+    bool showTowerLevels = hud.getShowTowerLevels();
     for (auto& t : towers) {
         bool showR = (selected && selected->gridPos == t.getGridPos() && !slotSelected);
-        t.render(window, map.getMapOffset(), showR);
+        t.render(window, map.getMapOffset(), showR, showTowerLevels);
     }
     for (auto& e : enemies) e->render(window, map.getMapOffset());
     for (auto& p : projectiles) p.render(window, map.getMapOffset());

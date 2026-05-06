@@ -226,14 +226,28 @@ namespace UI {
             totalLinesCrossSize += (lines.size() - 1) * gap;
         }
 
+        // Автоматическая подстройка поперечного размера контейнера, если включен перенос (wrap)
+        if (wrap && !scrollEnabled) {
+            if (direction == Direction::Row) {
+                size.y = totalLinesCrossSize + padding.y * 2.f;
+            } else {
+                size.x = totalLinesCrossSize + padding.x * 2.f;
+            }
+            // Обновляем фон и рамку под новый размер
+            background.setSize(size);
+            outline.setSize(size);
+            if (backgroundSlice) {
+                backgroundSlice->setSize(size);
+            }
+        }
+
         // определение начальной позиции по поперечной оси
         float currentCrossPos = 0.f;
         float containerCrossSize = (direction == Direction::Row) ? (size.y - padding.y * 2.f) : (size.x - padding.x * 2.f);
 
         if (itemAlign == ItemAlign::Center) {
             currentCrossPos = std::max(0.f, (containerCrossSize - totalLinesCrossSize) / 2.f);
-        }
-        else if (itemAlign == ItemAlign::End) {
+        } else if (itemAlign == ItemAlign::End) {
             currentCrossPos = std::max(0.f, containerCrossSize - totalLinesCrossSize);
         }
 

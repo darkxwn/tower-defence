@@ -88,6 +88,8 @@ static void loadResources() {
     ResourceManager::load("icon-star-empty", assetsPath + "icons/star-empty.png");
     ResourceManager::load("icon-star-filled", assetsPath + "icons/star-filled.png");
     ResourceManager::load("icon-hit", assetsPath + "icons/hit.png");
+    ResourceManager::load("icon-brush", assetsPath + "icons/brush.png");
+    ResourceManager::load("icon-brush-active", assetsPath + "icons/brush-active.png");
     ResourceManager::load("icon-explosion", assetsPath + "icons/explosion.png");
     ResourceManager::load("icon-animation", assetsPath + "icons/animation.png");
     ResourceManager::load("icon-trail", assetsPath + "icons/trail.png");

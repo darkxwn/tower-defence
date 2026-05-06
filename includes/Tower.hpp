@@ -41,7 +41,7 @@ public:
     void update(float deltaTime, std::vector<std::unique_ptr<Enemy>>& enemies, std::vector<Projectile>& projectiles, sf::Vector2f mapOffset);
 
     // Отрисовка башни
-    void render(sf::RenderWindow& window, sf::Vector2f mapOffset, bool showRadius = false);
+    void render(sf::RenderWindow& window, sf::Vector2f mapOffset, bool showRadius = false, bool showLevel = false);
 
     // Получение позиции на сетке
     sf::Vector2i getGridPos() const;
