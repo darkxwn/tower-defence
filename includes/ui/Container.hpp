@@ -41,11 +41,13 @@ namespace UI {
         std::unique_ptr<NineSlice> backgroundSlice; // объект для отрисовки растягиваемого фона
         std::vector<std::unique_ptr<Widget>> children; // список дочерних виджетов
 
-        float scrollOffset = 0.f; // текущее смещение прокрутки по вертикали
+        mutable float scrollOffset = 0.f; // текущее смещение прокрутки по вертикали
+        mutable float targetScrollOffset = 0.f; // целевое смещение для плавной прокрутки
         bool scrollEnabled = false; // флаг активности прокрутки
         float maxContentHeight = 0.f; // общая высота всего содержимого
         sf::Vector2i lastTouchPos; // последняя позиция касания для скролла
         bool isDragging = false; // флаг процесса перетаскивания (скролла)
+        mutable sf::Clock scrollClock; // часы для плавной анимации
 
         // Расчет позиций и размеров дочерних элементов
         void recalculateLayout();

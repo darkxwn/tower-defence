@@ -1,6 +1,6 @@
 #pragma once
 // Файл генерируется автоматически через CMake. Не редактировать вручную!
-#define GAME_VERSION "0.6.2b" 
+#define GAME_VERSION "0.7.1b" 
 #define GAME_VERSION_MAJOR 0
 #define GAME_VERSION_MINOR 6
 #define GAME_VERSION_PATCH 2

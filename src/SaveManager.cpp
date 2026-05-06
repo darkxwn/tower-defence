@@ -22,15 +22,12 @@ std::string SaveManager::getSavePath() {
     ANativeActivity* activity = sf::getNativeActivity();
     return std::string(activity->internalDataPath) + "/progress.json";
 #else
-    return "data/config/progress.json";
+    return "data/save/progress.json";
 #endif
 }
 
 void SaveManager::setDefaults() {
     money = 0;
-    globalCoinsLvl = 0;
-    globalMoneyLvl = 0;
-    globalBaseHpLvl = 0;
     levels.clear();
     // Первый уровень всегда открыт
     levels["level01"] = { 0, 0, 0, true };
@@ -67,9 +64,6 @@ void SaveManager::load() {
 
         // Читаем в camelCase согласно PLAN.md
         money = j.value("money", 0);
-        globalCoinsLvl = j.value("globalCoinsLvl", 0);
-        globalMoneyLvl = j.value("globalMoneyLvl", 0);
-        globalBaseHpLvl = j.value("globalBaseHpLvl", 0);
 
         if (j.contains("levels")) {
             levels = j["levels"].get<std::map<std::string, LevelProgress>>();
@@ -91,15 +85,12 @@ void SaveManager::save() {
         json j;
         // Пишем в camelCase согласно PLAN.md
         j["money"] = money;
-        j["globalCoinsLvl"] = globalCoinsLvl;
-        j["globalMoneyLvl"] = globalMoneyLvl;
-        j["globalBaseHpLvl"] = globalBaseHpLvl;
         j["levels"] = levels;
         j["towers"] = towerDataBlob;
         if constexpr (ENABLE_ANTI_TAMPER) {
             // Anti-Tamper Hash
             std::string dataDump = j.dump();
-            size_t hashChecksum = std::hash<std::string>{}(dataDump + "GyurzaSecretSalt_2025");
+            size_t hashChecksum = std::hash<std::string>{}(dataDump + "GyurzaSecretSalt");
             j["hashChecksum"] = hashChecksum;
         }
 
@@ -127,10 +118,6 @@ bool SaveManager::spendMoney(int amount) {
         return true;
     }
     return false;
-}
-
-float SaveManager::getMoneyMultiplier() const { 
-    return 1.0f + (globalMoneyLvl * 0.1f); 
 }
 
 int SaveManager::getStars(const std::string& levelId) const {

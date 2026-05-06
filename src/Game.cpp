@@ -20,9 +20,9 @@ Game::Game(sf::RenderWindow& window, SettingsManager& settings, SaveManager& sav
     map.load(levelPath);
     map.centerOnScreen(window.getSize(), 75.f, 120.f);
     
-    // Применяем мета-бонусы из SaveManager
-    money = map.getStartCoins() + (saveManager.getGlobalCoinsLvl() * 15);
-    base = Base(map.getBasePos(), 20 + (saveManager.getGlobalBaseHpLvl() * 2));
+    // Применяем мета-бонусы из UpgradeManager
+    money = map.getStartCoins() + static_cast<int>(upgradeManager.getGlobalCoinsBonus() * 15);
+    base = Base(map.getBasePos(), 20 + static_cast<int>(upgradeManager.getGlobalBaseHpBonus() * 2));
     
     currentScore = 0;
     waveSystem.init(map.getAllowedEnemies());
@@ -74,7 +74,7 @@ void Game::initOverlays() {
     pRoot->setDirection(UI::Container::Direction::Column);
     pRoot->setContentAlign(UI::Container::ContentAlign::Center);
     pRoot->setItemAlign(UI::Container::ItemAlign::Center);
-    pRoot->setBackgroundTexture(ResourceManager::get("panel"), 64.f);
+    pRoot->setBackgroundTexture(ResourceManager::get("panel"), 32.f);
     pRoot->setGap(10.f);
     pauseModalPtr = pRoot.get();
 
@@ -90,6 +90,7 @@ void Game::initOverlays() {
 
     pNav->addChild(createOverlayButton("В МЕНЮ", [this]() { endReason = GameEndReason::ReturnToMenu; }));
     pNav->addChild(createOverlayButton("ЗАНОВО", [this]() { endReason = GameEndReason::Restart; }));
+    pNav->addChild(createOverlayButton("ЗАВЕРШИТЬ", [this]() { showResult(); }));
     pNav->addChild(createOverlayButton("ПРОДОЛЖИТЬ", [this]() { state = GameState::Playing; }));
 
     pRoot->addChild(std::move(pNav));
@@ -108,19 +109,19 @@ void Game::initOverlays() {
     eRoot->setDirection(UI::Container::Direction::Column);
     eRoot->setContentAlign(UI::Container::ContentAlign::Center);
     eRoot->setItemAlign(UI::Container::ItemAlign::Center);
-    eRoot->setBackgroundTexture(ResourceManager::get("panel"), 64.f);
+    eRoot->setBackgroundTexture(ResourceManager::get("panel"), 32.f);
     eRoot->setGap(10.f);
     eRoot->setPadding({ 60.f, 40.f });
     endModalPtr = eRoot.get();
 
-    auto eTitle = std::make_unique<UI::Text>(font, "ФИНАЛ", 60, sf::Vector2f(winSize.x * 0.9f, 60.f));
+    auto eTitle = std::make_unique<UI::Text>(font, "РЕЗУЛЬТАТ", 60, sf::Vector2f(winSize.x * 0.9f, 60.f));
     eTitle->setAlignment(UI::Text::Align::Center);
     endTitlePtr = eTitle.get();
     eRoot->addChild(std::move(eTitle));
 
     auto eSub = std::make_unique<UI::Text>(font, "Результат уровня", 32, sf::Vector2f(winSize.x * 0.9f, 60.f));
-    eSub->setAlignment(UI::Text::Align::Center);
     endSubTitlePtr = eSub.get();
+    eSub->setAlignment(UI::Text::Align::Center);
     eRoot->addChild(std::move(eSub));
 
     auto starsRow = std::make_unique<UI::Container>(sf::Vector2f(winSize.x * 0.9f, 90.f));
@@ -165,7 +166,7 @@ void Game::updateViewSizes(sf::Vector2u windowSize) {
     worldView = sf::View(sf::Vector2f(sw / 2.f, sh / 2.f), sf::Vector2f(sw, sh));
     
     const float minVisibleHeight = 80.f;
-// ...
+
     if (currentZoom > maxZoom) currentZoom = maxZoom;
 
     worldView.zoom(currentZoom);
@@ -280,7 +281,7 @@ void Game::handleEvents() {
         if (state == GameState::Paused && pauseOverlay) {
             pauseOverlay->handleEvent(*event, window, uiView);
         }
-        else if ((state == GameState::GameOver || state == GameState::Victory) && endOverlay) {
+        else if (state == GameState::Result && endOverlay) {
             endOverlay->handleEvent(*event, window, uiView);
         }
         else if (state == GameState::Playing && !uiConsumed) {
@@ -397,7 +398,7 @@ void Game::update(float deltaTime) {
             }
             money += e->getReward();
             currentScore += e->getPoints();
-            accumulatedGlobalMoney += upgradeManager.getRandomMoney(saveManager.getMoneyMultiplier());
+            accumulatedGlobalMoney += upgradeManager.getRandomMoney(upgradeManager.getGlobalMoneyMultiplier());
         }
     }
 
@@ -416,63 +417,68 @@ void Game::update(float deltaTime) {
     }
 
     if (base.isDestroyed() || (waveSystem.isFinished() && enemies.empty())) {
-        bool victory = !base.isDestroyed();
-        state = victory ? GameState::Victory : GameState::GameOver;
-        
-        // 1. Расчет звезд на основе достигнутой волны
-        int stars = 0;
-        const auto& thresholds = map.getStarThresholds();
-        int achievedWave = waveSystem.getCurrentWave();
-        for (int i = 0; i < (int)thresholds.size(); ++i) {
-            if (achievedWave >= thresholds[i]) stars = i + 1;
+        showResult();
+    }
+}
+
+// Показ экрана результатов
+void Game::showResult() {
+    if (state == GameState::Result) return;
+    
+    // Определяем последнюю пройденную волну
+    int achievedWave = waveSystem.getCurrentWave();
+    
+    // Если база уничтожена, а мы находились в процессе волны
+    if (waveSystem.getState() == WaveState::Spawning || waveSystem.getState() == WaveState::Fighting || base.isDestroyed()) {
+        if (achievedWave > 0) achievedWave--;
+    }
+
+    state = GameState::Result;
+    
+    // Расчет звезд на основе достигнутой волны
+    int stars = 0;
+    const auto& thresholds = map.getStarThresholds();
+    for (int i = 0; i < (int)thresholds.size(); ++i) {
+        if (achievedWave >= thresholds[i]) stars = i + 1;
+    }
+
+    // Визуализация звёзд
+    if (endStarsContainerPtr) {
+        endStarsContainerPtr->clearChildren();
+        for (int i = 0; i < 3; ++i) {
+            bool isEarned = (i < stars);
+            const auto& tex = isEarned ? ResourceManager::get("icon-star-filled") : ResourceManager::get("icon-star-empty");
+            auto starImg = std::make_unique<UI::Image>(tex, sf::Vector2f(80.f, 80.f));
+            if (!isEarned) starImg->setColor(sf::Color(100, 100, 100, 120));
+            endStarsContainerPtr->addChild(std::move(starImg));
         }
+        endOverlay->rebuild();
+    }
 
-        // Визуализация звёзд
-        if (endStarsContainerPtr) {
-            endStarsContainerPtr->clearChildren(); // очистка от старых иконок
-            for (int i = 0; i < 3; ++i) {
-                bool isEarned = (i < stars);
-                const auto& tex = isEarned ? ResourceManager::get("icon-star-filled") : ResourceManager::get("icon-star-empty");
+    // Сохранение рекордов
+    saveManager.updateLevelRecord(levelId, stars, currentScore, achievedWave);
+    saveManager.addMoney(accumulatedGlobalMoney);
+    accumulatedGlobalMoney = 0;
 
-                auto starImg = std::make_unique<UI::Image>(tex, sf::Vector2f(80.f, 80.f));
-
-                // визуальное отличие полученных звезд от пропущенных
-                if (!isEarned) {
-                    starImg->setColor(sf::Color(100, 100, 100, 120)); // затемнение серым
-                }
-
-                endStarsContainerPtr->addChild(std::move(starImg));
-            }
-            // принудительное обновление макета оверлея
-            endOverlay->rebuild();
+    // Разблокировка следующего уровня (если текущий пройден хотя бы на 1 звезду)
+    if (stars >= 1) {
+        if (levelId.size() >= 7 && levelId.substr(0, 5) == "level") {
+            int num = std::stoi(levelId.substr(5));
+            char nextId[16];
+            snprintf(nextId, sizeof(nextId), "level%02d", num + 1);
+            saveManager.unlockLevel(nextId);
         }
+    }
+    saveManager.save();
 
-        // 2. Сохранение рекордов
-        saveManager.updateLevelRecord(levelId, stars, currentScore, achievedWave);
-        saveManager.addMoney(accumulatedGlobalMoney);
-        accumulatedGlobalMoney = 0;
-
-        // 3. Разблокировка следующего уровня (если текущий пройден хотя бы на 1 звезду)
-        if (stars >= 1) {
-            // level01 -> level02
-            if (levelId.size() >= 7 && levelId.substr(0, 5) == "level") {
-                int num = std::stoi(levelId.substr(5));
-                char nextId[16];
-                snprintf(nextId, sizeof(nextId), "level%02d", num + 1);
-                saveManager.unlockLevel(nextId);
-            }
-        }
-        saveManager.save();
-
-        if (endTitlePtr) { 
-            endTitlePtr->setText(victory ? "ПОБЕДА!" : "ПОРАЖЕНИЕ"); 
-            endTitlePtr->setColor(victory ? Colors::Theme::TextMain : sf::Color::Red); 
-        }
-        if (endSubTitlePtr) {
-            std::string res = victory ? "Все волны отражены! " : "Ваша база уничтожена. ";
-            res += "\nОчки: " + std::to_string(currentScore);
-            endSubTitlePtr->setText(res);
-        }
+    if (endTitlePtr) { 
+        endTitlePtr->setText("РЕЗУЛЬТАТ"); 
+        endTitlePtr->setColor(Colors::Theme::TextMain); 
+    }
+    if (endSubTitlePtr) {
+        std::string res = "Волны: " + std::to_string(achievedWave) + 
+                          " | Очки: " + std::to_string(currentScore);
+        endSubTitlePtr->setText(res);
     }
 }
 
@@ -520,7 +526,7 @@ void Game::render() {
     hud.render(window, money, base.getLives(), waveSystem.getCurrentWave(), waveSystem.getState(), currentScore);
 
     if (state == GameState::Paused && pauseOverlay) pauseOverlay->render(window);
-    else if ((state == GameState::GameOver || state == GameState::Victory) && endOverlay) endOverlay->render(window);
+    else if (state == GameState::Result && endOverlay) endOverlay->render(window);
 
     window.display();
 }

@@ -26,7 +26,7 @@ enum class SessionResult { None, Win, Lose };
 class Menu {
 public:
     // Состояния меню (экраны)
-    enum class MenuState { Main, LevelSelect, Settings, VfxSettings, Upgrades };
+    enum class MenuState { Main, LevelSelect, Settings, Upgrades };
 
     // Информация об уровне для списка выбора
     struct LevelInfo {
@@ -54,11 +54,10 @@ private:
     std::unique_ptr<UI::Container> mainContainer;
     std::unique_ptr<UI::Container> levelContainer;
     std::unique_ptr<UI::Container> settingsContainer;
-    std::unique_ptr<UI::Container> vfxSettingsContainer;
     std::unique_ptr<UI::Container> upgradesContainer;
     std::unique_ptr<UI::Container> resultOverlay;
 
-    // Указатели на виджеты для динамического обновления (без владения)
+    // Ссылки на элементы UI для обновления данных
     UI::Container*  cardsArea        = nullptr;
     UI::Button*     playBtnPtr       = nullptr;
     UI::Slider*     musicSliderPtr   = nullptr;
@@ -67,34 +66,46 @@ private:
     UI::Slider*     uiScaleSliderPtr = nullptr;
     UI::Button*     fsBtnPtr         = nullptr;
     UI::Button*     vsyncBtnPtr      = nullptr;
-    UI::Button*     vfxBtnPtr        = nullptr;
     UI::Container*  headerContPtr    = nullptr;
-    UI::Container*  btnsContPtr      = nullptr;
-    UI::Text*       titleTextPtr     = nullptr;
-    UI::Text*       moneyTextPtr     = nullptr;
+    UI::Container* btnsContPtr = nullptr;
+    UI::Text* titleTextPtr = nullptr;
+    UI::Text* moneyTextPtr = nullptr;
+    UI::Text* totalStarsTextPtr = nullptr;
     
     // Списки указателей для меню улучшений
     std::vector<std::vector<UI::Text*>> upgradeValuePtrs;
     std::vector<std::vector<UI::Text*>> upgradeCostPtrs;
     std::vector<std::vector<UI::Button*>> upgradeBtnPtrs;
 
-    // Указатели для мета-улучшений (Стратегический отдел)
+    // Указатели для мета-улучшений 
     std::vector<UI::Text*> metaValuePtrs;
     std::vector<UI::Text*> metaCostPtrs;
     std::vector<UI::Button*> metaBtnPtrs;
 
-    // Временные настройки (до нажатия Сохранить)
-    int     tmpMusicVol     = 100;
-    int     tmpSfxVol       = 100;
-    float   tmpSensitivity  = 1.0f;
-    float   tmpUiScale      = 1.0f;
-    bool    tmpFullscreen   = false;
-    bool    tmpVsync        = true;
-    bool    tmpVfxHit       = true;
-    bool    tmpVfxTrail     = true;
-    bool    tmpVfxDeath     = true;
-    bool    tmpAnimation    = true;
-    bool    windowRecreationRequired = false;
+    // Временные настройки 
+    int tmpMusicVol = 100;
+    int tmpSfxVol = 100;
+    float tmpSensitivity = 1.0f;
+    float tmpUiScale = 1.0f;
+    bool tmpFullscreen = false;
+    bool tmpVsync = true;
+    bool tmpVfxHit = true;
+    bool tmpVfxTrail = true;
+    bool tmpVfxDeath = true;
+    bool tmpAnimation = true;
+    bool windowRecreationRequired = false;
+
+    // Структура для хранения указателей на обновляемые элементы карточки уровня
+    struct LevelCardWidgets {
+        UI::Container* root = nullptr;
+        UI::Text* waveText = nullptr;
+        UI::Text* scoreText = nullptr;
+        UI::Container* starsRow = nullptr;
+        UI::Button* clicker = nullptr;
+        UI::Text* lockText = nullptr; // текст блокировки, если есть
+        bool wasUnlocked = false;    // для отслеживания момента разблокировки
+    };
+    std::map<std::string, LevelCardWidgets> levelCardMap;
 
     SessionResult lastResult = SessionResult::None;
     std::string lastLevelPath;
@@ -113,6 +124,15 @@ private:
 
     // Синхронизация временных значений с менеджером настроек
     void syncSettingsToTmp();
+
+    // Создание главного меню
+    std::unique_ptr<UI::Container> createMainMenu();
+
+    // Создание меню выбора уровня
+    std::unique_ptr<UI::Container> createLevelSelectMenu();
+
+    // Создание меню настроек
+    std::unique_ptr<UI::Container> createSettingsMenu();
 
     // Вспомогательный метод для создания подменю
     std::unique_ptr<UI::Container> createSubMenu(const std::string& title, UI::Container** outContent, UI::Container** outNav);
@@ -147,6 +167,9 @@ public:
 
     // Сброс результата сессии
     void resetLastResult();
+
+    // Обновление данных на карточках уровней
+    void refreshLevelCards();
 
     // Проверка необходимости пересоздания окна
     bool consumesWindowRecreationRequest();

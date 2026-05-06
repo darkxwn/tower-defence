@@ -1,4 +1,7 @@
 #include "ui/Container.hpp"
+#include <cmath>
+#include <algorithm>
+#include "Colors.hpp"
 
 namespace UI {
 
@@ -112,7 +115,10 @@ namespace UI {
     // Изменение активности прокрутки
     void Container::setScrollEnabled(bool enabled) {
         scrollEnabled = enabled;
-        if (!enabled) scrollOffset = 0.f;
+        if (!enabled) {
+            scrollOffset = 0.f;
+            targetScrollOffset = 0.f;
+        }
         recalculateLayout();
     }
 
@@ -139,6 +145,7 @@ namespace UI {
     void Container::clearChildren() {
         children.clear();
         scrollOffset = 0.f;
+        targetScrollOffset = 0.f;
         recalculateLayout();
     }
 
@@ -297,34 +304,57 @@ namespace UI {
             if (mouseInside) {
                 if (const auto* scroll = event.getIf<sf::Event::MouseWheelScrolled>()) {
                     if (scroll->wheel == sf::Mouse::Wheel::Vertical) {
-                        scrollOffset -= scroll->delta * 40.f;
+                        targetScrollOffset -= scroll->delta * 60.f; 
                     }
                 }
             }
 
-            // сенсорное управление
+            // ввод: тач или мышь
+            sf::Vector2i currentInputPos;
+            bool inputBegan = false;
+            bool inputMoved = false;
+            bool inputEnded = false;
+
             if (const auto* touch = event.getIf<sf::Event::TouchBegan>()) {
-                sf::Vector2f touchPos = window.mapPixelToCoords(touch->position, uiView);
+                currentInputPos = touch->position; inputBegan = true;
+            } else if (const auto* mouse = event.getIf<sf::Event::MouseButtonPressed>()) {
+                if (mouse->button == sf::Mouse::Button::Left) {
+                    currentInputPos = mouse->position; inputBegan = true;
+                }
+            } else if (const auto* tMoved = event.getIf<sf::Event::TouchMoved>()) {
+                currentInputPos = tMoved->position; inputMoved = true;
+            } else if (const auto* mMoved = event.getIf<sf::Event::MouseMoved>()) {
+                if (sf::Mouse::isButtonPressed(sf::Mouse::Button::Left)) {
+                    currentInputPos = mMoved->position; inputMoved = true;
+                }
+            } else if (event.is<sf::Event::TouchEnded>()) {
+                inputEnded = true;
+            } else if (const auto* mReleased = event.getIf<sf::Event::MouseButtonReleased>()) {
+                if (mReleased->button == sf::Mouse::Button::Left) inputEnded = true;
+            }
+
+            if (inputBegan) {
+                sf::Vector2f touchPos = window.mapPixelToCoords(currentInputPos, uiView);
                 if (getGlobalBounds().contains(touchPos)) {
                     isDragging = true;
-                    lastTouchPos = touch->position;
+                    lastTouchPos = currentInputPos;
                 }
-            }
-            else if (const auto* tMoved = event.getIf<sf::Event::TouchMoved>()) {
-                if (isDragging) {
-                    float deltaY = static_cast<float>(lastTouchPos.y - tMoved->position.y);
-                    scrollOffset += deltaY;
-                    lastTouchPos = tMoved->position;
-                }
-            }
-            else if (event.is<sf::Event::TouchEnded>()) {
+            } else if (inputMoved && isDragging) {
+                // расчет дельты в логических координатах для одинаковой скорости на всех экранах
+                sf::Vector2f currentCoords = window.mapPixelToCoords(currentInputPos, uiView);
+                sf::Vector2f previousCoords = window.mapPixelToCoords(lastTouchPos, uiView);
+                float deltaY = previousCoords.y - currentCoords.y;
+                targetScrollOffset += deltaY;
+                scrollOffset += deltaY; // немедленная реакция при перетаскивании
+                lastTouchPos = currentInputPos;
+            } else if (inputEnded) {
                 isDragging = false;
             }
 
             // ограничение диапазона прокрутки
             float maxScroll = std::max(0.f, maxContentHeight - size.y);
-            if (scrollOffset < 0.f) scrollOffset = 0.f;
-            if (scrollOffset > maxScroll) scrollOffset = maxScroll;
+            if (targetScrollOffset < 0.f) targetScrollOffset = 0.f;
+            if (targetScrollOffset > maxScroll) targetScrollOffset = maxScroll;
         }
 
         // формирование вьюпорта для дочерних элементов
@@ -361,6 +391,17 @@ namespace UI {
     void Container::render(sf::RenderWindow& window) const {
         if (!visible) return;
 
+        // плавная интерполяция прокрутки
+        if (scrollEnabled) {
+            float dt = scrollClock.restart().asSeconds();
+            if (std::abs(targetScrollOffset - scrollOffset) > 0.1f) {
+                // Плавное приближение к цели
+                scrollOffset += (targetScrollOffset - scrollOffset) * (1.0f - std::pow(0.001f, dt * 10.0f));
+            } else {
+                scrollOffset = targetScrollOffset;
+            }
+        }
+
         // отрисовка фона и рамки
         if (drawBackground) {
             if (backgroundSlice) {
@@ -395,8 +436,58 @@ namespace UI {
                 if (child->isVisible()) child->render(window);
             }
             window.setView(currentView);
-        }
-        else {
+
+            // Отрисовка скроллбара поверх контента
+            float maxScroll = std::max(0.f, maxContentHeight - size.y);
+            if (maxScroll > 0.f) {
+                // Добавляем отступ от краев
+                float scrollPaddingY = 64.f; 
+
+                float scrollbarWidth = 7.5f;
+                
+                float trackX = position.x + size.x - scrollbarWidth;
+                float trackY = position.y + scrollPaddingY;
+                float trackHeight = size.y - scrollPaddingY * 2.f;
+
+                // Лямбда для отрисовки закругленной линии (капсулы)
+                auto drawCapsule = [&](float x, float y, float w, float h, sf::Color color) {
+                    if (h < w) h = w;
+                    float r = w / 2.f;
+                    
+                    sf::CircleShape top(r);
+                    top.setPosition({x, y});
+                    top.setFillColor(color);
+                    
+                    sf::CircleShape bottom(r);
+                    bottom.setPosition({x, y + h - w});
+                    bottom.setFillColor(color);
+                    
+                    sf::RectangleShape rect(sf::Vector2f(w, h - w));
+                    rect.setPosition({x, y + r});
+                    rect.setFillColor(color);
+                    
+                    window.draw(top);
+                    window.draw(bottom);
+                    window.draw(rect);
+                };
+
+                // Рисуем подложку
+                drawCapsule(trackX, trackY, scrollbarWidth, trackHeight, Colors::Theme::Widget);
+
+                // Вычисляем высоту и положение ползунка
+                float visibleRatio = size.y / maxContentHeight;
+                float thumbHeight = std::max(32.f, trackHeight * visibleRatio); // минимум 32px для красивого скругления
+                
+                float progress = scrollOffset / maxScroll;
+                if (progress < 0.f) progress = 0.f;
+                if (progress > 1.f) progress = 1.f;
+
+                float thumbY = trackY + (trackHeight - thumbHeight) * progress;
+
+                // Рисуем ползунок 
+                drawCapsule(trackX, thumbY, scrollbarWidth, thumbHeight, Colors::Theme::WidgetActive);
+            }
+        } else {
             for (const auto& child : children) {
                 if (child->isVisible()) child->render(window);
             }

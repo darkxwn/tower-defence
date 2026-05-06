@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.15...3.30)
 
-set(GAME_VERSION_FULL "0.6.2b")
+set(GAME_VERSION_FULL "0.7.1b")
 
 project(tower-defence 
     VERSION 0.6.2
@@ -14,7 +14,11 @@ configure_file(
 
 if(MSVC)
     add_compile_options(/utf-8)
-    set(ENV{VSLANG} "1033")
+
+    # Говорим CMake, как выглядит русское сообщение, чтобы Ninja мог его скрыть
+    set(CMAKE_C_SHOWINCLUDES_PREFIX "Примечание: включение файла: ")
+    set(CMAKE_CXX_SHOWINCLUDES_PREFIX "Примечание: включение файла: ")
+
 endif()
 
 if(ANDROID)
@@ -93,6 +97,7 @@ set(SOURCES
     src/ui/Widget.cpp
     src/ui/Container.cpp
     src/ui/Slider.cpp
+    src/ui/Toggle.cpp
     src/ui/Image.cpp
 )
 

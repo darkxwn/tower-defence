@@ -26,14 +26,9 @@ private:
     // Глобальная валюта (мета)
     int money = 0;
     
-    // Глобальные уровни улучшений (Стратегический отдел)
-    int globalCoinsLvl = 0;    // увеличивает стартовые монеты
-    int globalMoneyLvl = 0;    // увеличивает доходность (множитель)
-    int globalBaseHpLvl = 0;   // увеличивает жизни базы
-
     std::map<std::string, LevelProgress> levels;
 
-    // Универсальный контейнер для данных башен (хранит любой JSON)
+    // Универсальный контейнер для данных улучшений (башен и меты)
     json towerDataBlob; 
 
     void setDefaults();
@@ -50,19 +45,6 @@ public:
     void addMoney(int amount);
     bool spendMoney(int amount);
 
-    // Уровни мета-улучшений
-    int getGlobalCoinsLvl() const { return globalCoinsLvl; }
-    void setGlobalCoinsLvl(int lvl) { globalCoinsLvl = lvl; }
-
-    int getGlobalMoneyLvl() const { return globalMoneyLvl; }
-    void setGlobalMoneyLvl(int lvl) { globalMoneyLvl = lvl; }
-
-    int getGlobalBaseHpLvl() const { return globalBaseHpLvl; }
-    void setGlobalBaseHpLvl(int lvl) { globalBaseHpLvl = lvl; }
-
-    // Расчетные бонусы на основе уровней
-    float getMoneyMultiplier() const;
-
     // Прогресс уровней
     int getStars(const std::string& levelId) const;
     int getBestScore(const std::string& levelId) const;
@@ -74,14 +56,14 @@ public:
     bool isUnlocked(const std::string& levelId) const;
     void unlockLevel(const std::string& levelId);
 
-    // Универсальная работа с данными башен
+    // Универсальная работа с данными улучшений
     template <typename T>
-    void setTowerData(const T& dataObject) {
+    void setUpgradeData(const T& dataObject) {
         towerDataBlob = dataObject;
     }
 
     template <typename T>
-    bool getTowerData(T& outDataObject) const {
+    bool getUpgradeData(T& outDataObject) const {
         if (towerDataBlob.is_null() || towerDataBlob.empty()) {
             return false;
         }

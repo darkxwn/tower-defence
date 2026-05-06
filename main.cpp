@@ -87,6 +87,11 @@ static void loadResources() {
     ResourceManager::load("icon-money", assetsPath + "icons/money.png");
     ResourceManager::load("icon-star-empty", assetsPath + "icons/star-empty.png");
     ResourceManager::load("icon-star-filled", assetsPath + "icons/star-filled.png");
+    ResourceManager::load("icon-hit", assetsPath + "icons/hit.png");
+    ResourceManager::load("icon-explosion", assetsPath + "icons/explosion.png");
+    ResourceManager::load("icon-animation", assetsPath + "icons/animation.png");
+    ResourceManager::load("icon-trail", assetsPath + "icons/trail.png");
+
 
     // СПРАЙТЫ ИНТЕРФЕЙСА
     ResourceManager::load("button", assetsPath + "sprites/button.png", false);
@@ -98,10 +103,12 @@ static void loadResources() {
     ResourceManager::load("button-flat-disabled", assetsPath + "sprites/button-flat-disabled.png", false);
     ResourceManager::load("panel", assetsPath + "sprites/panel.png", false);
     ResourceManager::load("panel-light", assetsPath + "sprites/panel-light.png", false);
-    ResourceManager::load("main-layer", assetsPath + "sprites/main-layer.png");
+    ResourceManager::load("panel-lighter", assetsPath + "sprites/panel-lighter.png");
+    ResourceManager::load("main-layer", assetsPath + "sprites/main-layer.png", false);
     ResourceManager::load("card", assetsPath + "sprites/card.png", false);
     ResourceManager::load("card-light", assetsPath + "sprites/card-light.png", false);
     ResourceManager::load("card-dark", assetsPath + "sprites/card-dark.png", false);
+    ResourceManager::load("card-select", assetsPath + "sprites/card-select.png", false);
 
 #ifdef __ANDROID__
     ResourceManager::load("icon-sensivity", assetsPath + "icons/sensivity-mobile.png");
@@ -160,33 +167,40 @@ int main() {
 
     auto menu = std::make_unique<Menu>(window, settings, saveManager);
 
-    sf::Vector2u lastWindowSize = { 1280, 720 };
+    bool isFullscreen = settings.get<bool>("fullscreen", false);
+    sf::Vector2u windowedSize = { 1280, 720 };
+    if (!isFullscreen) windowedSize = window.getSize();
 
     while (window.isOpen()) {
         while (window.isOpen() && !menu->isLevelChosen()) {
             menu->handleEvents();
             if (!window.isOpen()) { menu.reset(); return 0; }
 
+            if (!isFullscreen) {
+                windowedSize = window.getSize();
+            }
+
             if (menu->consumesWindowRecreationRequest()) {
                 menu->cleanup();
                 menu.reset();
 
                 bool fs = settings.get<bool>("fullscreen", false);
+                isFullscreen = fs;
+
                 // При полноэкранном режиме используем текущее разрешение экрана
                 sf::VideoMode videoMode; 
                 if (fs) {
-                    // Используем текущее разрешение рабочего стола для полноэкранного режима
                     videoMode = sf::VideoMode::getDesktopMode();
                 } else {
-                    videoMode = sf::VideoMode({ 1280, 720 });
+                    videoMode = sf::VideoMode(windowedSize);
                 }
                 window.create(videoMode, "Project: Gyurza", fs ? sf::State::Fullscreen : sf::State::Windowed);
                 window.setVerticalSyncEnabled(settings.get<bool>("vsync", true));
-                window.setMinimumSize(lastWindowSize);
+                window.setMinimumSize(sf::Vector2u(1280, 720));
 
                 sf::Vector2u actualSize = window.getSize();
                 menu = std::make_unique<Menu>(window, settings, saveManager);
-                menu->updateViewSizes(lastWindowSize);
+                menu->updateViewSizes(actualSize);
                 Logger::info("Окно пересоздано: {}x{}, Fullscreen: {}", actualSize.x, actualSize.y, fs);
             }
 
@@ -211,15 +225,15 @@ int main() {
                 keepPlaying = false;
             } else if (reason == GameEndReason::Restart) {
                 continue; 
-            } else if (reason == GameEndReason::Win || reason == GameEndReason::Lose) {
-                menu->notifyResult(reason == GameEndReason::Win ? SessionResult::Win : SessionResult::Lose, levelPath);
-                keepPlaying = false;
             } else {
                 keepPlaying = false;
             }
         }
         
+        // Обновляем карточки уровней после выхода из игры
         if (window.isOpen()) {
+            if (!isFullscreen) windowedSize = window.getSize();
+            menu->refreshLevelCards();
             menu->updateViewSizes(window.getSize());
         }
     }

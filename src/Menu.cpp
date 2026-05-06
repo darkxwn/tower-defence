@@ -7,6 +7,7 @@
 #include "ui/Container.hpp"
 #include "ui/Button.hpp"
 #include "ui/Image.hpp"
+#include "ui/Toggle.hpp"
 #include "Colors.hpp"
 #include "Version.hpp"
 #include <filesystem>
@@ -25,17 +26,27 @@ namespace fs = std::filesystem;
 // Инициализирует системы и строит интерфейс
 Menu::Menu(sf::RenderWindow& window, SettingsManager& settings, SaveManager& saveManager) 
     : window(window), settings(settings), saveManager(saveManager) {
-    // загрузка улучшений из сохранений
-    std::vector<UpgradeManager::TowerUpgrade> data;
-    if (saveManager.getTowerData(data)) {
-        upgradeManager.setAllUpgrades(data);
+    
+    // Загрузка всех данных улучшений (башни + мета) из одного JSON-объекта
+    json allUpgradeData;
+    if (saveManager.getUpgradeData(allUpgradeData)) {
+        if (allUpgradeData.contains("towers")) {
+            upgradeManager.setAllUpgrades(allUpgradeData["towers"].get<std::vector<UpgradeManager::TowerUpgrade>>());
+        }
+        if (allUpgradeData.contains("meta")) {
+            upgradeManager.setAllMetaUpgrades(allUpgradeData["meta"].get<std::vector<UpgradeManager::MetaUpgrade>>());
+        }
     } else {
         upgradeManager.initDefaults();
     }
+
     UpgradeManager* umPtr = &upgradeManager;
     SaveManager* smPtr = &saveManager;
     upgradeManager.setSaveCallback([umPtr, smPtr]() {
-        smPtr->setTowerData(umPtr->getAllUpgrades());
+        json j;
+        j["towers"] = umPtr->getAllUpgrades();
+        j["meta"] = umPtr->getAllMetaUpgrades();
+        smPtr->setUpgradeData(j);
         smPtr->save();
     });
     syncSettingsToTmp();
@@ -46,58 +57,67 @@ Menu::Menu(sf::RenderWindow& window, SettingsManager& settings, SaveManager& sav
 
 // Синхронизация временных значений с текущими настройками
 void Menu::syncSettingsToTmp() {
-    tmpMusicVol     = settings.get<int>("music_volume", 100);
-    tmpSfxVol       = settings.get<int>("sfx_volume", 100);
-    tmpSensitivity  = settings.get<float>("sensitivity", 1.0f);
-    tmpUiScale      = settings.get<float>("ui_scale", 1.0f);
-    tmpFullscreen   = settings.get<bool>("fullscreen", false);
-    tmpVsync        = settings.get<bool>("vsync", true);
-    tmpVfxHit       = settings.get<bool>("vfx_hit", true);
-    tmpVfxTrail     = settings.get<bool>("vfx_trail", true);
-    tmpVfxDeath     = settings.get<bool>("vfx_death", true);
-    tmpAnimation    = settings.get<bool>("animation", true);
+    tmpMusicVol = settings.get<int>("music_volume", 100);
+    tmpSfxVol = settings.get<int>("sfx_volume", 100);
+    tmpSensitivity = settings.get<float>("sensitivity", 1.0f);
+    tmpUiScale = settings.get<float>("ui_scale", 1.0f);
+    tmpFullscreen = settings.get<bool>("fullscreen", false);
+    tmpVsync = settings.get<bool>("vsync", true);
+    tmpVfxHit = settings.get<bool>("vfx_hit", true);
+    tmpVfxTrail = settings.get<bool>("vfx_trail", true);
+    tmpVfxDeath = settings.get<bool>("vfx_death", true);
+    tmpAnimation = settings.get<bool>("animation", true);
 
-    if (musicSliderPtr)     musicSliderPtr->setValue((float)tmpMusicVol);
-    if (sfxSliderPtr)       sfxSliderPtr->setValue((float)tmpSfxVol);
-    if (sensSliderPtr)      sensSliderPtr->setValue(tmpSensitivity);
-    if (uiScaleSliderPtr)   uiScaleSliderPtr->setValue(tmpUiScale);
-    if (fsBtnPtr)           fsBtnPtr->setText(tmpFullscreen ? "ВКЛ" : "ВЫКЛ");
-    if (vsyncBtnPtr)        vsyncBtnPtr->setText(tmpVsync ? "ВКЛ" : "ВЫКЛ");
+    if (musicSliderPtr) musicSliderPtr->setValue((float)tmpMusicVol);
+    if (sfxSliderPtr) sfxSliderPtr->setValue((float)tmpSfxVol);
+    if (sensSliderPtr) sensSliderPtr->setValue(tmpSensitivity);
+    if (uiScaleSliderPtr) uiScaleSliderPtr->setValue(tmpUiScale);
+    if (fsBtnPtr) fsBtnPtr->setText(tmpFullscreen ? "ВКЛ" : "ВЫКЛ");
+    if (vsyncBtnPtr) vsyncBtnPtr->setText(tmpVsync ? "ВКЛ" : "ВЫКЛ");
 }
 
 // Построение иерархии контейнеров
 void Menu::initUI() {
     mainContainer.reset();
     settingsContainer.reset();
-    vfxSettingsContainer.reset();
     levelContainer.reset();
     upgradesContainer.reset();
 
-    cardsArea           = nullptr;
-    playBtnPtr          = nullptr;
-    musicSliderPtr      = nullptr;
-    sfxSliderPtr        = nullptr;
-    sensSliderPtr       = nullptr;
-    uiScaleSliderPtr    = nullptr;
-    fsBtnPtr            = nullptr;
-    vsyncBtnPtr         = nullptr;
-    vfxBtnPtr           = nullptr;
-    headerContPtr       = nullptr;
-    btnsContPtr         = nullptr;
-    titleTextPtr        = nullptr;
-    moneyTextPtr        = nullptr;
+    cardsArea = nullptr;
+    playBtnPtr = nullptr;
+    musicSliderPtr = nullptr;
+    sfxSliderPtr = nullptr;
+    sensSliderPtr = nullptr;
+    uiScaleSliderPtr = nullptr;
+    fsBtnPtr = nullptr;
+    vsyncBtnPtr = nullptr;
+    headerContPtr = nullptr;
+    btnsContPtr = nullptr;
+    titleTextPtr = nullptr;
+    moneyTextPtr = nullptr;
+    totalStarsTextPtr = nullptr;
 
+    mainContainer = createMainMenu();
+    levelContainer = createLevelSelectMenu();
+    settingsContainer = createSettingsMenu();
+    upgradesContainer = createUpgradeMenu();
+
+    sf::Vector2f winSize = sf::Vector2f(window.getSize());
+    resultOverlay = std::make_unique<UI::Container>(winSize);
+    resultOverlay->setBackgroundColor(Colors::Theme::Overlay);
+}
+
+std::unique_ptr<UI::Container> Menu::createMainMenu() {
     auto& font = ResourceManager::getFont("main");
     sf::Vector2f winSize = sf::Vector2f(window.getSize());
 
-    // ГЛАВНОЕ МЕНЮ
-    mainContainer = std::make_unique<UI::Container>(winSize);
-    mainContainer->setDirection(UI::Container::Direction::Column);
-    mainContainer->setContentAlign(UI::Container::ContentAlign::Center);
-    mainContainer->setItemAlign(UI::Container::ItemAlign::Center);
-    mainContainer->setBackgroundTexture(ResourceManager::get("main-layer"), 128.f);
-    mainContainer->setPadding({ 20.f, 20.f });
-    mainContainer->setGap(30.f);
+    auto root = std::make_unique<UI::Container>(winSize);
+    root->setDirection(UI::Container::Direction::Column);
+    root->setContentAlign(UI::Container::ContentAlign::Center);
+    root->setItemAlign(UI::Container::ItemAlign::Center);
+    root->setBackgroundTexture(ResourceManager::get("main-layer"), 128.f);
+    root->setPadding({ 20.f, 20.f });
+    root->setGap(30.f);
 
     auto headerCont = std::make_unique<UI::Container>(sf::Vector2f(winSize.x * 0.9f, 125.f));
     headerCont->setDirection(UI::Container::Direction::Column);
@@ -116,7 +136,7 @@ void Menu::initUI() {
     version->setAlignment(UI::Text::Align::Center);
     version->setColor(Colors::Theme::TextDark);
     headerCont->addChild(std::move(version));
-    mainContainer->addChild(std::move(headerCont));
+    root->addChild(std::move(headerCont));
 
     auto btnsCont = std::make_unique<UI::Container>(sf::Vector2f(winSize.x * 0.8f, 320.f));
     btnsCont->setDirection(UI::Container::Direction::Column);
@@ -167,32 +187,71 @@ void Menu::initUI() {
     }));
 
     btnsCont->addChild(std::move(bottomGrid));
-    mainContainer->addChild(std::move(btnsCont));
+    root->addChild(std::move(btnsCont));
 
-    // ВЫБОР УРОВНЯ
-    UI::Container* navArea = nullptr;
-    levelContainer = createSubMenu("ВЫБОР УРОВНЯ", &cardsArea, &navArea);
+    return root;
+}
 
-    if (cardsArea) {
-        cardsArea->setDirection(UI::Container::Direction::Row);
-        cardsArea->setContentAlign(UI::Container::ContentAlign::Center);
-        cardsArea->setItemAlign(UI::Container::ItemAlign::Center);
-        cardsArea->setBackgroundTexture(ResourceManager::get("panel-light"), 64.f);
-        cardsArea->setWrap(true);
-        cardsArea->setGap(25.f);
-        cardsArea->setPadding({ 30.f, 30.f });
-        cardsArea->setScrollEnabled(true);
+std::unique_ptr<UI::Container> Menu::createLevelSelectMenu() {
+    auto& font = ResourceManager::getFont("main");
+    sf::Vector2f winSize = sf::Vector2f(window.getSize());
+
+    UI::Container* levelContent = nullptr;
+    UI::Container* levelNav = nullptr;
+    auto root = createSubMenu("ВЫБОР УРОВНЯ", &levelContent, &levelNav);
+
+    if (levelContent) {
+        levelContent->setDirection(UI::Container::Direction::Column);
+        levelContent->setGap(10.f);
+        //levelContent->setPadding({ 0.f, 0.f });
+
+        // Верхний подконтейнер со звездами (аналог валюты в улучшениях)
+        auto starsInfo = std::make_unique<UI::Container>(sf::Vector2f(250.f, 64.f));
+        starsInfo->setDirection(UI::Container::Direction::Row);
+        starsInfo->setContentAlign(UI::Container::ContentAlign::Center);
+        starsInfo->setItemAlign(UI::Container::ItemAlign::Center);
+        starsInfo->setGap(15.f);
+        starsInfo->setBackgroundTexture(ResourceManager::get("panel-lighter"), 32.f);
+
+        starsInfo->addChild(std::make_unique<UI::Image>(ResourceManager::get("icon-star-filled"), sf::Vector2f(48.f, 48.f)));
+
+        int earnedStars = 0;
+        for (const auto& lvl : levels) earnedStars += saveManager.getStars(lvl.id);
+        int totalStars = (int)levels.size() * 3;
+
+        auto starsText = std::make_unique<UI::Text>(font, std::to_string(earnedStars) + " / " + std::to_string(totalStars), 24);
+        totalStarsTextPtr = starsText.get(); // Сохраняем указатель для обновления
+        starsInfo->addChild(std::move(starsText));
+
+        levelContent->addChild(std::move(starsInfo));
+
+        // Нижний прокручиваемый подконтейнер с карточками уровней
+        auto scrollArea = std::make_unique<UI::Container>(sf::Vector2f(winSize.x * 0.85f, 350.f));
+        scrollArea->setDirection(UI::Container::Direction::Row);
+        scrollArea->setWrap(true); // Разрешаем перенос карточек на новую строку
+        scrollArea->setContentAlign(UI::Container::ContentAlign::Center);
+        scrollArea->setItemAlign(UI::Container::ItemAlign::Center);
+        scrollArea->setGap(25.f);
+        scrollArea->setPadding({ 0.f, 20.f });
+        scrollArea->setScrollEnabled(true);
+        cardsArea = scrollArea.get(); // Ссылка для управления выделением
+
+        levelCardMap.clear();
 
         for (const auto& level : levels) {
             sf::Vector2f cardSize(325.f, 225.f);
             auto card = std::make_unique<UI::Container>(cardSize);
+            LevelCardWidgets widgets;
+            widgets.root = card.get();
+
             card->setDirection(UI::Container::Direction::Column);
             card->setItemAlign(UI::Container::ItemAlign::Center);
             card->setPadding({ 10.f, 10.f });
             card->setGap(5.f);
-            
+
             bool unlocked = saveManager.isUnlocked(level.id);
-            card->setBackgroundTexture(ResourceManager::get("card"), 12.f);
+            widgets.wasUnlocked = unlocked;
+            card->setBackgroundTexture(ResourceManager::get("card"), 16.f);
             if (!unlocked) card->setBackgroundColor(sf::Color(100, 100, 100, 150));
 
             auto numText = std::make_unique<UI::Text>(font, "УРОВЕНЬ " + std::to_string(level.index + 1), 24);
@@ -204,7 +263,6 @@ void Menu::initUI() {
             card->addChild(std::move(nameText));
 
             if (unlocked) {
-                // Рекорд (В самом низу)
                 int maxWave = saveManager.getMaxWave(level.id);
                 int bestScore = saveManager.getBestScore(level.id);
 
@@ -214,13 +272,14 @@ void Menu::initUI() {
 
                 auto waveRec = std::make_unique<UI::Text>(font, "Волна: " + std::to_string(maxWave), 18);
                 waveRec->setColor(sf::Color(200, 200, 200));
+                widgets.waveText = waveRec.get();
                 card->addChild(std::move(waveRec));
 
                 auto scoreRec = std::make_unique<UI::Text>(font, "Счет: " + std::to_string(bestScore), 18);
                 scoreRec->setColor(sf::Color(200, 200, 200));
+                widgets.scoreText = scoreRec.get();
                 card->addChild(std::move(scoreRec));
 
-                // Звезды
                 auto starsRow = std::make_unique<UI::Container>(sf::Vector2f(cardSize.x, 30.f));
                 starsRow->setDirection(UI::Container::Direction::Row);
                 starsRow->setContentAlign(UI::Container::ContentAlign::Center);
@@ -230,14 +289,17 @@ void Menu::initUI() {
                 int savedStars = saveManager.getStars(level.id);
                 for (int i = 0; i < 3; ++i) {
                     const auto& tex = (i < savedStars) ? ResourceManager::get("icon-star-filled") : ResourceManager::get("icon-star-empty");
-                    auto starImg = std::make_unique<UI::Image>(tex, sf::Vector2f(64.f, 64.f));
+                    auto starImg = std::make_unique<UI::Image>(tex, sf::Vector2f(48.f, 48.f));
                     if (i >= savedStars) starImg->setColor(sf::Color(100, 100, 100, 100));
                     starsRow->addChild(std::move(starImg));
                 }
+                widgets.starsRow = starsRow.get();
                 card->addChild(std::move(starsRow));
-            } else {
+            }
+            else {
                 auto lockText = std::make_unique<UI::Text>(font, "ЗАБЛОКИРОВАНО", 18);
                 lockText->setColor(sf::Color::Red);
+                widgets.lockText = lockText.get();
                 card->addChild(std::move(lockText));
             }
 
@@ -247,140 +309,172 @@ void Menu::initUI() {
             clicker->setEnabled(unlocked);
             clicker->setCallback([this, path = level.filePath, area = cardsArea]() {
                 if (area && !area->isCurrentlyDragging()) { selectedLevel = path; updateCardsSelection(); }
-            });
+                });
+            widgets.clicker = clicker.get();
             card->addChild(std::move(clicker));
-            cardsArea->addChild(std::move(card));
+
+            levelCardMap[level.id] = widgets;
+            scrollArea->addChild(std::move(card));
         }
+        levelContent->addChild(std::move(scrollArea));
     }
 
-    if (navArea) {
+    if (levelNav) {
         auto startGameBtn = std::make_unique<UI::Button>(ResourceManager::get("icon-play"), font, "ИГРАТЬ", sf::Vector2f(220.f, 60.f), UI::Button::IconPlacement::Right);
-        startGameBtn->setBackgroundTextures(&ResourceManager::get("button"), &ResourceManager::get("button-hover"), &ResourceManager::get("button-active"), nullptr, 32.0f);
+        startGameBtn->setBackgroundTextures(&ResourceManager::get("button"), &ResourceManager::get("button-hover"), &ResourceManager::get("button-active"), &ResourceManager::get("button-disabled"), 32.0f);
         startGameBtn->setIconScale({ 0.5f, 0.5f });
         startGameBtn->setCallback([this]() { if (!selectedLevel.empty()) levelChosen = true; });
         startGameBtn->setEnabled(false);
         playBtnPtr = startGameBtn.get();
-        navArea->addChild(std::move(startGameBtn));
+        levelNav->addChild(std::move(startGameBtn));
     }
 
-    // НАСТРОЙКИ
+    return root;
+}
+
+std::unique_ptr<UI::Container> Menu::createSettingsMenu() {
+    auto& font = ResourceManager::getFont("main");
+    sf::Vector2f winSize = sf::Vector2f(window.getSize());
+
     UI::Container* settingsContent = nullptr;
     UI::Container* settingsNav = nullptr;
-    settingsContainer = createSubMenu("НАСТРОЙКИ", &settingsContent, &settingsNav);
+    auto root = createSubMenu("НАСТРОЙКИ", &settingsContent, &settingsNav);
 
     if (settingsContent) {
         settingsContent->setDirection(UI::Container::Direction::Column);
         settingsContent->setContentAlign(UI::Container::ContentAlign::Center);
         settingsContent->setItemAlign(UI::Container::ItemAlign::Center);
-        settingsContent->setGap(20.f);
-        settingsContent->setPadding({ 20.f, 20.f });
+        settingsContent->setBackgroundTexture(ResourceManager::get("panel-light"), 32.f);
+        settingsContent->setGap(25.f);
+        settingsContent->setPadding({ 0.f, 20.f });
         settingsContent->setScrollEnabled(true);
 
+        auto createHeader = [&](const std::string& text) {
+            auto header = std::make_unique<UI::Text>(font, text, 32);
+            header->setColor(sf::Color::White);
+            header->setAlignment(UI::Text::Align::Left);
+            auto cont = std::make_unique<UI::Container>(sf::Vector2f(950.f, 48.f));
+            cont->setDirection(UI::Container::Direction::Row);
+            cont->setContentAlign(UI::Container::ContentAlign::Center);
+            cont->setItemAlign(UI::Container::ItemAlign::Center);
+            cont->addChild(std::move(header));
+            return cont;
+        };
+
         auto createRow = [&](const sf::Texture& iconTex, const std::string& label, std::unique_ptr<UI::Widget> control) {
-            auto row = std::make_unique<UI::Container>(sf::Vector2f(950.f, 60.f));
+            auto row = std::make_unique<UI::Container>(sf::Vector2f(950.f, 64.f));
             row->setDirection(UI::Container::Direction::Row);
             row->setContentAlign(UI::Container::ContentAlign::Center);
             row->setItemAlign(UI::Container::ItemAlign::Center);
             row->setGap(10.f);
             row->addChild(std::make_unique<UI::Image>(iconTex, sf::Vector2f(48.f, 48.f)));
-            auto text = std::make_unique<UI::Text>(font, label, 24, sf::Vector2f(350.f, 60.f));
+            auto text = std::make_unique<UI::Text>(font, label, 24, sf::Vector2f(400.f, 64.f));
             text->setColor(Colors::Theme::TextMain);
             row->addChild(std::move(text));
             row->addChild(std::move(control));
             return row;
         };
 
-        auto musicSlider = std::make_unique<UI::Slider>(font, 0.f, 100.f, (float)tmpMusicVol, sf::Vector2f(350.f, 30.f));
-        musicSliderPtr = musicSlider.get();
-        musicSlider->setCallback([this](float value) { tmpMusicVol = (int)value; });
-        settingsContent->addChild(createRow(ResourceManager::get("icon-music"), "ГРОМКОСТЬ МУЗЫКИ", std::move(musicSlider)));
-
-        auto sfxSlider = std::make_unique<UI::Slider>(font, 0.f, 100.f, (float)tmpSfxVol, sf::Vector2f(350.f, 30.f));
-        sfxSliderPtr = sfxSlider.get();
-        sfxSlider->setCallback([this](float value) { tmpSfxVol = (int)value; });
-        settingsContent->addChild(createRow(ResourceManager::get("icon-audio"), "ГРОМКОСТЬ ЗВУКОВ", std::move(sfxSlider)));
-
-        auto sensSlider = std::make_unique<UI::Slider>(font, 0.5f, 3.0f, tmpSensitivity, sf::Vector2f(350.f, 30.f));
-        sensSlider->setPrecision(1);
-        sensSliderPtr = sensSlider.get();
-        sensSlider->setCallback([this](float value) { tmpSensitivity = value; });
-        settingsContent->addChild(createRow(ResourceManager::get("icon-sensivity"), "ЧУВСТВИТЕЛЬНОСТЬ", std::move(sensSlider)));
-
-        auto uiScaleSlider = std::make_unique<UI::Slider>(font, 0.6f, 1.6f, tmpUiScale, sf::Vector2f(350.f, 30.f));
-        uiScaleSlider->setPrecision(1);
-        uiScaleSliderPtr = uiScaleSlider.get();
-        uiScaleSlider->setCallback([this](float value) { tmpUiScale = value; });
-        settingsContent->addChild(createRow(ResourceManager::get("icon-display"), "МАСШТАБ ИНТЕРФЕЙСА", std::move(uiScaleSlider)));
-
-#ifndef __ANDROID__ 
-        auto vsyncBtn = std::make_unique<UI::Button>(font, tmpVsync ? "ВКЛ" : "ВЫКЛ", sf::Vector2f(350.f, 45.f));
-        vsyncBtnPtr = vsyncBtn.get();
-        vsyncBtn->setBackgroundTextures(&ResourceManager::get("card"), &ResourceManager::get("card-light"), nullptr, nullptr, 12.f);
-        vsyncBtn->setCallback([this]() { tmpVsync = !tmpVsync; if (vsyncBtnPtr) vsyncBtnPtr->setText(tmpVsync ? "ВКЛ" : "ВЫКЛ"); });
-        settingsContent->addChild(createRow(ResourceManager::get("icon-vsync"), "ВЕРТИКАЛЬНАЯ СИНХР.", std::move(vsyncBtn)));
-
-        auto fsBtn = std::make_unique<UI::Button>(font, tmpFullscreen ? "ВКЛ" : "ВЫКЛ", sf::Vector2f(350.f, 45.f));
-        fsBtnPtr = fsBtn.get();
-        fsBtn->setBackgroundTextures(&ResourceManager::get("card"), &ResourceManager::get("card-light"), nullptr, nullptr, 32.f);
-        fsBtn->setCallback([this]() { tmpFullscreen = !tmpFullscreen; if (fsBtnPtr) fsBtnPtr->setText(tmpFullscreen ? "ВКЛ" : "ВЫКЛ"); });
-        settingsContent->addChild(createRow(ResourceManager::get("icon-fullscreen"), "ПОЛНОЭКРАННЫЙ РЕЖИМ", std::move(fsBtn)));
-#endif
-        auto vfxPageBtn = std::make_unique<UI::Button>(font, "НАСТРОИТЬ", sf::Vector2f(350.f, 45.f));
-        vfxPageBtn->setBackgroundTextures(&ResourceManager::get("card"), &ResourceManager::get("card-light"), nullptr, nullptr, 12.f);
-        vfxPageBtn->setCallback([this]() { state = MenuState::VfxSettings; }); // Предполагается наличие нового стейта
-        settingsContent->addChild(createRow(ResourceManager::get("icon-effect"), "ГРАФИКА", std::move(vfxPageBtn)));
-    }
-
-    // НАСТРОЙКИ ЭФФЕКТОВ (VFX)
-    UI::Container* vfxContent = nullptr;
-    UI::Container* vfxNav = nullptr;
-    vfxSettingsContainer = createSubMenu("ЭФФЕКТЫ", &vfxContent, &vfxNav);
-
-    if (vfxContent) {
-        vfxContent->setDirection(UI::Container::Direction::Column);
-        vfxContent->setContentAlign(UI::Container::ContentAlign::Center);
-        vfxContent->setItemAlign(UI::Container::ItemAlign::Center);
-        vfxContent->setGap(20.f);
-        vfxContent->setPadding({ 20.f, 20.f });
-
-        // Помощник для создания строк-переключателей VFX
-        auto createVfxRow = [&](const std::string& label, bool& tmpVar) {
-            auto row = std::make_unique<UI::Container>(sf::Vector2f(950.f, 60.f));
+        auto createToggleRow = [&](const sf::Texture& iconTex, const std::string& label, bool& tmpVar) {
+            auto row = std::make_unique<UI::Container>(sf::Vector2f(950.f, 64.f));
             row->setDirection(UI::Container::Direction::Row);
             row->setContentAlign(UI::Container::ContentAlign::Center);
             row->setItemAlign(UI::Container::ItemAlign::Center);
             row->setGap(10.f);
+            row->addChild(std::make_unique<UI::Image>(iconTex, sf::Vector2f(48.f, 48.f)));
 
-            auto text = std::make_unique<UI::Text>(font, label, 24, sf::Vector2f(400.f, 60.f));
+            auto text = std::make_unique<UI::Text>(font, label, 24, sf::Vector2f(400.f, 64.f));
             text->setColor(Colors::Theme::TextMain);
             row->addChild(std::move(text));
 
-            auto toggleBtn = std::make_unique<UI::Button>(font, tmpVar ? "ВКЛ" : "ВЫКЛ", sf::Vector2f(350.f, 45.f));
-            auto* btnPtr = toggleBtn.get();
-            toggleBtn->setBackgroundTextures(&ResourceManager::get("card"), &ResourceManager::get("card-light"), nullptr, nullptr, 12.f);
-            toggleBtn->setCallback([btnPtr, &tmpVar]() {
-                tmpVar = !tmpVar;
-                btnPtr->setText(tmpVar ? "ВКЛ" : "ВЫКЛ");
-                });
-            row->addChild(std::move(toggleBtn));
+            auto toggleCont = std::make_unique<UI::Container>(sf::Vector2f(350.f, 32.f));
+            toggleCont->setDirection(UI::Container::Direction::Row);
+            toggleCont->setContentAlign(UI::Container::ContentAlign::Center);
+            toggleCont->setItemAlign(UI::Container::ItemAlign::Center);
+            auto toggleBtn = std::make_unique<UI::Toggle>(tmpVar, sf::Vector2f(80.f, 32.f));
+            toggleBtn->setCallback([&tmpVar](bool state) {
+                tmpVar = state;
+            });
+            toggleCont->addChild(std::move(toggleBtn));
+            row->addChild(std::move(toggleCont));
             return row;
-            };
+        };
 
-        vfxContent->addChild(createVfxRow("ЭФФЕКТЫ ПОПАДАНИЯ", tmpVfxHit));
-        vfxContent->addChild(createVfxRow("ТРАССЕРЫ СНАРЯДОВ", tmpVfxTrail));
-        vfxContent->addChild(createVfxRow("ВЗРЫВЫ ПРИ СМЕРТИ", tmpVfxDeath));
-        vfxContent->addChild(createVfxRow("АНИМАЦИИ", tmpAnimation));
-    }
+        // АУДИО
+        auto audioCard = std::make_unique<UI::Container>(sf::Vector2f(950.f, 212.f));
+        audioCard->setDirection(UI::Container::Direction::Column);
+        audioCard->setContentAlign(UI::Container::ContentAlign::Center);
+        audioCard->setItemAlign(UI::Container::ItemAlign::Center);
+        audioCard->setPadding({10.f, 10.f});
+        audioCard->setGap(10.f);
+        audioCard->addChild(createHeader("АУДИО"));
 
-    if (vfxNav && vfxNav->getChildrenCount() > 0) {
-        auto* backBtn = dynamic_cast<UI::Button*>(vfxNav->getChild(vfxNav->getChildrenCount() - 1));
-        if (backBtn) {
-            backBtn->setCallback([this]() { state = MenuState::Settings; });
-        }
+        auto musicSlider = std::make_unique<UI::Slider>(font, 0.f, 100.f, (float)tmpMusicVol, sf::Vector2f(350.f, 32.f));
+        musicSliderPtr = musicSlider.get();
+        musicSlider->setCallback([this](float value) { tmpMusicVol = (int)value; });
+        audioCard->addChild(createRow(ResourceManager::get("icon-music"), "ГРОМКОСТЬ МУЗЫКИ", std::move(musicSlider)));
+
+        auto sfxSlider = std::make_unique<UI::Slider>(font, 0.f, 100.f, (float)tmpSfxVol, sf::Vector2f(350.f, 32.f));
+        sfxSliderPtr = sfxSlider.get();
+        sfxSlider->setCallback([this](float value) { tmpSfxVol = (int)value; });
+        audioCard->addChild(createRow(ResourceManager::get("icon-audio"), "ГРОМКОСТЬ ЗВУКОВ", std::move(sfxSlider)));
+        settingsContent->addChild(std::move(audioCard));
+
+        // ИНТЕРФЕЙС
+        auto uiCard = std::make_unique<UI::Container>(sf::Vector2f(950.f, 212.f));
+        uiCard->setDirection(UI::Container::Direction::Column);
+        uiCard->setContentAlign(UI::Container::ContentAlign::Center);
+        uiCard->setItemAlign(UI::Container::ItemAlign::Center);
+        uiCard->setPadding({10.f, 10.f});
+        uiCard->setGap(10.f);
+        uiCard->addChild(createHeader("ИНТЕРФЕЙС"));
+
+        auto sensSlider = std::make_unique<UI::Slider>(font, 0.5f, 3.0f, tmpSensitivity, sf::Vector2f(350.f, 32.f));
+        sensSlider->setPrecision(1);
+        sensSliderPtr = sensSlider.get();
+        sensSlider->setCallback([this](float value) { tmpSensitivity = value; });
+        uiCard->addChild(createRow(ResourceManager::get("icon-sensivity"), "ЧУВСТВИТЕЛЬНОСТЬ", std::move(sensSlider)));
+
+        auto uiScaleSlider = std::make_unique<UI::Slider>(font, 0.6f, 1.6f, tmpUiScale, sf::Vector2f(350.f, 32.f));
+        uiScaleSlider->setPrecision(1);
+        uiScaleSliderPtr = uiScaleSlider.get();
+        uiScaleSlider->setCallback([this](float value) { tmpUiScale = value; });
+        uiCard->addChild(createRow(ResourceManager::get("icon-display"), "МАСШТАБ ИНТЕРФЕЙСА", std::move(uiScaleSlider)));
+        settingsContent->addChild(std::move(uiCard));
+
+        // ГРАФИКА
+#ifndef __ANDROID__
+        auto graphicsCard = std::make_unique<UI::Container>(sf::Vector2f(950.f, 212.f));
+        graphicsCard->setDirection(UI::Container::Direction::Column);
+        graphicsCard->setContentAlign(UI::Container::ContentAlign::Center);
+        graphicsCard->setItemAlign(UI::Container::ItemAlign::Center);
+        graphicsCard->setPadding({10.f, 10.f});
+        graphicsCard->setGap(10.f);
+        graphicsCard->addChild(createHeader("ГРАФИКА"));
+
+        graphicsCard->addChild(createToggleRow(ResourceManager::get("icon-vsync"), "ВЕРТИКАЛЬНАЯ СИНХР.", tmpVsync));
+        graphicsCard->addChild(createToggleRow(ResourceManager::get("icon-fullscreen"), "ПОЛНОЭКРАННЫЙ РЕЖИМ", tmpFullscreen));
+        settingsContent->addChild(std::move(graphicsCard));
+#endif
+
+        // ВИЗУАЛЬНЫЕ ЭФФЕКТЫ
+        auto vfxCard = std::make_unique<UI::Container>(sf::Vector2f(950.f, 360.f));
+        vfxCard->setDirection(UI::Container::Direction::Column);
+        vfxCard->setContentAlign(UI::Container::ContentAlign::Center);
+        vfxCard->setItemAlign(UI::Container::ItemAlign::Center);
+        vfxCard->setPadding({10.f, 10.f});
+        vfxCard->setGap(10.f);
+        vfxCard->addChild(createHeader("ВИЗУАЛЬНЫЕ ЭФФЕКТЫ"));
+
+        vfxCard->addChild(createToggleRow(ResourceManager::get("icon-hit"), "ЭФФЕКТЫ ПОПАДАНИЯ", tmpVfxHit));
+        vfxCard->addChild(createToggleRow(ResourceManager::get("icon-trail"), "ТРАССЕРЫ СНАРЯДОВ", tmpVfxTrail));
+        vfxCard->addChild(createToggleRow(ResourceManager::get("icon-explosion"), "ВЗРЫВЫ ПРИ СМЕРТИ", tmpVfxDeath));
+        vfxCard->addChild(createToggleRow(ResourceManager::get("icon-animation"), "АНИМАЦИИ", tmpAnimation));
+        settingsContent->addChild(std::move(vfxCard));
     }
 
     if (settingsNav) {
-        auto saveBtn = std::make_unique<UI::Button>(ResourceManager::get("icon-save"), font, "СОХРАНИТЬ", sf::Vector2f(220.f, 60.f), UI::Button::IconPlacement::Right);
+        auto saveBtn = std::make_unique<UI::Button>(ResourceManager::get("icon-save"), font, "СОХРАНИТЬ", sf::Vector2f(220.f, 64.f), UI::Button::IconPlacement::Right);
         saveBtn->setBackgroundTextures(&ResourceManager::get("button"), &ResourceManager::get("button-hover"), &ResourceManager::get("button-active"), nullptr, 32.0f);
         saveBtn->setIconScale({ 0.5f, 0.5f });
         saveBtn->setCallback([this]() {
@@ -407,11 +501,53 @@ void Menu::initUI() {
         settingsNav->addChild(std::move(saveBtn));
     }
 
-    // УЛУЧШЕНИЯ
-    upgradesContainer = createUpgradeMenu();
+    return root;
+}
 
-    resultOverlay = std::make_unique<UI::Container>(winSize);
-    resultOverlay->setBackgroundColor(Colors::Theme::Overlay);
+
+
+// Обновление всех карточек уровней на основе текущего сохранения
+void Menu::refreshLevelCards() {
+    for (const auto& level : levels) {
+        if (levelCardMap.find(level.id) == levelCardMap.end()) continue;
+        
+        auto& w = levelCardMap[level.id];
+        bool currentlyUnlocked = saveManager.isUnlocked(level.id);
+
+        // Обработка момента разблокировки
+        if (currentlyUnlocked && !w.wasUnlocked) {
+            initUI(); 
+            return;
+        }
+
+        // Обновление текстовых данных (рекордов)
+        if (currentlyUnlocked) {
+            if (w.waveText) w.waveText->setText("Волна: " + std::to_string(saveManager.getMaxWave(level.id)));
+            if (w.scoreText) w.scoreText->setText("Счет: " + std::to_string(saveManager.getBestScore(level.id)));
+
+            // 3. Обновление звезд
+            if (w.starsRow) {
+                int savedStars = saveManager.getStars(level.id);
+                w.starsRow->clearChildren();
+                for (int i = 0; i < 3; ++i) {
+                    const auto& tex = (i < savedStars) ? ResourceManager::get("icon-star-filled") : ResourceManager::get("icon-star-empty");
+                    auto starImg = std::make_unique<UI::Image>(tex, sf::Vector2f(64.f, 64.f));
+                    if (i >= savedStars) starImg->setColor(sf::Color(100, 100, 100, 100));
+                    w.starsRow->addChild(std::move(starImg));
+                }
+                w.starsRow->rebuild();
+            }
+        }
+    }
+
+    if (totalStarsTextPtr) {
+        int earnedStars = 0;
+        int totalStars = levels.size() * 3;
+        for (const auto& level : levels) {
+            earnedStars += saveManager.getStars(level.id);
+        }
+        totalStarsTextPtr->setText(std::to_string(earnedStars) + " / " + std::to_string(totalStars));
+    }
 }
 
 std::unique_ptr<UI::Container> Menu::createSubMenu(const std::string& title, UI::Container** outContent, UI::Container** outNav) {
@@ -421,8 +557,8 @@ std::unique_ptr<UI::Container> Menu::createSubMenu(const std::string& title, UI:
     root->setDirection(UI::Container::Direction::Column);
     root->setItemAlign(UI::Container::ItemAlign::Center);
     root->setContentAlign(UI::Container::ContentAlign::Center);
-    root->setBackgroundTexture(ResourceManager::get("panel"), 64.f);
-    root->setPadding({ 20.f, 5.f });
+    root->setBackgroundTexture(ResourceManager::get("panel"), 32.f);
+    root->setPadding({ 0.f, 5.f });
     root->setGap(20.f);
 
     auto header = std::make_unique<UI::Text>(font, title, 60, sf::Vector2f(winSize.x * 0.9f, 80.f));
@@ -434,7 +570,7 @@ std::unique_ptr<UI::Container> Menu::createSubMenu(const std::string& title, UI:
     content->setDirection(UI::Container::Direction::Column);
     content->setItemAlign(UI::Container::ItemAlign::Center);
     content->setContentAlign(UI::Container::ContentAlign::Center);
-    content->setBackgroundTexture(ResourceManager::get("panel-light"), 64.f);
+    content->setBackgroundTexture(ResourceManager::get("panel-light"), 32.f);
     if (outContent) *outContent = content.get();
     root->addChild(std::move(content));
 
@@ -460,8 +596,8 @@ std::unique_ptr<UI::Container> Menu::createUpgradeMenu() {
     root->setDirection(UI::Container::Direction::Column);
     root->setItemAlign(UI::Container::ItemAlign::Center);
     root->setContentAlign(UI::Container::ContentAlign::Center);
-    root->setBackgroundTexture(ResourceManager::get("panel"), 64.f);
-    root->setPadding({ 20.f, 5.f });
+    root->setBackgroundTexture(ResourceManager::get("panel"), 32.f);
+    root->setPadding({ 0.f, 5.f });
     root->setGap(10.f);
 
     auto header = std::make_unique<UI::Text>(font, "УЛУЧШЕНИЯ", 60, sf::Vector2f(winSize.x * 0.9f, 80.f));
@@ -473,15 +609,17 @@ std::unique_ptr<UI::Container> Menu::createUpgradeMenu() {
     mainBox->setDirection(UI::Container::Direction::Column);
     mainBox->setItemAlign(UI::Container::ItemAlign::Center);
     mainBox->setContentAlign(UI::Container::ContentAlign::Center);
-    mainBox->setBackgroundTexture(ResourceManager::get("panel-light"), 64.f);
+    mainBox->setBackgroundTexture(ResourceManager::get("panel-light"), 32.f);
     mainBox->setGap(10.f);
 
-    auto currency = std::make_unique<UI::Container>(sf::Vector2f(winSize.x * 0.9f, 75.f));
+    auto currency = std::make_unique<UI::Container>(sf::Vector2f(250.f, 64.f));
     currency->setDirection(UI::Container::Direction::Row);
     currency->setContentAlign(UI::Container::ContentAlign::Center);
     currency->setItemAlign(UI::Container::ItemAlign::Center);
     currency->setGap(15.f);
     currency->addChild(std::make_unique<UI::Image>(ResourceManager::get("icon-money"), sf::Vector2f(48.f, 48.f)));
+    currency->setBackgroundTexture(ResourceManager::get("panel-lighter"), 32.f);
+
     auto moneyText = std::make_unique<UI::Text>(font, std::to_string(saveManager.getMoney()), 24);
     moneyTextPtr = moneyText.get();
     currency->addChild(std::move(moneyText));
@@ -491,16 +629,17 @@ std::unique_ptr<UI::Container> Menu::createUpgradeMenu() {
     scrollArea->setDirection(UI::Container::Direction::Column);
     scrollArea->setItemAlign(UI::Container::ItemAlign::Center);
     scrollArea->setScrollEnabled(true);
-    scrollArea->setGap(30.f);
+    scrollArea->setGap(20.f);
+    scrollArea->setPadding({ 0.f, 20.f });
 
     auto sec1H = std::make_unique<UI::Text>(font, "МОДЕРНИЗАЦИЯ ТУРЕЛЕЙ", 36);
     sec1H->setColor(Colors::Theme::TextYellow);
     scrollArea->addChild(std::move(sec1H));
 
-    auto turretGrid = std::make_unique<UI::Container>(sf::Vector2f(winSize.x * 0.85f, 600.f));
+    auto turretGrid = std::make_unique<UI::Container>(sf::Vector2f(winSize.x * 0.9f, 625.f));
     turretGrid->setDirection(UI::Container::Direction::Row);
     turretGrid->setWrap(true);
-    turretGrid->setGap(15.f);
+    turretGrid->setGap(20.f);
     turretGrid->setContentAlign(UI::Container::ContentAlign::Center);
     turretGrid->setItemAlign(UI::Container::ItemAlign::Center);
 
@@ -510,13 +649,13 @@ std::unique_ptr<UI::Container> Menu::createUpgradeMenu() {
     upgradeCostPtrs.clear(); upgradeCostPtrs.resize(towerTypes.size());
     upgradeBtnPtrs.clear(); upgradeBtnPtrs.resize(towerTypes.size());
 
-    for (size_t t = 0; t < towerTypes.size(); ++t) {
-        auto towerCard = std::make_unique<UI::Container>(sf::Vector2f(450.f, 260.f));
+    for (int t = 0; t < (int)towerTypes.size(); ++t) {
+        auto towerCard = std::make_unique<UI::Container>(sf::Vector2f(475.f, 300.f));
         towerCard->setDirection(UI::Container::Direction::Column);
         towerCard->setItemAlign(UI::Container::ItemAlign::Center);
         towerCard->setPadding({ 10.f, 8.f });
-        towerCard->setGap(5.f);
-        towerCard->setBackgroundTexture(ResourceManager::get("card"), 12.f);
+        towerCard->setGap(2.5f);
+        towerCard->setBackgroundTexture(ResourceManager::get("card"), 16.f);
         
         std::string upperName = towerTypes[t];
         std::transform(upperName.begin(), upperName.end(), upperName.begin(), ::toupper);
@@ -525,29 +664,28 @@ std::unique_ptr<UI::Container> Menu::createUpgradeMenu() {
         towerCard->addChild(std::move(tName));
 
         for (size_t s = 0; s < statNames.size(); ++s) {
-            auto statRow = std::make_unique<UI::Container>(sf::Vector2f(400.f, 36.f));
+            auto statRow = std::make_unique<UI::Container>(sf::Vector2f(400.f, 48.f));
             statRow->setDirection(UI::Container::Direction::Row);
             statRow->setContentAlign(UI::Container::ContentAlign::Center);
             statRow->setItemAlign(UI::Container::ItemAlign::Center);
-            statRow->setGap(5.f);
             
-            auto sName = std::make_unique<UI::Text>(font, statNames[s], 18, sf::Vector2f(170.f, 32.f));
+            auto sName = std::make_unique<UI::Text>(font, statNames[s], 20, sf::Vector2f(170.f, 32.f));
             sName->setAlignment(UI::Text::Align::Left);
             statRow->addChild(std::move(sName));
 
-            auto sVal = std::make_unique<UI::Text>(font, "0", 18, sf::Vector2f(70.f, 32.f));
+            auto sVal = std::make_unique<UI::Text>(font, "0", 20, sf::Vector2f(70.f, 32.f));
             sVal->setAlignment(UI::Text::Align::Left);
             upgradeValuePtrs[t].push_back(sVal.get());
             statRow->addChild(std::move(sVal));
 
-            auto sCost = std::make_unique<UI::Text>(font, "0", 18, sf::Vector2f(80.f, 32.f));
+            auto sCost = std::make_unique<UI::Text>(font, "0", 20, sf::Vector2f(80.f, 32.f));
             sCost->setAlignment(UI::Text::Align::Left);
             upgradeCostPtrs[t].push_back(sCost.get());
             statRow->addChild(std::move(sCost));
 
-            auto uBtn = std::make_unique<UI::Button>(ResourceManager::get("icon-upgrade2"), sf::Vector2f(50.f, 32.f));
+            auto uBtn = std::make_unique<UI::Button>(ResourceManager::get("icon-upgrade2"), sf::Vector2f(60.f, 40.f));
             uBtn->setBackgroundTextures(&ResourceManager::get("button-flat"), &ResourceManager::get("button-flat-hover"), &ResourceManager::get("button-flat"), &ResourceManager::get("button-flat-disabled"), 16.0f);
-            uBtn->setIconScale({ 32.f/96.f, 32.f/96.f });
+            uBtn->setIconScale({ 0.33333f , 0.33333f });
             auto tType = towerTypes[t];
             UpgradeManager* um = &upgradeManager;
             SaveManager* sm = &saveManager;
@@ -557,9 +695,9 @@ std::unique_ptr<UI::Container> Menu::createUpgradeMenu() {
                 int cost = um->getUpgradeCost(tType, (int)sIndex);
                 if (sm->spendMoney(cost)) {
                     if (sIndex == 0) um->upgradeRank(tType);
-                    else if (sIndex == 1) um->upgradeDamage(tType, 0.1f);
-                    else if (sIndex == 2) um->upgradeFirerate(tType, 0.1f);
-                    else if (sIndex == 3) um->upgradeRange(tType, 0.1f);
+                    else if (sIndex == 1) um->upgradeDamage(tType, 0.025f);
+                    else if (sIndex == 2) um->upgradeFirerate(tType, 0.025f);
+                    else if (sIndex == 3) um->upgradeRange(tType, 0.025f);
                     else if (sIndex == 4) um->upgradeMaxLevel(tType);
                 }
             });
@@ -575,30 +713,31 @@ std::unique_ptr<UI::Container> Menu::createUpgradeMenu() {
     sec2H->setColor(Colors::Theme::TextYellow);
     scrollArea->addChild(std::move(sec2H));
 
-    auto stratCont = std::make_unique<UI::Container>(sf::Vector2f(winSize.x * 0.85f, 250.f));
+    auto stratCont = std::make_unique<UI::Container>(sf::Vector2f(winSize.x * 0.9f, 250.f));
     stratCont->setDirection(UI::Container::Direction::Column);
+    stratCont->setItemAlign(UI::Container::ItemAlign::Center);
     stratCont->setItemAlign(UI::Container::ItemAlign::Center);
     stratCont->setGap(10.f);
 
     struct MetaUp { std::string name, icon; int costStep; };
-    std::vector<MetaUp> metaUps = { { "НАЧАЛЬНЫЙ КАПИТАЛ", "icon-coins", 500 }, { "ДОХОДНОСТЬ", "icon-chart", 750 }, { "ЖИЗНИ БАЗЫ", "icon-heart", 400 } };
+    std::vector<MetaUp> metaUps = { { "НАЧАЛЬНЫЙ КАПИТАЛ", "icon-coins", 500 }, { "ДОХОДНОСТЬ", "icon-money", 750 }, { "ЖИЗНИ БАЗЫ", "icon-heart", 400 } };
     metaValuePtrs.clear(); metaCostPtrs.clear(); metaBtnPtrs.clear();
 
     for (int i = 0; i < 3; ++i) {
-        auto row = std::make_unique<UI::Container>(sf::Vector2f(800.f, 60.f));
+        auto row = std::make_unique<UI::Container>(sf::Vector2f(920.f, 48.f));
         row->setDirection(UI::Container::Direction::Row);
         row->setContentAlign(UI::Container::ContentAlign::Center);
         row->setItemAlign(UI::Container::ItemAlign::Center);
         row->setGap(20.f);
         row->setBackgroundTexture(ResourceManager::get("card"), 8.f);
         row->addChild(std::make_unique<UI::Image>(ResourceManager::get(metaUps[i].icon), sf::Vector2f(40.f, 40.f)));
-        auto nLabel = std::make_unique<UI::Text>(font, metaUps[i].name, 22, sf::Vector2f(300.f, 40.f));
+        auto nLabel = std::make_unique<UI::Text>(font, metaUps[i].name, 20, sf::Vector2f(300.f, 40.f));
         nLabel->setAlignment(UI::Text::Align::Left);
         row->addChild(std::move(nLabel));
-        auto vText = std::make_unique<UI::Text>(font, "Ур. 0", 22, sf::Vector2f(100.f, 40.f));
+        auto vText = std::make_unique<UI::Text>(font, "Ур. 0", 20, sf::Vector2f(100.f, 40.f));
         metaValuePtrs.push_back(vText.get());
         row->addChild(std::move(vText));
-        auto cText = std::make_unique<UI::Text>(font, "500", 22, sf::Vector2f(120.f, 40.f));
+        auto cText = std::make_unique<UI::Text>(font, "500", 20, sf::Vector2f(120.f, 40.f));
         cText->setColor(Colors::Theme::TextYellow);
         metaCostPtrs.push_back(cText.get());
         row->addChild(std::move(cText));
@@ -606,12 +745,12 @@ std::unique_ptr<UI::Container> Menu::createUpgradeMenu() {
         uBtn->setBackgroundTextures(&ResourceManager::get("button-flat"), &ResourceManager::get("button-flat-hover"), &ResourceManager::get("button-flat"), &ResourceManager::get("button-flat-disabled"), 16.0f);
         uBtn->setIconScale({ 0.4f, 0.4f });
         SaveManager* sm = &saveManager;
-        uBtn->setCallback([sm, i, costStep = metaUps[i].costStep]() {
-            int curLvl = (i == 0 ? sm->getGlobalCoinsLvl() : (i == 1 ? sm->getGlobalMoneyLvl() : sm->getGlobalBaseHpLvl()));
-            int cost = (curLvl + 1) * costStep;
+        UpgradeManager* um = &upgradeManager;
+        std::string metaId = (i == 0 ? "globalCoins" : (i == 1 ? "globalMoney" : "globalBaseHp"));
+        uBtn->setCallback([um, sm, metaId]() {
+            int cost = um->getMetaUpgradeCost(metaId);
             if (sm->spendMoney(cost)) {
-                if (i == 0) sm->setGlobalCoinsLvl(curLvl + 1); else if (i == 1) sm->setGlobalMoneyLvl(curLvl + 1); else sm->setGlobalBaseHpLvl(curLvl + 1);
-                sm->save();
+                um->upgradeMeta(metaId);
             }
         });
         metaBtnPtrs.push_back(uBtn.get());
@@ -640,7 +779,7 @@ void Menu::updateCardsSelection() {
     for (size_t i = 0; i < cardsArea->getChildrenCount(); ++i) {
         auto* card = static_cast<UI::Container*>(cardsArea->getChild(i));
         if (i >= levels.size()) continue;
-        card->setBackgroundTexture(ResourceManager::get(levels[i].filePath == selectedLevel ? "card-light" : "card"), 12.f);
+        card->setBackgroundTexture(ResourceManager::get(levels[i].filePath == selectedLevel ? "card-light" : "card"), 16.f);
     }
     if (playBtnPtr) playBtnPtr->setEnabled(!selectedLevel.empty());
 }
@@ -653,7 +792,6 @@ void Menu::handleEvents() {
         if (state == MenuState::Main) current = mainContainer.get();
         else if (state == MenuState::LevelSelect) current = levelContainer.get();
         else if (state == MenuState::Settings) current = settingsContainer.get();
-        else if (state == MenuState::VfxSettings) current = vfxSettingsContainer.get();
         else if (state == MenuState::Upgrades) current = upgradesContainer.get();
         if (current) current->handleEvent(*event, window, uiView);
     }
@@ -666,7 +804,6 @@ void Menu::render() {
     if (state == MenuState::Main) current = mainContainer.get();
     else if (state == MenuState::LevelSelect) current = levelContainer.get();
     else if (state == MenuState::Settings) current = settingsContainer.get();
-    else if (state == MenuState::VfxSettings) current = vfxSettingsContainer.get();
     else if (state == MenuState::Upgrades) current = upgradesContainer.get();
     if (current) current->render(window);
     
@@ -674,39 +811,47 @@ void Menu::render() {
         moneyTextPtr->setText(std::to_string(saveManager.getMoney()));
         std::vector<std::string> tTypes = GameData::getTowerNames();
         for (size_t t = 0; t < upgradeValuePtrs.size() && t < tTypes.size(); ++t) {
-            for (size_t s = 0; s < upgradeValuePtrs[t].size(); ++s) {
-                float curVal = 0.f; int curStep = 0;
-                std::string keys[] = {"rank", "damage", "firerate", "range", "level"};
-                if (s == 0) curStep = upgradeManager.getRank(tTypes[t]);
-                else if (s == 1) curVal = upgradeManager.getDamage(tTypes[t]);
-                else if (s == 2) curVal = upgradeManager.getFirerate(tTypes[t]);
-                else if (s == 3) curVal = upgradeManager.getRange(tTypes[t]);
-                else if (s == 4) curStep = upgradeManager.getLevel(tTypes[t]);
-                
+            const auto* towerUp = upgradeManager.getUpgrade(tTypes[t]);
+            if (!towerUp) continue;
+
+            const UpgradeManager::Upgrade* stats[] = { &towerUp->rank, &towerUp->damage, &towerUp->firerate, &towerUp->range, &towerUp->level };
+            std::string keys[] = { "rank", "damage", "firerate", "range", "level" };
+
+            for (size_t s = 0; s < 5; ++s) {
+                if (s >= upgradeValuePtrs[t].size()) continue;
+
                 std::string vStr;
-                if (s == 0 || s == 4) vStr = std::to_string(curStep);
-                else if (s == 2) {
-                    vStr = std::to_string(curVal);
+                if (s == 0 || s == 4) {
+                    // Ранг и Уровень - просто число
+                    vStr = std::to_string(stats[s]->level);
+                } else {
+                    // Статы - множитель
+                    vStr = std::to_string(stats[s]->value);
                     if (vStr.find('.') != std::string::npos) vStr = vStr.substr(0, vStr.find('.') + 3);
-                } else vStr = std::to_string((int)curVal);
+                }
                 
                 upgradeValuePtrs[t][s]->setText(vStr);
                 int cost = upgradeManager.getUpgradeCost(tTypes[t], (int)s);
                 bool atLimit = upgradeManager.isStatAtLimit(tTypes[t], keys[s]);
+                
                 upgradeCostPtrs[t][s]->setText(atLimit ? "MAX" : std::to_string(cost));
                 upgradeCostPtrs[t][s]->setColor(atLimit ? sf::Color(150,150,150) : (saveManager.getMoney() >= cost ? Colors::Theme::TextGreen : Colors::Theme::TextRed));
                 upgradeBtnPtrs[t][s]->setEnabled(!atLimit);
             }
         }
-        int mLevels[] = { saveManager.getGlobalCoinsLvl(), saveManager.getGlobalMoneyLvl(), saveManager.getGlobalBaseHpLvl() };
-        int cSteps[] = { 500, 750, 400 };
+
+        const char* metaIds[] = { "globalCoins", "globalMoney", "globalBaseHp" };
         for (int i = 0; i < 3; ++i) {
-            if (i < (int)metaValuePtrs.size()) metaValuePtrs[i]->setText("Ур. " + std::to_string(mLevels[i]));
-            int cost = (mLevels[i] + 1) * cSteps[i];
-            if (i < (int)metaCostPtrs.size()) {
-                metaCostPtrs[i]->setText(std::to_string(cost));
-                metaCostPtrs[i]->setColor(saveManager.getMoney() >= cost ? Colors::Theme::TextGreen : Colors::Theme::TextRed);
-            }
+            const auto* mUp = upgradeManager.getMetaUpgrade(metaIds[i]);
+            if (!mUp || i >= (int)metaValuePtrs.size()) continue;
+
+            metaValuePtrs[i]->setText("Ур. " + std::to_string(mUp->upgrade.level));
+            int cost = upgradeManager.getMetaUpgradeCost(metaIds[i]);
+            bool atLimit = mUp->upgrade.level >= mUp->upgrade.maxLevel;
+
+            metaCostPtrs[i]->setText(atLimit ? "MAX" : std::to_string(cost));
+            metaCostPtrs[i]->setColor(atLimit ? Colors::Theme::TextDark : (saveManager.getMoney() >= cost ? Colors::Theme::TextGreen : Colors::Theme::TextRed));
+            metaBtnPtrs[i]->setEnabled(!atLimit);
         }
     }
     if (lastResult != SessionResult::None) resultOverlay->render(window);
@@ -738,7 +883,7 @@ void Menu::updateViewSizes(sf::Vector2u windowSize) {
                 if ((cont == upgradesContainer || cont == levelContainer || cont == settingsContainer) && i == 1) {
                     child->setSize(sf::Vector2f(targetWidth, contentH));
                     if (auto* asContainer = dynamic_cast<UI::Container*>(child)) {
-                        if (asContainer->getChildrenCount() >= 2 && cont == upgradesContainer) {
+                        if (asContainer->getChildrenCount() >= 2 && (cont == upgradesContainer || cont == levelContainer)) {
                             auto *cur = asContainer->getChild(0), *cards = asContainer->getChild(1);
                             if (cur) cur->setSize(sf::Vector2f(targetWidth, cur->getSize().y));
                             if (cards) cards->setSize(sf::Vector2f(targetWidth, child->getSize().y - (cur ? cur->getSize().y : 0.f) - 10.f));
@@ -750,7 +895,7 @@ void Menu::updateViewSizes(sf::Vector2u windowSize) {
             cont->setSize(rootSize); cont->setPosition(rootPos); cont->rebuild();
         }
     };
-    updateSub(levelContainer); updateSub(settingsContainer); updateSub(upgradesContainer); updateSub(vfxSettingsContainer);
+    updateSub(levelContainer); updateSub(settingsContainer); updateSub(upgradesContainer);
     if (resultOverlay) { resultOverlay->setSize(rootSize); resultOverlay->setPosition(rootPos); resultOverlay->rebuild(); }
 }
 
@@ -822,15 +967,16 @@ std::string Menu::readLevelName(const std::string& path) const {
     return name.empty() ? "Безымянный" : name;
 }
 
+void Menu::cleanup() {
+    mainContainer.reset(); levelContainer.reset(); settingsContainer.reset(); upgradesContainer.reset(); resultOverlay.reset();
+    upgradeValuePtrs.clear(); upgradeCostPtrs.clear(); upgradeBtnPtrs.clear(); moneyTextPtr = nullptr;
+}
+
 bool Menu::isLevelChosen() const { return levelChosen; }
 std::string Menu::getChosenLevel() const { return selectedLevel; }
 void Menu::resetChoice() { levelChosen = false; selectedLevel = ""; updateCardsSelection(); }
 void Menu::resetLastResult() { lastResult = SessionResult::None; }
 bool Menu::consumesWindowRecreationRequest() { bool req = windowRecreationRequired; windowRecreationRequired = false; return req; }
 void Menu::notifyResult(SessionResult result, const std::string& levelPath) { lastResult = result; lastLevelPath = levelPath; }
-void Menu::cleanup() {
-    mainContainer.reset(); levelContainer.reset(); settingsContainer.reset(); upgradesContainer.reset(); resultOverlay.reset();
-    upgradeValuePtrs.clear(); upgradeCostPtrs.clear(); upgradeBtnPtrs.clear(); moneyTextPtr = nullptr;
-}
 int Menu::getMoney() const { return saveManager.getMoney(); }
 UpgradeManager& Menu::getUpgradeManager() { return upgradeManager; }

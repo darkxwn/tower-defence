@@ -27,17 +27,14 @@
 enum class GameState {
     Playing,
     Paused,
-    GameOver,
-    Victory
+    Result
 };
 
 // Причина завершения сессии
 enum class GameEndReason {
     None,
     ReturnToMenu,
-    Restart,
-    Win,
-    Lose
+    Restart
 };
 
 class Game {
@@ -110,6 +107,9 @@ private:
 
     // Инициализация интерфейса оверлеев
     void initOverlays();
+
+    // Переход к экрану результатов (с сохранением прогресса)
+    void showResult();
 
 public:
     // Конструктор загружает уровень и инициализирует игру

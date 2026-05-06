@@ -155,7 +155,16 @@ void HUD::render(sf::RenderWindow& window, int money, int lives, int wave, WaveS
     trapezoid.setFillColor(Colors::Theme::BackgroundDark);
     window.draw(trapezoid);
 
-    std::string waveStr = "ВОЛНА " + std::to_string(wave + 1);
+    std::string waveStr;
+    if (state == WaveState::Idle || state == WaveState::Waiting) {
+        // Мы ждем старта. Следующая волна будет wave + 1.
+        waveStr = "ВОЛНА " + std::to_string(wave + 1);
+    } else {
+        // Мы в бою. Текущая волна уже увеличена, поэтому просто wave.
+        // Защита от нулевой волны (на всякий случай)
+        waveStr = "ВОЛНА " + std::to_string(wave > 0 ? wave : 1);
+    }
+
     sf::Text waveText(*mainFont, sf::String::fromUtf8(waveStr.begin(), waveStr.end()), static_cast<unsigned int>(28 * s));
     sf::FloatRect wtB = waveText.getLocalBounds();
     waveText.setOrigin({ wtB.position.x + wtB.size.x / 2.f, 0.f });
@@ -174,12 +183,6 @@ void HUD::render(sf::RenderWindow& window, int money, int lives, int wave, WaveS
     // (отнимаем половину ширины бокса от центра экрана)
     scoreText.setPosition({ cx - scoreBoxWidth / 2.f, waveText.getPosition().y + 30.f * s });
     scoreText.render(window);
-
-    // Очки
-    //scoreText.setText("Очки: " + std::to_string(currentScore));
-    //scoreText.setFontSize(static_cast<unsigned int>(20 * s));
-    //scoreText.setPosition({ cx, waveText.getPosition().y + 35.f * s });
-    //scoreText.render(window);
 
     if (state == WaveState::Waiting || state == WaveState::Idle) {
         skipBtn.setSize({ 48.f * s, 48.f * s });
@@ -224,10 +227,9 @@ void HUD::render(sf::RenderWindow& window, int money, int lives, int wave, WaveS
     for (int i = 0; i < (int)towerSlots.size(); i++) {
         // Подсветка выбранного слота (скругленная, по форме карточки)
         if (i == selectedTowerSlot) {
-            sf::Sprite highlight(ResourceManager::get("card-light"));
+            sf::Sprite highlight(ResourceManager::get("card-select"));
             sf::Vector2f btnSize = towerSlots[i].getSize();
             highlight.setScale({ (btnSize.x + 8.f * s) / 128.f, (btnSize.y + 8.f * s) / 128.f });
-            highlight.setColor(sf::Color(255, 255, 0, 180)); // Желтое свечение
             highlight.setPosition(towerSlots[i].getPosition() - sf::Vector2f(4.f * s, 4.f * s));
             window.draw(highlight);
         }

@@ -23,38 +23,31 @@ public:
     static int moneyMin;
     static int moneyMax;
 
+    struct Upgrade {
+        unsigned int level = 0;
+        unsigned int maxLevel = 0;
+        float value = 0;
+        float baseValue = 0;
+        int cost = 0;
+    };
+
     struct TowerUpgrade {
         std::string towerType;
-        
-        // Базовые статы из конфига
-        float baseDamage = 35.f;
-        float baseFirerate = 1.0f;
-        float baseRange = 192.f;
+        Upgrade level;
+        Upgrade rank;
+        Upgrade damage;
+        Upgrade firerate;
+        Upgrade range;
+    };
 
-        // Глобальный прогресс
-        int rank = 0;
-        int level = 0; // Максимально доступный уровень в игре
-
-        // Уровни прокачки конкретных характеристик (шаги)
-        int damageLvl = 0;
-        int firerateLvl = 0;
-        int rangeLvl = 0;
-
-        // Итоговые множители (от глобальной прокачки)
-        float damageMultiplier = 1.0f;
-        float firerateMultiplier = 1.0f;
-        float rangeMultiplier = 1.0f;
-
-        // Цены (базовые)
-        int costRank = 200;
-        int costDamage = 50;
-        int costFirerate = 80;
-        int costRange = 100;
-        int costLevel = 250;
+    struct MetaUpgrade {
+        std::string id;
+        Upgrade upgrade;
     };
 
 private:
     std::vector<TowerUpgrade> upgrades;
+    std::vector<MetaUpgrade> metaUpgrades;
     std::function<void()> onUpgradeChanged;
 
 public:
@@ -64,7 +57,11 @@ public:
     const std::vector<TowerUpgrade>& getAllUpgrades() const;
     void setAllUpgrades(const std::vector<TowerUpgrade>& data);
 
+    const std::vector<MetaUpgrade>& getAllMetaUpgrades() const;
+    void setAllMetaUpgrades(const std::vector<MetaUpgrade>& data);
+
     const TowerUpgrade* getUpgrade(const std::string& towerType) const;
+    const MetaUpgrade* getMetaUpgrade(const std::string& id) const;
 
     // Геттеры статов
     float getDamage(const std::string& towerType) const;
@@ -90,11 +87,18 @@ public:
     void upgradeRange(const std::string& towerType, float increment);
     void upgradeRank(const std::string& towerType);
     void upgradeMaxLevel(const std::string& towerType);
+
+    void upgradeMeta(const std::string& id);
+    int getMetaUpgradeCost(const std::string& id) const;
+
+    // Получение глобальных бонусов
+    float getGlobalMoneyMultiplier() const;
+    unsigned int getGlobalCoinsBonus() const;
+    unsigned int getGlobalBaseHpBonus() const;
 };
 
 // Сериализация
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(UpgradeManager::TowerUpgrade,
-    towerType, baseDamage, baseFirerate, baseRange, rank, level,
-    damageLvl, firerateLvl, rangeLvl,
-    damageMultiplier, firerateMultiplier, rangeMultiplier,
-    costRank, costDamage, costFirerate, costRange, costLevel)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(UpgradeManager::Upgrade, level, maxLevel, value, baseValue, cost)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(UpgradeManager::TowerUpgrade, towerType, level, rank, damage, firerate, range)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(UpgradeManager::MetaUpgrade, id, upgrade)
+
