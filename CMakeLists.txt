@@ -123,8 +123,8 @@ if(APPLE)
 
     set_target_properties(${PROJECT_NAME} PROPERTIES
         MACOSX_BUNDLE TRUE
-        MACOSX_BUNDLE_BUNDLE_NAME "Tower Defence"
-        MACOSX_BUNDLE_GUI_IDENTIFIER "com.darkxwn.tower-defence"
+        MACOSX_BUNDLE_BUNDLE_NAME "Project: Gyurza"
+        MACOSX_BUNDLE_GUI_IDENTIFIER "com.darkxwn.billvlad.project-gyurza"
         MACOSX_BUNDLE_BUNDLE_VERSION "0.0.1"
         MACOSX_BUNDLE_SHORT_VERSION_STRING "0.1"
         MACOSX_BUNDLE_ICON_FILE "game_macos.icns"

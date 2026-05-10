@@ -49,7 +49,6 @@ android {
             storePassword = getSignProperty("releaseStorePassword", "release.keystore.password")
             keyAlias = getSignProperty("releaseKeyAlias", "release.key.alias")
             keyPassword = getSignProperty("releaseKeyPassword", "release.key.password")            
-            println("DEBUG: Password length is ${storePassword?.length}")
 
             enableV1Signing = true
             enableV2Signing = true

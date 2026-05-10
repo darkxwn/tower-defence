@@ -48,3 +48,4 @@ GEMINI.md
 .todo
 /cmake-build-debug-visual-studio/
 /android/app/.cxx/RelWithDebInfo/
+out.md
