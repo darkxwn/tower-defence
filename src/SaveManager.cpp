@@ -83,16 +83,22 @@ void SaveManager::load() {
 void SaveManager::save() {
     try {
         json j;
-        // Пишем в camelCase согласно PLAN.md
         j["money"] = money;
         j["levels"] = levels;
         j["towers"] = towerDataBlob;
         if constexpr (ENABLE_ANTI_TAMPER) {
-            // Anti-Tamper Hash
             std::string dataDump = j.dump();
             size_t hashChecksum = std::hash<std::string>{}(dataDump + "GyurzaSecretSalt");
             j["hashChecksum"] = hashChecksum;
         }
+
+        #ifndef __ANDROID__
+        if(!std::filesystem::exists(savePath)) {
+            if(std::filesystem::create_directory(savePath.substr(0, 9))) {
+                Logger::info("Папка создана! Путь: {}", savePath.substr(0, 9));
+            }
+        }
+        #endif
 
         std::ofstream file(savePath);
         if (file.is_open()) {

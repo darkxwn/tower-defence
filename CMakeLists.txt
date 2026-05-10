@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.15...3.30)
 
-set(GAME_VERSION_FULL "0.7.2b")
+set(GAME_VERSION_FULL "0.7.3b")
 
 project(tower-defence 
     VERSION 0.6.2
