@@ -1,4 +1,5 @@
 #include "SaveManager.hpp"
+#include <utils/PathResolver.hpp>
 #include "utils/Logger.hpp"
 #include <fstream>
 #include <iostream>
@@ -22,7 +23,7 @@ std::string SaveManager::getSavePath() {
     ANativeActivity* activity = sf::getNativeActivity();
     return std::string(activity->internalDataPath) + "/progress.json";
 #else
-    return "data/save/progress.json";
+    return PathResolver::getWriteablePath("progress.json").string();
 #endif
 }
 

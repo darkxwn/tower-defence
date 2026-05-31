@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Tower Defence
+Comment=Tower Defence Game
+Exec=tower-defence
+Icon=tower-defence
+Terminal=false
+Categories=Game;StrategyGame;

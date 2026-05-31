@@ -1,5 +1,6 @@
 #include "GameData.hpp"
 #include "utils/FileReader.hpp"
+#include "utils/PathResolver.hpp"
 #include <algorithm>
 #include <fstream>
 #include <sstream>
@@ -22,8 +23,9 @@ void GameData::load() {
     std::string enemyPath = "config/enemies.cfg";
     std::string towerPath = "config/towers.cfg";
 #else
-    std::string enemyPath = "data/config/enemies.cfg";
-    std::string towerPath = "data/config/towers.cfg";
+    auto dataPath = PathResolver::getResourcesPath("data");
+    std::string enemyPath = dataPath / "config/enemies.cfg";
+    std::string towerPath = dataPath / "config/towers.cfg";
 #endif
 
     // загрузка врагов

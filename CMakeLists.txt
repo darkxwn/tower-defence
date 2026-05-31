@@ -1,11 +1,20 @@
 cmake_minimum_required(VERSION 3.15...3.30)
 
-set(GAME_VERSION_FULL "0.7.3b")
+set(GAME_VERSION_FULL "0.7.4b")
 
 project(tower-defence 
     VERSION 0.6.2
     LANGUAGES CXX
 )
+
+# Для использования системных библиотек в Linux'ах
+if(UNIX AND NOT APPLE AND NOT ANDROID)
+    set(USE_SYSTEM_DEPS_DEFAULT ON)
+else()
+    set(USE_SYSTEM_DEPS_DEFAULT OFF)
+endif()
+
+option(USE_SYSTEM_DEPS "Using system libs (SFML, JSON)" ${USE_SYSTEM_DEPS_DEFAULT})
 
 configure_file(
     "${CMAKE_CURRENT_SOURCE_DIR}/includes/Version.hpp.in"
@@ -35,36 +44,42 @@ endif()
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Настройки сборки SFML (важно: до FetchContent)
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 if(ANDROID)
-    set(BUILD_SHARED_LIBS ON CACHE BOOL "" FORCE) # На Android либы должны быть Shared
+    set(BUILD_SHARED_LIBS ON CACHE BOOL "" FORCE)
 endif()
 
-include(FetchContent)
+if(USE_SYSTEM_DEPS)
+    message(STATUS "Using system libs...")
+    find_package(SFML 3.0 COMPONENTS Graphics Window System REQUIRED)
+    find_package(nlohmann_json 3.12 REQUIRED)
+else()
+    message(STATUS "Depends downloads through FetchContent...")
+    include(FetchContent)
 
-# JSON
-FetchContent_Declare(json
-    GIT_REPOSITORY https://github.com/nlohmann/json
-    GIT_SHALLOW ON
-    GIT_TAG v3.12.0
-)
+    # JSON
+    FetchContent_Declare(json
+        GIT_REPOSITORY https://github.com/nlohmann/json
+        GIT_SHALLOW ON
+        GIT_TAG v3.12.0
+    )
 
-# SFML - ИСПРАВЛЕНО: имя в нижнем регистре для Linux
-FetchContent_Declare(sfml
-    GIT_REPOSITORY https://github.com/SFML/SFML.git
-    GIT_TAG 3.0.2
-    GIT_SHALLOW ON
-    SYSTEM
-)
+    # SFML 3
+    FetchContent_Declare(sfml
+        GIT_REPOSITORY https://github.com/SFML/SFML.git
+        GIT_TAG 3.0.2
+        GIT_SHALLOW ON
+        SYSTEM
+    )
 
-set(SFML_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-set(SFML_BUILD_TEST_SUITE OFF CACHE BOOL "" FORCE)
-set(SFML_INSTALL_PKGCONFIG_FILES OFF CACHE BOOL "" FORCE)
-set(SFML_BUILD_DOC OFF CACHE BOOL "" FORCE)
+    set(SFML_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+    set(SFML_BUILD_TEST_SUITE OFF CACHE BOOL "" FORCE)
+    set(SFML_INSTALL_PKGCONFIG_FILES OFF CACHE BOOL "" FORCE)
+    set(SFML_BUILD_DOC OFF CACHE BOOL "" FORCE)
 
-# ИСПРАВЛЕНО: соответствие имен
-FetchContent_MakeAvailable(sfml json)
+    # ИСПРАВЛЕНО: соответствие имен
+    FetchContent_MakeAvailable(sfml json)
+endif()
 
 # СПИСОК ИСХОДНЫХ ФАЙЛОВ
 set(SOURCES
@@ -86,6 +101,7 @@ set(SOURCES
     src/VFXManager.cpp
     src/utils/FileReader.cpp
     src/utils/Logger.cpp
+    src/utils/PathResolver.cpp
     src/ui/Text.cpp
     src/ui/Button.cpp
     src/ui/NineSlice.cpp
@@ -99,11 +115,12 @@ set(SOURCES
 # Ресурсы для Windows и macOS
 set(WIN_RESOURCES "")
 if(WIN32)
+    enable_language(RC)
     # Если у тебя есть файл .rc для иконки Windows, добавь его сюда
-    # set(WIN_RESOURCES "src/resource.rc")
+    set(WIN_RESOURCES "src/resource.rc")
 endif()
 
-set(MACOS_ICON "${CMAKE_CURRENT_SOURCE_DIR}/game_macos.icns")
+set(MACOS_ICON "${CMAKE_CURRENT_SOURCE_DIR}/macos/game_macos.icns")
 
 # СОЗДАНИЕ ЦЕЛИ
 if(ANDROID)
@@ -142,14 +159,13 @@ target_include_directories(${PROJECT_NAME} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/
 
 # ЛИНКОВКА - ИСПРАВЛЕНО: использование правильных имен таргетов
 target_link_libraries(${PROJECT_NAME} PRIVATE
-    sfml-graphics
-    sfml-window
-    sfml-system
+    SFML::Graphics
+    SFML::Window
+    SFML::System
     nlohmann_json::nlohmann_json
 )
 
 # Дополнительные либы по платформам
-
 if(ANDROID)
     target_link_libraries(${PROJECT_NAME} PRIVATE
         "-Wl,--whole-archive" sfml-main "-Wl,--no-whole-archive"
@@ -179,4 +195,17 @@ elseif(NOT ANDROID) # На Android Gradle сам забирает ассеты �
         COMMAND ${CMAKE_COMMAND} -E copy_directory
         "${CMAKE_CURRENT_SOURCE_DIR}/data" "$<TARGET_FILE_DIR:${PROJECT_NAME}>/data"
     )
+endif()
+
+# Установка через cmake --install
+if(UNIX AND NOT APPLE AND NOT ANDROID)
+    install(TARGETS ${PROJECT_NAME} DESTINATION bin)
+
+    # Установка папок с ассетами в /usr/share/tower-defence/
+    install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/assets" DESTINATION "share/${PROJECT_NAME}")
+    install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/data"   DESTINATION "share/${PROJECT_NAME}")
+
+    # Установка иконки и ярлыка
+    install(FILES "assets/icons/game_icon.png" DESTINATION "share/icons/hicolor/512x512/apps" RENAME "tower-defence.png")
+    install(FILES "tower-defence.desktop" DESTINATION "share/applications")
 endif()

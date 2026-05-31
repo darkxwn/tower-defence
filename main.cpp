@@ -6,14 +6,10 @@
 #include "ResourceManager.hpp"
 #include "SettingsManager.hpp"
 #include "SaveManager.hpp"
+#include "utils/PathResolver.hpp"
 #include <string>
 #include <vector>
-
-///////////////////////////////////////////////////////////////////////////
-//
-// ТОЧКА ВХОДА
-//
-///////////////////////////////////////////////////////////////////////////
+#include <filesystem>
 
 using namespace Engine;
 
@@ -40,101 +36,98 @@ static void setImmersiveMode(sf::RenderWindow& window) {
 }
 #endif
 
-#ifdef __APPLE__
-#include <CoreFoundation/CoreFoundation.h>
-#include <unistd.h>
-#endif
-
 static void loadResources() {
-    std::string assetsPath = "assets/";
-#ifdef __APPLE__
-    CFBundleRef mainBundle = CFBundleGetMainBundle();
-    CFURLRef resourcesURL = CFBundleCopyResourcesDirectoryURL(mainBundle);
-    char path[1024];
-    if (CFURLGetFileSystemRepresentation(resourcesURL, TRUE, (UInt8*)path, 1024)) chdir(path);
-    CFRelease(resourcesURL);
-#endif
-#ifdef __ANDROID__
-    assetsPath = "";
-#endif
+    // Получаем платформонезависимый путь к папке assets
+    std::filesystem::path assetsPath = PathResolver::getResourcesPath("assets");
 
+    // Вспомогательная лямбда, чтобы не переписывать строки загрузки вручную
+    auto resolve = [&](const std::string& relativePath) -> std::string {
+#ifdef __ANDROID__
+        // На Android SFML 3 читает ресурсы через AssetManager по относительному пути "assets/..."
+        return "assets/" + relativePath;
+#else
+        return (assetsPath / relativePath).string();
+#endif
+    };
+
+    // ВНИМАНИЕ: Если GameData::load() внутри себя читает файлы (например, из папки "data"),
+    // ему тоже нужно передать правильный путь через PathResolver::getResourcesPath("data")!
     GameData::load();
 
     // ШРИФТ
-    ResourceManager::loadFont("main", assetsPath + "fonts/web_ibm_mda.ttf");
+    ResourceManager::loadFont("main", resolve("fonts/web_ibm_mda.ttf"));
 
     // ИКОНКИ
-    ResourceManager::load("icon-coins", assetsPath + "icons/coins.png");
-    ResourceManager::load("icon-heart", assetsPath + "icons/heart.png");
-    ResourceManager::load("icon-speed1", assetsPath + "icons/icon-speed1.png");
-    ResourceManager::load("icon-speed2", assetsPath + "icons/icon-speed2.png");
-    ResourceManager::load("icon-speed3", assetsPath + "icons/icon-speed3.png");
-    ResourceManager::load("icon-start", assetsPath + "icons/start.png");
-    ResourceManager::load("icon-pause", assetsPath + "icons/pause.png");
-    ResourceManager::load("icon-play", assetsPath + "icons/play.png");
-    ResourceManager::load("icon-upgrades", assetsPath + "icons/upgrades.png");
-    ResourceManager::load("icon-settings", assetsPath + "icons/settings.png");
-    ResourceManager::load("icon-exit", assetsPath + "icons/exit.png");
-    ResourceManager::load("icon-save", assetsPath + "icons/save.png");
-    ResourceManager::load("icon-back", assetsPath + "icons/back.png");
-    ResourceManager::load("icon-audio", assetsPath + "icons/audio.png");
-    ResourceManager::load("icon-music", assetsPath + "icons/music.png");
-    ResourceManager::load("icon-level", assetsPath + "icons/level.png");
-    ResourceManager::load("icon-chart", assetsPath + "icons/chart.png");
-    ResourceManager::load("icon-sell", assetsPath + "icons/sell.png");
-    ResourceManager::load("icon-upgrade", assetsPath + "icons/upgrade.png");
-    ResourceManager::load("icon-upgrade2", assetsPath + "icons/upgrade2.png");
-    ResourceManager::load("icon-money", assetsPath + "icons/money.png");
-    ResourceManager::load("icon-star-empty", assetsPath + "icons/star-empty.png");
-    ResourceManager::load("icon-star-filled", assetsPath + "icons/star-filled.png");
-    ResourceManager::load("icon-hit", assetsPath + "icons/hit.png");
-    ResourceManager::load("icon-brush", assetsPath + "icons/brush.png");
-    ResourceManager::load("icon-brush-active", assetsPath + "icons/brush-active.png");
-    ResourceManager::load("icon-explosion", assetsPath + "icons/explosion.png");
-    ResourceManager::load("icon-animation", assetsPath + "icons/animation.png");
-    ResourceManager::load("icon-trail", assetsPath + "icons/trail.png");
-
+    ResourceManager::load("icon-coins", resolve("icons/coins.png"));
+    ResourceManager::load("icon-heart", resolve("icons/heart.png"));
+    ResourceManager::load("icon-speed1", resolve("icons/icon-speed1.png"));
+    ResourceManager::load("icon-speed2", resolve("icons/icon-speed2.png"));
+    ResourceManager::load("icon-speed3", resolve("icons/icon-speed3.png"));
+    ResourceManager::load("icon-start", resolve("icons/start.png"));
+    ResourceManager::load("icon-pause", resolve("icons/pause.png"));
+    ResourceManager::load("icon-play", resolve("icons/play.png"));
+    ResourceManager::load("icon-upgrades", resolve("icons/upgrades.png"));
+    ResourceManager::load("icon-settings", resolve("icons/settings.png"));
+    ResourceManager::load("icon-exit", resolve("icons/exit.png"));
+    ResourceManager::load("icon-save", resolve("icons/save.png"));
+    ResourceManager::load("icon-back", resolve("icons/back.png"));
+    ResourceManager::load("icon-audio", resolve("icons/audio.png"));
+    ResourceManager::load("icon-music", resolve("icons/music.png"));
+    ResourceManager::load("icon-level", resolve("icons/level.png"));
+    ResourceManager::load("icon-chart", resolve("icons/chart.png"));
+    ResourceManager::load("icon-sell", resolve("icons/sell.png"));
+    ResourceManager::load("icon-upgrade", resolve("icons/upgrade.png"));
+    ResourceManager::load("icon-upgrade2", resolve("icons/upgrade2.png"));
+    ResourceManager::load("icon-money", resolve("icons/money.png"));
+    ResourceManager::load("icon-star-empty", resolve("icons/star-empty.png"));
+    ResourceManager::load("icon-star-filled", resolve("icons/star-filled.png"));
+    ResourceManager::load("icon-hit", resolve("icons/hit.png"));
+    ResourceManager::load("icon-brush", resolve("icons/brush.png"));
+    ResourceManager::load("icon-brush-active", resolve("icons/brush-active.png"));
+    ResourceManager::load("icon-explosion", resolve("icons/explosion.png"));
+    ResourceManager::load("icon-animation", resolve("icons/animation.png"));
+    ResourceManager::load("icon-trail", resolve("icons/trail.png"));
 
     // СПРАЙТЫ ИНТЕРФЕЙСА
-    ResourceManager::load("button", assetsPath + "sprites/button.png", false);
-    ResourceManager::load("button-hover", assetsPath + "sprites/button-hover.png", false);
-    ResourceManager::load("button-active", assetsPath + "sprites/button-active.png", false);
-    ResourceManager::load("button-disabled", assetsPath + "sprites/button-disabled.png", false);
-    ResourceManager::load("button-flat", assetsPath + "sprites/button-flat.png", false);
-    ResourceManager::load("button-flat-hover", assetsPath + "sprites/button-flat-hover.png", false);
-    ResourceManager::load("button-flat-disabled", assetsPath + "sprites/button-flat-disabled.png", false);
-    ResourceManager::load("panel", assetsPath + "sprites/panel.png", false);
-    ResourceManager::load("panel-light", assetsPath + "sprites/panel-light.png", false);
-    ResourceManager::load("panel-lighter", assetsPath + "sprites/panel-lighter.png");
-    ResourceManager::load("main-layer", assetsPath + "sprites/main-layer.png", false);
-    ResourceManager::load("card", assetsPath + "sprites/card.png", false);
-    ResourceManager::load("card-light", assetsPath + "sprites/card-light.png", false);
-    ResourceManager::load("card-dark", assetsPath + "sprites/card-dark.png", false);
-    ResourceManager::load("card-select", assetsPath + "sprites/card-select.png", false);
+    ResourceManager::load("button", resolve("sprites/button.png"), false);
+    ResourceManager::load("button-hover", resolve("sprites/button-hover.png"), false);
+    ResourceManager::load("button-active", resolve("sprites/button-active.png"), false);
+    ResourceManager::load("button-disabled", resolve("sprites/button-disabled.png"), false);
+    ResourceManager::load("button-flat", resolve("sprites/button-flat.png"), false);
+    ResourceManager::load("button-flat-hover", resolve("sprites/button-flat-hover.png"), false);
+    ResourceManager::load("button-flat-disabled", resolve("sprites/button-flat-disabled.png"), false);
+    ResourceManager::load("panel", resolve("sprites/panel.png"), false);
+    ResourceManager::load("panel-light", resolve("sprites/panel-light.png"), false);
+    ResourceManager::load("panel-lighter", resolve("sprites/panel-lighter.png"));
+    ResourceManager::load("main-layer", resolve("sprites/main-layer.png"), false);
+    ResourceManager::load("card", resolve("sprites/card.png"), false);
+    ResourceManager::load("card-light", resolve("sprites/card-light.png"), false);
+    ResourceManager::load("card-dark", resolve("sprites/card-dark.png"), false);
+    ResourceManager::load("card-select", resolve("sprites/card-select.png"), false);
 
 #ifdef __ANDROID__
-    ResourceManager::load("icon-sensivity", assetsPath + "icons/sensivity-mobile.png");
-    ResourceManager::load("icon-display", assetsPath + "icons/display-mobile.png");
+    ResourceManager::load("icon-sensivity", resolve("icons/sensivity-mobile.png"));
+    ResourceManager::load("icon-display", resolve("icons/display-mobile.png"));
 #else
-    ResourceManager::load("icon-sensivity", assetsPath + "icons/sensivity-desktop.png");
-    ResourceManager::load("icon-display", assetsPath + "icons/display-desktop.png");
-    ResourceManager::load("icon-vsync", assetsPath + "icons/vsync.png");
-    ResourceManager::load("icon-fullscreen", assetsPath + "icons/fullscreen.png");
+    ResourceManager::load("icon-sensivity", resolve("icons/sensivity-desktop.png"));
+    ResourceManager::load("icon-display", resolve("icons/display-desktop.png"));
+    ResourceManager::load("icon-vsync", resolve("icons/vsync.png"));
+    ResourceManager::load("icon-fullscreen", resolve("icons/fullscreen.png"));
 #endif
-    ResourceManager::load("icon-effect", assetsPath + "icons/effect.png");
+    ResourceManager::load("icon-effect", resolve("icons/effect.png"));
 
     // ТАЙЛЫ
-    ResourceManager::load("road", assetsPath + "sprites/tile-road.png");
-    ResourceManager::load("platform", assetsPath + "sprites/tile-platform.png");
-    ResourceManager::load("active", assetsPath + "sprites/tile-active-layer.png");
-    ResourceManager::load("portal", assetsPath + "sprites/tile-portal.png");
-    ResourceManager::load("portal-layer1", assetsPath + "sprites/tile-portal-layer1.png");
-    ResourceManager::load("portal-layer2", assetsPath + "sprites/tile-portal-layer2.png");
-    ResourceManager::load("base", assetsPath + "sprites/tile-base.png");
+    ResourceManager::load("road", resolve("sprites/tile-road.png"));
+    ResourceManager::load("platform", resolve("sprites/tile-platform.png"));
+    ResourceManager::load("active", resolve("sprites/tile-active-layer.png"));
+    ResourceManager::load("portal", resolve("sprites/tile-portal.png"));
+    ResourceManager::load("portal-layer1", resolve("sprites/tile-portal-layer1.png"));
+    ResourceManager::load("portal-layer2", resolve("sprites/tile-portal-layer2.png"));
+    ResourceManager::load("base", resolve("sprites/tile-base.png"));
 
     // ВРАГИ 
     for (const auto& type : GameData::getEnemyTypes()) {
-        ResourceManager::load("enemy-" + type, assetsPath + "sprites/enemy-" + type + ".png");
+        ResourceManager::load("enemy-" + type, resolve("sprites/enemy-" + type + ".png"));
     }
 
     // БАШНИ
@@ -143,17 +136,24 @@ static void loadResources() {
     for (const auto& name : towerNames) {
         for (const auto& part : parts) {
             std::string resId = "tower-" + name + "-" + part;
-            ResourceManager::load(resId, assetsPath + "sprites/" + resId + ".png");
+            ResourceManager::load(resId, resolve("sprites/" + resId + ".png"));
         }
     }
 }
 
 int main() {
-    Engine::Logger::init("logs/latest.log");
+    // Пишем логи в безопасную пользовательскую директорию
+    std::string logPath = PathResolver::getWriteablePath("logs/latest.log").string();
+    Engine::Logger::init(logPath);
+
     SettingsManager settings;
     SaveManager saveManager;
     Engine::VFXManager vfxManager;
 
+    // ВАЖНО: Если твои менеджеры сохранений/настроек поддерживают передачу пути,
+    // передай им пути из PathResolver, например:
+    // settings.load(PathResolver::getWriteablePath("settings.json").string());
+    // saveManager.load(PathResolver::getWriteablePath("save.json").string());
     settings.load();
     saveManager.load();
     
@@ -189,7 +189,6 @@ int main() {
                 bool fs = settings.get<bool>("fullscreen", false);
                 isFullscreen = fs;
 
-                // При полноэкранном режиме используем текущее разрешение экрана
                 sf::VideoMode videoMode; 
                 if (fs) {
                     videoMode = sf::VideoMode::getDesktopMode();
@@ -212,6 +211,11 @@ int main() {
         if (!window.isOpen()) { menu.reset(); return 0; }
 
         std::string levelPath = menu->getChosenLevel();
+        
+#ifndef __ANDROID__
+        levelPath = (PathResolver::getResourcesPath("data") / "levels" / std::filesystem::path(levelPath).filename()).string();
+#endif
+
         menu->resetChoice();
         menu->resetLastResult();
         
@@ -221,7 +225,7 @@ int main() {
             game.run();
 
             GameEndReason reason = game.getEndReason();
-            game.cleanup(); // Очищаем контейнеры перед уничтожением объекта
+            game.cleanup();
 
             if (reason == GameEndReason::ReturnToMenu) {
                 keepPlaying = false;
@@ -232,7 +236,6 @@ int main() {
             }
         }
         
-        // Обновляем карточки уровней после выхода из игры
         if (window.isOpen()) {
             if (!isFullscreen) windowedSize = window.getSize();
             menu->refreshLevelCards();

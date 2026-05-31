@@ -9,6 +9,7 @@
 .idea/
 android/.gradle
 android/local.properties
+android/app/.cxx
 
 # Папки отладки и профилирования
 *.aps

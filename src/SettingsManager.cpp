@@ -2,6 +2,7 @@
 #include <fstream>
 #include <sstream>
 #include <iostream>
+#include <utils/PathResolver.hpp>
 #include <utils/Logger.hpp>
 
 #ifdef ANDROID
@@ -26,7 +27,7 @@ std::string SettingsManager::getSavePath() {
     return std::string(activity->internalDataPath) + "/settings.cfg";
 #else
     // папка с игрой для ПК
-    return "data/config/settings.cfg";
+    return PathResolver::getWriteablePath("settings.cfg").string();
 #endif
 }
 

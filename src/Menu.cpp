@@ -2,6 +2,7 @@
 #include "ResourceManager.hpp"
 #include "GameData.hpp"
 #include "utils/FileReader.hpp"
+#include "utils/PathResolver.hpp"
 #include "utils/Logger.hpp"
 #include "ui/Slider.hpp"
 #include "ui/Container.hpp"
@@ -982,7 +983,8 @@ void Menu::scanLevels() {
 
 #else
     // Логика для Desktop: используем std::filesystem
-    const std::string dirPath = "data/levels/";
+    auto dataPath = PathResolver::getResourcesPath("data");
+    const std::string dirPath = dataPath / "levels/";
     if (!fs::exists(dirPath) || !fs::is_directory(dirPath)) {
         Logger::error("[Menu]: Папка уровней не найдена: {}", dirPath);
         return;

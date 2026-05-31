@@ -10,6 +10,8 @@
         android:anyDensity="true" />
 
     <application
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher"
         android:label="Project: Gyurza"
         android:hasCode="true"
         android:allowBackup="true"
