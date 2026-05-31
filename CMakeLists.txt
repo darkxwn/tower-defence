@@ -117,7 +117,7 @@ set(WIN_RESOURCES "")
 if(WIN32)
     enable_language(RC)
     # Если у тебя есть файл .rc для иконки Windows, добавь его сюда
-    set(WIN_RESOURCES "src/resource.rc")
+    set(WIN_RESOURCES "assets/icons/resource.rc")
 endif()
 
 set(MACOS_ICON "${CMAKE_CURRENT_SOURCE_DIR}/macos/game_macos.icns")

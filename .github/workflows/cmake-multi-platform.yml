@@ -96,7 +96,7 @@ jobs:
           libfreetype-dev \
           libopenal-dev \
           libogg-dev libvorbis-dev libflac-dev \
-          libwayland-dev libxkbcommon-dev wayland-protocols
+          libsfml-dev nlohmann-json-dev
 
     - name: Install Dependencies (macOS)
       if: runner.os == 'macOS'
